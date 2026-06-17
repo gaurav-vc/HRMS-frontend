@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitesRouteImport } from './routes/sites'
+import { Route as LeaveRouteImport } from './routes/leave'
 import { Route as EntitiesRouteImport } from './routes/entities'
 import { Route as EmployeesRouteImport } from './routes/employees'
 import { Route as DesignationsRouteImport } from './routes/designations'
@@ -19,11 +20,19 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AttendanceRouteImport } from './routes/attendance'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EmployeesIdRouteImport } from './routes/employees.$id'
+import { Route as AttendanceRegularizeRouteImport } from './routes/attendance.regularize'
 import { Route as AttendanceQrRouteImport } from './routes/attendance.qr'
+import { Route as AttendanceGpsRouteImport } from './routes/attendance.gps'
+import { Route as AttendanceFaceRouteImport } from './routes/attendance.face'
 
 const SitesRoute = SitesRouteImport.update({
   id: '/sites',
   path: '/sites',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeaveRoute = LeaveRouteImport.update({
+  id: '/leave',
+  path: '/leave',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EntitiesRoute = EntitiesRouteImport.update({
@@ -71,9 +80,24 @@ const EmployeesIdRoute = EmployeesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => EmployeesRoute,
 } as any)
+const AttendanceRegularizeRoute = AttendanceRegularizeRouteImport.update({
+  id: '/regularize',
+  path: '/regularize',
+  getParentRoute: () => AttendanceRoute,
+} as any)
 const AttendanceQrRoute = AttendanceQrRouteImport.update({
   id: '/qr',
   path: '/qr',
+  getParentRoute: () => AttendanceRoute,
+} as any)
+const AttendanceGpsRoute = AttendanceGpsRouteImport.update({
+  id: '/gps',
+  path: '/gps',
+  getParentRoute: () => AttendanceRoute,
+} as any)
+const AttendanceFaceRoute = AttendanceFaceRouteImport.update({
+  id: '/face',
+  path: '/face',
   getParentRoute: () => AttendanceRoute,
 } as any)
 
@@ -86,8 +110,12 @@ export interface FileRoutesByFullPath {
   '/designations': typeof DesignationsRoute
   '/employees': typeof EmployeesRouteWithChildren
   '/entities': typeof EntitiesRoute
+  '/leave': typeof LeaveRoute
   '/sites': typeof SitesRoute
+  '/attendance/face': typeof AttendanceFaceRoute
+  '/attendance/gps': typeof AttendanceGpsRoute
   '/attendance/qr': typeof AttendanceQrRoute
+  '/attendance/regularize': typeof AttendanceRegularizeRoute
   '/employees/$id': typeof EmployeesIdRoute
 }
 export interface FileRoutesByTo {
@@ -99,8 +127,12 @@ export interface FileRoutesByTo {
   '/designations': typeof DesignationsRoute
   '/employees': typeof EmployeesRouteWithChildren
   '/entities': typeof EntitiesRoute
+  '/leave': typeof LeaveRoute
   '/sites': typeof SitesRoute
+  '/attendance/face': typeof AttendanceFaceRoute
+  '/attendance/gps': typeof AttendanceGpsRoute
   '/attendance/qr': typeof AttendanceQrRoute
+  '/attendance/regularize': typeof AttendanceRegularizeRoute
   '/employees/$id': typeof EmployeesIdRoute
 }
 export interface FileRoutesById {
@@ -113,8 +145,12 @@ export interface FileRoutesById {
   '/designations': typeof DesignationsRoute
   '/employees': typeof EmployeesRouteWithChildren
   '/entities': typeof EntitiesRoute
+  '/leave': typeof LeaveRoute
   '/sites': typeof SitesRoute
+  '/attendance/face': typeof AttendanceFaceRoute
+  '/attendance/gps': typeof AttendanceGpsRoute
   '/attendance/qr': typeof AttendanceQrRoute
+  '/attendance/regularize': typeof AttendanceRegularizeRoute
   '/employees/$id': typeof EmployeesIdRoute
 }
 export interface FileRouteTypes {
@@ -128,8 +164,12 @@ export interface FileRouteTypes {
     | '/designations'
     | '/employees'
     | '/entities'
+    | '/leave'
     | '/sites'
+    | '/attendance/face'
+    | '/attendance/gps'
     | '/attendance/qr'
+    | '/attendance/regularize'
     | '/employees/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -141,8 +181,12 @@ export interface FileRouteTypes {
     | '/designations'
     | '/employees'
     | '/entities'
+    | '/leave'
     | '/sites'
+    | '/attendance/face'
+    | '/attendance/gps'
     | '/attendance/qr'
+    | '/attendance/regularize'
     | '/employees/$id'
   id:
     | '__root__'
@@ -154,8 +198,12 @@ export interface FileRouteTypes {
     | '/designations'
     | '/employees'
     | '/entities'
+    | '/leave'
     | '/sites'
+    | '/attendance/face'
+    | '/attendance/gps'
     | '/attendance/qr'
+    | '/attendance/regularize'
     | '/employees/$id'
   fileRoutesById: FileRoutesById
 }
@@ -168,6 +216,7 @@ export interface RootRouteChildren {
   DesignationsRoute: typeof DesignationsRoute
   EmployeesRoute: typeof EmployeesRouteWithChildren
   EntitiesRoute: typeof EntitiesRoute
+  LeaveRoute: typeof LeaveRoute
   SitesRoute: typeof SitesRoute
 }
 
@@ -178,6 +227,13 @@ declare module '@tanstack/react-router' {
       path: '/sites'
       fullPath: '/sites'
       preLoaderRoute: typeof SitesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leave': {
+      id: '/leave'
+      path: '/leave'
+      fullPath: '/leave'
+      preLoaderRoute: typeof LeaveRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/entities': {
@@ -243,6 +299,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmployeesIdRouteImport
       parentRoute: typeof EmployeesRoute
     }
+    '/attendance/regularize': {
+      id: '/attendance/regularize'
+      path: '/regularize'
+      fullPath: '/attendance/regularize'
+      preLoaderRoute: typeof AttendanceRegularizeRouteImport
+      parentRoute: typeof AttendanceRoute
+    }
     '/attendance/qr': {
       id: '/attendance/qr'
       path: '/qr'
@@ -250,15 +313,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AttendanceQrRouteImport
       parentRoute: typeof AttendanceRoute
     }
+    '/attendance/gps': {
+      id: '/attendance/gps'
+      path: '/gps'
+      fullPath: '/attendance/gps'
+      preLoaderRoute: typeof AttendanceGpsRouteImport
+      parentRoute: typeof AttendanceRoute
+    }
+    '/attendance/face': {
+      id: '/attendance/face'
+      path: '/face'
+      fullPath: '/attendance/face'
+      preLoaderRoute: typeof AttendanceFaceRouteImport
+      parentRoute: typeof AttendanceRoute
+    }
   }
 }
 
 interface AttendanceRouteChildren {
+  AttendanceFaceRoute: typeof AttendanceFaceRoute
+  AttendanceGpsRoute: typeof AttendanceGpsRoute
   AttendanceQrRoute: typeof AttendanceQrRoute
+  AttendanceRegularizeRoute: typeof AttendanceRegularizeRoute
 }
 
 const AttendanceRouteChildren: AttendanceRouteChildren = {
+  AttendanceFaceRoute: AttendanceFaceRoute,
+  AttendanceGpsRoute: AttendanceGpsRoute,
   AttendanceQrRoute: AttendanceQrRoute,
+  AttendanceRegularizeRoute: AttendanceRegularizeRoute,
 }
 
 const AttendanceRouteWithChildren = AttendanceRoute._addFileChildren(
@@ -286,6 +369,7 @@ const rootRouteChildren: RootRouteChildren = {
   DesignationsRoute: DesignationsRoute,
   EmployeesRoute: EmployeesRouteWithChildren,
   EntitiesRoute: EntitiesRoute,
+  LeaveRoute: LeaveRoute,
   SitesRoute: SitesRoute,
 }
 export const routeTree = rootRouteImport
