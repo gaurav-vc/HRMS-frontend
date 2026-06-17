@@ -16,8 +16,10 @@ import { Route as DesignationsRouteImport } from './routes/designations'
 import { Route as DepartmentsRouteImport } from './routes/departments'
 import { Route as BranchesRouteImport } from './routes/branches'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AttendanceRouteImport } from './routes/attendance'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EmployeesIdRouteImport } from './routes/employees.$id'
+import { Route as AttendanceQrRouteImport } from './routes/attendance.qr'
 
 const SitesRoute = SitesRouteImport.update({
   id: '/sites',
@@ -54,6 +56,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AttendanceRoute = AttendanceRouteImport.update({
+  id: '/attendance',
+  path: '/attendance',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -64,9 +71,15 @@ const EmployeesIdRoute = EmployeesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => EmployeesRoute,
 } as any)
+const AttendanceQrRoute = AttendanceQrRouteImport.update({
+  id: '/qr',
+  path: '/qr',
+  getParentRoute: () => AttendanceRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/attendance': typeof AttendanceRouteWithChildren
   '/auth': typeof AuthRoute
   '/branches': typeof BranchesRoute
   '/departments': typeof DepartmentsRoute
@@ -74,10 +87,12 @@ export interface FileRoutesByFullPath {
   '/employees': typeof EmployeesRouteWithChildren
   '/entities': typeof EntitiesRoute
   '/sites': typeof SitesRoute
+  '/attendance/qr': typeof AttendanceQrRoute
   '/employees/$id': typeof EmployeesIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/attendance': typeof AttendanceRouteWithChildren
   '/auth': typeof AuthRoute
   '/branches': typeof BranchesRoute
   '/departments': typeof DepartmentsRoute
@@ -85,11 +100,13 @@ export interface FileRoutesByTo {
   '/employees': typeof EmployeesRouteWithChildren
   '/entities': typeof EntitiesRoute
   '/sites': typeof SitesRoute
+  '/attendance/qr': typeof AttendanceQrRoute
   '/employees/$id': typeof EmployeesIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/attendance': typeof AttendanceRouteWithChildren
   '/auth': typeof AuthRoute
   '/branches': typeof BranchesRoute
   '/departments': typeof DepartmentsRoute
@@ -97,12 +114,14 @@ export interface FileRoutesById {
   '/employees': typeof EmployeesRouteWithChildren
   '/entities': typeof EntitiesRoute
   '/sites': typeof SitesRoute
+  '/attendance/qr': typeof AttendanceQrRoute
   '/employees/$id': typeof EmployeesIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/attendance'
     | '/auth'
     | '/branches'
     | '/departments'
@@ -110,10 +129,12 @@ export interface FileRouteTypes {
     | '/employees'
     | '/entities'
     | '/sites'
+    | '/attendance/qr'
     | '/employees/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/attendance'
     | '/auth'
     | '/branches'
     | '/departments'
@@ -121,10 +142,12 @@ export interface FileRouteTypes {
     | '/employees'
     | '/entities'
     | '/sites'
+    | '/attendance/qr'
     | '/employees/$id'
   id:
     | '__root__'
     | '/'
+    | '/attendance'
     | '/auth'
     | '/branches'
     | '/departments'
@@ -132,11 +155,13 @@ export interface FileRouteTypes {
     | '/employees'
     | '/entities'
     | '/sites'
+    | '/attendance/qr'
     | '/employees/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AttendanceRoute: typeof AttendanceRouteWithChildren
   AuthRoute: typeof AuthRoute
   BranchesRoute: typeof BranchesRoute
   DepartmentsRoute: typeof DepartmentsRoute
@@ -197,6 +222,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/attendance': {
+      id: '/attendance'
+      path: '/attendance'
+      fullPath: '/attendance'
+      preLoaderRoute: typeof AttendanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -211,8 +243,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmployeesIdRouteImport
       parentRoute: typeof EmployeesRoute
     }
+    '/attendance/qr': {
+      id: '/attendance/qr'
+      path: '/qr'
+      fullPath: '/attendance/qr'
+      preLoaderRoute: typeof AttendanceQrRouteImport
+      parentRoute: typeof AttendanceRoute
+    }
   }
 }
+
+interface AttendanceRouteChildren {
+  AttendanceQrRoute: typeof AttendanceQrRoute
+}
+
+const AttendanceRouteChildren: AttendanceRouteChildren = {
+  AttendanceQrRoute: AttendanceQrRoute,
+}
+
+const AttendanceRouteWithChildren = AttendanceRoute._addFileChildren(
+  AttendanceRouteChildren,
+)
 
 interface EmployeesRouteChildren {
   EmployeesIdRoute: typeof EmployeesIdRoute
@@ -228,6 +279,7 @@ const EmployeesRouteWithChildren = EmployeesRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AttendanceRoute: AttendanceRouteWithChildren,
   AuthRoute: AuthRoute,
   BranchesRoute: BranchesRoute,
   DepartmentsRoute: DepartmentsRoute,
