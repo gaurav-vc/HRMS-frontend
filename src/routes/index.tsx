@@ -155,19 +155,8 @@ function ExecutiveDashboard({ role }: { role: string }) {
             ))}
           </div>
         </Card>
-        </Card>
-        <Card className="p-5 shadow-[var(--shadow-card)]">
-          <div className="flex items-center justify-between mb-3"><h3 className="font-semibold">Recent Payroll Runs</h3><Link to="/payroll" className="text-xs text-primary">View all</Link></div>
-          <div className="space-y-2">
-            {payrollRuns.slice().reverse().map(r => (
-              <div key={r.id} className="flex items-center justify-between p-3 rounded-md border">
-                <div className="min-w-0"><div className="text-sm font-medium">{r.period}</div><div className="text-xs text-muted-foreground">{r.employees} employees • {fmtINR(r.net)} net</div></div>
-                <Badge className={r.status === "Disbursed" ? "bg-success text-success-foreground" : r.status === "Draft" ? "bg-warning text-warning-foreground" : ""}>{r.status}</Badge>
-              </div>
-            ))}
-          </div>
-        </Card>
       </div>
+
 
       <div className="grid gap-4 lg:grid-cols-2">
         <AttendanceModeWidget />
@@ -207,7 +196,10 @@ function ManagerDashboard() {
     </div>
   );
 }
+
+function PayrollDashboard() {
   const { payrollRuns, employees, loans, reimbursements } = db();
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
