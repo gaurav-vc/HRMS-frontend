@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { Users, Wallet, CalendarCheck2, AlertTriangle, TrendingUp, Building2, PlayCircle, ArrowRight } from "lucide-react";
+import { Users, Wallet, CalendarCheck2, AlertTriangle, TrendingUp, PlayCircle, ArrowRight, QrCode, ScanFace, Navigation, ShieldAlert } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,57 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/auth-context";
 import { db, fmtINR, empName } from "@/lib/mock-data";
 import { StatCard } from "@/components/stat-card";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from "recharts";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, PieChart, Pie } from "recharts";
+
+function AttendanceModeWidget() {
+  const { attendance } = db();
+  const qr = attendance.filter(a => a.qrStatus === "Verified").length;
+  const face = attendance.filter(a => a.faceScore >= 85).length;
+  const gps = attendance.filter(a => a.distanceM <= 150).length;
+  const data = [
+    { name: "QR", value: qr, fill: "var(--color-chart-1)" },
+    { name: "Face", value: face, fill: "var(--color-chart-2)" },
+    { name: "GPS", value: gps, fill: "var(--color-chart-3)" },
+  ];
+  return (
+    <Card className="p-5 shadow-[var(--shadow-card)]">
+      <div className="flex items-center justify-between mb-1"><h3 className="font-semibold">Attendance Mode Distribution</h3><Link to="/attendance" className="text-xs text-primary">Live feed</Link></div>
+      <p className="text-xs text-muted-foreground mb-3">Verified punches across QR, Face & GPS</p>
+      <ResponsiveContainer width="100%" height={200}>
+        <PieChart><Pie data={data} dataKey="value" innerRadius={50} outerRadius={80} paddingAngle={3}>{data.map((d,i) => <Cell key={i} fill={d.fill} />)}</Pie>
+          <Tooltip contentStyle={{ background: "var(--color-popover)", border: "1px solid var(--color-border)", borderRadius: 8 }} /></PieChart>
+      </ResponsiveContainer>
+      <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
+        <div className="flex items-center gap-1.5"><QrCode className="h-3.5 w-3.5" style={{ color: "var(--color-chart-1)" }} />QR <span className="font-semibold ml-auto">{qr}</span></div>
+        <div className="flex items-center gap-1.5"><ScanFace className="h-3.5 w-3.5" style={{ color: "var(--color-chart-2)" }} />Face <span className="font-semibold ml-auto">{face}</span></div>
+        <div className="flex items-center gap-1.5"><Navigation className="h-3.5 w-3.5" style={{ color: "var(--color-chart-3)" }} />GPS <span className="font-semibold ml-auto">{gps}</span></div>
+      </div>
+    </Card>
+  );
+}
+
+function ExceptionAlertsWidget() {
+  const { attendance, regularizations, leaves } = db();
+  const exceptions = [
+    ...attendance.filter(a => a.distanceM > 150).slice(0, 3).map(a => ({ kind: "Geofence", who: empName(a.employeeId), detail: `${a.distanceM}m off-site on ${a.date}`, tone: "destructive" as const })),
+    ...attendance.filter(a => a.faceScore < 85).slice(0, 2).map(a => ({ kind: "Low face score", who: empName(a.employeeId), detail: `${a.faceScore}% confidence on ${a.date}`, tone: "warning" as const })),
+    ...regularizations.filter(r => r.status === "Pending").slice(0, 2).map(r => ({ kind: "Regularization", who: empName(r.employeeId), detail: `Awaiting review • ${r.reason}`, tone: "info" as const })),
+    ...leaves.filter(l => l.status === "Pending").slice(0, 2).map(l => ({ kind: "Leave", who: empName(l.employeeId), detail: `${l.type} ${l.days}d from ${l.from}`, tone: "info" as const })),
+  ].slice(0, 6);
+  return (
+    <Card className="p-5 shadow-[var(--shadow-card)]">
+      <div className="flex items-center justify-between mb-3"><div className="flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-warning-foreground" /><h3 className="font-semibold">Exception Alerts</h3></div><Link to="/attendance/regularize" className="text-xs text-primary">Review queue</Link></div>
+      <ul className="space-y-2">
+        {exceptions.map((e, i) => (
+          <li key={i} className="flex items-start gap-3 p-2.5 rounded-md border">
+            <Badge variant="outline" className={e.tone === "destructive" ? "border-destructive/40 text-destructive" : e.tone === "warning" ? "border-warning/40 text-warning-foreground" : "border-primary/40 text-primary"}>{e.kind}</Badge>
+            <div className="flex-1 min-w-0"><div className="text-sm font-medium truncate">{e.who}</div><div className="text-xs text-muted-foreground truncate">{e.detail}</div></div>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
 
 export const Route = createFileRoute("/")({ component: Index });
 
@@ -106,12 +156,50 @@ function ExecutiveDashboard({ role }: { role: string }) {
           </div>
         </Card>
       </div>
+
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AttendanceModeWidget />
+        <ExceptionAlertsWidget />
+      </div>
+    </div>
+  );
+}
+
+function ManagerDashboard() {
+  const { employees, leaves, attendance } = db();
+  const myTeam = employees.slice(0, 8);
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="My Team" value={String(myTeam.length)} icon={Users} />
+        <StatCard label="On Leave Today" value="2" icon={CalendarCheck2} tone="warning" />
+        <StatCard label="Pending Approvals" value={String(leaves.filter(l => l.status === "Pending").slice(0,5).length)} icon={AlertTriangle} tone="info" />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AttendanceModeWidget />
+        <ExceptionAlertsWidget />
+      </div>
+      <Card className="p-5 shadow-[var(--shadow-card)]">
+        <h3 className="font-semibold mb-3">Team Roster</h3>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">{myTeam.map(e => (
+          <div key={e.id} className="p-4 rounded-md border flex items-center gap-3"><Avatar><AvatarFallback className="bg-primary/10 text-primary">{e.firstName[0]}{e.lastName[0]}</AvatarFallback></Avatar>
+            <div className="min-w-0"><div className="text-sm font-medium truncate">{e.firstName} {e.lastName}</div><div className="text-xs text-muted-foreground truncate">{e.code}</div></div></div>
+        ))}</div>
+      </Card>
+      <Card className="p-5 shadow-[var(--shadow-card)]">
+        <h3 className="font-semibold mb-3">Today's Team Attendance</h3>
+        <ul className="divide-y">{attendance.slice(0, 6).map(a => (
+          <li key={a.id} className="py-3 flex items-center justify-between text-sm"><span>{empName(a.employeeId)}</span><span className="text-muted-foreground">{a.checkIn} • {a.status}</span></li>
+        ))}</ul>
+      </Card>
     </div>
   );
 }
 
 function PayrollDashboard() {
   const { payrollRuns, employees, loans, reimbursements } = db();
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -143,32 +231,7 @@ function PayrollDashboard() {
   );
 }
 
-function ManagerDashboard() {
-  const { employees, leaves, attendance } = db();
-  const myTeam = employees.slice(0, 8);
-  return (
-    <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="My Team" value={String(myTeam.length)} icon={Users} />
-        <StatCard label="On Leave Today" value="2" icon={CalendarCheck2} tone="warning" />
-        <StatCard label="Pending Approvals" value={String(leaves.filter(l => l.status === "Pending").slice(0,5).length)} icon={AlertTriangle} tone="info" />
-      </div>
-      <Card className="p-5 shadow-[var(--shadow-card)]">
-        <h3 className="font-semibold mb-3">Team Roster</h3>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">{myTeam.map(e => (
-          <div key={e.id} className="p-4 rounded-md border flex items-center gap-3"><Avatar><AvatarFallback className="bg-primary/10 text-primary">{e.firstName[0]}{e.lastName[0]}</AvatarFallback></Avatar>
-            <div className="min-w-0"><div className="text-sm font-medium truncate">{e.firstName} {e.lastName}</div><div className="text-xs text-muted-foreground truncate">{e.code}</div></div></div>
-        ))}</div>
-      </Card>
-      <Card className="p-5 shadow-[var(--shadow-card)]">
-        <h3 className="font-semibold mb-3">Today's Team Attendance</h3>
-        <ul className="divide-y">{attendance.slice(0, 6).map(a => (
-          <li key={a.id} className="py-3 flex items-center justify-between text-sm"><span>{empName(a.employeeId)}</span><span className="text-muted-foreground">{a.checkIn} • {a.status}</span></li>
-        ))}</ul>
-      </Card>
-    </div>
-  );
-}
+
 
 function EmployeeDashboard() {
   const { attendance, leaves, payrollRuns } = db();
