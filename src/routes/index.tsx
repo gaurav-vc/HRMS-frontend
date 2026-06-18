@@ -155,12 +155,58 @@ function ExecutiveDashboard({ role }: { role: string }) {
             ))}
           </div>
         </Card>
+        </Card>
+        <Card className="p-5 shadow-[var(--shadow-card)]">
+          <div className="flex items-center justify-between mb-3"><h3 className="font-semibold">Recent Payroll Runs</h3><Link to="/payroll" className="text-xs text-primary">View all</Link></div>
+          <div className="space-y-2">
+            {payrollRuns.slice().reverse().map(r => (
+              <div key={r.id} className="flex items-center justify-between p-3 rounded-md border">
+                <div className="min-w-0"><div className="text-sm font-medium">{r.period}</div><div className="text-xs text-muted-foreground">{r.employees} employees • {fmtINR(r.net)} net</div></div>
+                <Badge className={r.status === "Disbursed" ? "bg-success text-success-foreground" : r.status === "Draft" ? "bg-warning text-warning-foreground" : ""}>{r.status}</Badge>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AttendanceModeWidget />
+        <ExceptionAlertsWidget />
       </div>
     </div>
   );
 }
 
-function PayrollDashboard() {
+function ManagerDashboard() {
+  const { employees, leaves, attendance } = db();
+  const myTeam = employees.slice(0, 8);
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="My Team" value={String(myTeam.length)} icon={Users} />
+        <StatCard label="On Leave Today" value="2" icon={CalendarCheck2} tone="warning" />
+        <StatCard label="Pending Approvals" value={String(leaves.filter(l => l.status === "Pending").slice(0,5).length)} icon={AlertTriangle} tone="info" />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AttendanceModeWidget />
+        <ExceptionAlertsWidget />
+      </div>
+      <Card className="p-5 shadow-[var(--shadow-card)]">
+        <h3 className="font-semibold mb-3">Team Roster</h3>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">{myTeam.map(e => (
+          <div key={e.id} className="p-4 rounded-md border flex items-center gap-3"><Avatar><AvatarFallback className="bg-primary/10 text-primary">{e.firstName[0]}{e.lastName[0]}</AvatarFallback></Avatar>
+            <div className="min-w-0"><div className="text-sm font-medium truncate">{e.firstName} {e.lastName}</div><div className="text-xs text-muted-foreground truncate">{e.code}</div></div></div>
+        ))}</div>
+      </Card>
+      <Card className="p-5 shadow-[var(--shadow-card)]">
+        <h3 className="font-semibold mb-3">Today's Team Attendance</h3>
+        <ul className="divide-y">{attendance.slice(0, 6).map(a => (
+          <li key={a.id} className="py-3 flex items-center justify-between text-sm"><span>{empName(a.employeeId)}</span><span className="text-muted-foreground">{a.checkIn} • {a.status}</span></li>
+        ))}</ul>
+      </Card>
+    </div>
+  );
+}
   const { payrollRuns, employees, loans, reimbursements } = db();
   return (
     <div className="space-y-6">
