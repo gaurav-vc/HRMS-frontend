@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Check, X, MessageSquare, Plus, History } from "lucide-react";
@@ -13,29 +13,65 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatCard } from "@/components/stat-card";
-import { db, empName, type Regularization } from "@/lib/mock-data";
 import { useAuth } from "@/lib/auth-context";
+import { attendanceApi, employeesApi } from "@/api";
 
 type Status = "Pending" | "Approved" | "Rejected";
 interface Event { at: string; by: string; action: string; comment?: string; }
-interface Row extends Regularization { comment?: string; reviewer?: string; reviewedAt?: string; history: Event[]; }
+interface Row {
+  id: string | number;
+  employeeName: string;
+  employee: string | number;
+  attendanceDate: string;
+  requestedCheckIn: string;
+  requestedCheckOut: string;
+  reason: string;
+  status: Status;
+  managerComments?: string;
+  approvedAt?: string;
+  createdAt: string;
+  history: Event[];
+}
 
-const nowIso = () => new Date().toISOString().slice(0,16).replace("T"," ");
-
-export const Route = createFileRoute("/attendance/regularize")({ component: RegPage });
+export const Route = createFileRoute("/attendance/regularize")({
+  loader: async () => {
+    const [regs, employees] = await Promise.all([
+      attendanceApi.getRegularizations(),
+      employeesApi.getAll()
+    ]);
+    return { regs, employees };
+  },
+  component: RegPage 
+});
 
 function RegPage() {
+  const { regs, employees } = Route.useLoaderData();
   const { user } = useAuth();
-  const { employees } = db();
+  const router = useRouter();
   const isReviewer = user?.role !== "employee";
 
-  const [rows, setRows] = useState<Row[]>(() =>
-    db().regularizations.map(r => ({ ...r, history: [{ at: r.date + " 09:30", by: empName(r.employeeId), action: "Submitted", comment: r.reason }] }))
-  );
+  // Map API response to our UI format
+  const rows: Row[] = regs.map((r: any) => ({
+    ...r,
+    employeeName: r.employee_name || r.employeeName,
+    attendanceDate: r.attendance_date || r.attendanceDate,
+    requestedCheckIn: new Date(r.requested_check_in || r.requestedCheckIn).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+    requestedCheckOut: new Date(r.requested_check_out || r.requestedCheckOut).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+    history: [
+      { at: new Date(r.created_at || r.createdAt).toLocaleString(), by: r.employee_name || r.employeeName, action: "Submitted", comment: r.reason },
+      ...(r.status !== "Pending" ? [{
+        at: r.approved_at ? new Date(r.approved_at).toLocaleString() : new Date(r.updated_at || r.updatedAt).toLocaleString(),
+        by: "Manager",
+        action: r.status,
+        comment: r.manager_comments || r.managerComments
+      }] : [])
+    ]
+  }));
+
   const [acting, setActing] = useState<{ row: Row; type: "Approved" | "Rejected" } | null>(null);
   const [comment, setComment] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
-  const [form, setForm] = useState({ employeeId: employees[0].id, date: new Date().toISOString().slice(0,10), requestedIn: "09:30", requestedOut: "18:30", reason: "" });
+  const [form, setForm] = useState({ employeeId: employees[0]?.id || "", date: new Date().toISOString().slice(0,10), requestedIn: "09:30", requestedOut: "18:30", reason: "" });
   const [detail, setDetail] = useState<Row | null>(null);
 
   const counts = useMemo(() => ({
@@ -44,26 +80,45 @@ function RegPage() {
     rejected: rows.filter(r => r.status === "Rejected").length,
   }), [rows]);
 
-  const confirmAction = () => {
+  const confirmAction = async () => {
     if (!acting) return;
     if (acting.type === "Rejected" && !comment.trim()) { toast.error("Please add a reason for rejection"); return; }
-    const reviewer = user?.name || "Reviewer";
-    setRows(rs => rs.map(r => r.id === acting.row.id ? {
-      ...r, status: acting.type, comment, reviewer, reviewedAt: nowIso(),
-      history: [...r.history, { at: nowIso(), by: reviewer, action: acting.type, comment: comment || undefined }],
-    } : r));
-    toast.success(`Request ${acting.type.toLowerCase()}`);
-    setActing(null); setComment("");
+    
+    try {
+      await attendanceApi.approveRegularization(acting.row.id, {
+        status: acting.type,
+        manager_comments: comment
+      });
+      toast.success(`Request ${acting.type.toLowerCase()}`);
+      setActing(null); setComment("");
+      router.invalidate();
+    } catch(err) {
+      toast.error("Failed to perform action");
+    }
   };
 
-  const submitNew = () => {
+  const submitNew = async () => {
     if (!form.reason.trim()) { toast.error("Reason is required"); return; }
-    const id = `rg-${String(rows.length + 1).padStart(4,"0")}`;
-    const row: Row = { id, employeeId: form.employeeId, date: form.date, requestedIn: form.requestedIn, requestedOut: form.requestedOut, reason: form.reason, status: "Pending", history: [{ at: nowIso(), by: empName(form.employeeId), action: "Submitted", comment: form.reason }] };
-    setRows(r => [row, ...r]);
-    toast.success("Regularization submitted for approval");
-    setCreateOpen(false);
-    setForm({ ...form, reason: "" });
+    if (!form.employeeId) { toast.error("Employee is required"); return; }
+    
+    const inDate = new Date(`${form.date}T${form.requestedIn}:00`).toISOString();
+    const outDate = new Date(`${form.date}T${form.requestedOut}:00`).toISOString();
+    
+    try {
+      await attendanceApi.requestRegularization({
+        employee: form.employeeId,
+        attendance_date: form.date,
+        requested_check_in: inDate,
+        requested_check_out: outDate,
+        reason: form.reason
+      });
+      toast.success("Regularization submitted for approval");
+      setCreateOpen(false);
+      setForm({ ...form, reason: "" });
+      router.invalidate();
+    } catch(err) {
+      toast.error("Failed to submit regularization");
+    }
   };
 
   return (
@@ -77,16 +132,16 @@ function RegPage() {
         <StatCard label="Rejected" value={String(counts.rejected)} tone="info" icon={X} />
       </div>
 
-      <DataTable rows={rows} rowKey={r => r.id} tableId="regularize" searchKeys={[r => empName(r.employeeId), "reason"]} filename="regularizations.csv"
+      <DataTable rows={rows} rowKey={r => String(r.id)} tableId="regularize" searchKeys={[r => r.employeeName, "reason"]} filename="regularizations.csv"
         filters={[{ label: "Status", key: "status", options: ["Pending","Approved","Rejected"].map(s => ({ value: s, label: s })), predicate: (r, v) => r.status === v }]}
         columns={[
-          { key: "emp", header: "Employee", render: r => empName(r.employeeId) },
-          { key: "date", header: "Date", accessor: r => r.date, sortable: true },
-          { key: "in", header: "In", accessor: r => r.requestedIn },
-          { key: "out", header: "Out", accessor: r => r.requestedOut },
+          { key: "emp", header: "Employee", render: r => r.employeeName },
+          { key: "date", header: "Date", render: r => r.attendanceDate, accessor: r => r.attendanceDate, sortable: true },
+          { key: "in", header: "In", render: r => r.requestedCheckIn, accessor: r => r.requestedCheckIn },
+          { key: "out", header: "Out", render: r => r.requestedCheckOut, accessor: r => r.requestedCheckOut },
           { key: "reason", header: "Reason", render: r => <span className="text-sm">{r.reason}</span> },
-          { key: "reviewer", header: "Reviewer", render: r => r.reviewer ? <div className="text-xs"><div>{r.reviewer}</div><div className="text-muted-foreground">{r.reviewedAt}</div></div> : <span className="text-xs text-muted-foreground">—</span> },
-          { key: "comment", header: "Comment", render: r => r.comment ? <span className="text-xs italic">"{r.comment}"</span> : <span className="text-xs text-muted-foreground">—</span> },
+          { key: "reviewer", header: "Reviewer", render: r => r.managerComments ? <div className="text-xs"><div>Manager</div></div> : <span className="text-xs text-muted-foreground">—</span> },
+          { key: "comment", header: "Comment", render: r => r.managerComments ? <span className="text-xs italic">"{r.managerComments}"</span> : <span className="text-xs text-muted-foreground">—</span> },
           { key: "status", header: "Status", render: r => <StatusBadge s={r.status} /> },
         ]}
         actions={r => <div className="flex justify-end gap-1">
@@ -102,7 +157,7 @@ function RegPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{acting?.type === "Approved" ? "Approve request" : "Reject request"}</DialogTitle>
-            <DialogDescription>{acting && <>{empName(acting.row.employeeId)} • {acting.row.date} • {acting.row.requestedIn}–{acting.row.requestedOut}</>}</DialogDescription>
+            <DialogDescription>{acting && <>{acting.row.employeeName} • {acting.row.attendanceDate} • {acting.row.requestedCheckIn}–{acting.row.requestedCheckOut}</>}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             <Label>Reviewer comment {acting?.type === "Rejected" && <span className="text-destructive">*</span>}</Label>
@@ -122,9 +177,9 @@ function RegPage() {
           <DialogHeader><DialogTitle>New regularization</DialogTitle><DialogDescription>Submit a missed-punch correction for HR approval.</DialogDescription></DialogHeader>
           <div className="space-y-3">
             <div><Label>Employee</Label>
-              <Select value={form.employeeId} onValueChange={v => setForm({ ...form, employeeId: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{employees.slice(0,30).map(e => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName} ({e.code})</SelectItem>)}</SelectContent>
+              <Select value={String(form.employeeId)} onValueChange={v => setForm({ ...form, employeeId: v })}>
+                <SelectTrigger><SelectValue placeholder="Select Employee" /></SelectTrigger>
+                <SelectContent>{employees.slice(0,30).map((e: any) => <SelectItem key={e.id} value={String(e.id)}>{e.firstName} {e.lastName} ({e.code})</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-3 gap-2">
@@ -141,7 +196,7 @@ function RegPage() {
       <Dialog open={!!detail} onOpenChange={o => !o && setDetail(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Request history</DialogTitle>
-            <DialogDescription>{detail && <>{empName(detail.employeeId)} • {detail.date}</>}</DialogDescription>
+            <DialogDescription>{detail && <>{detail.employeeName} • {detail.attendanceDate}</>}</DialogDescription>
           </DialogHeader>
           <Card className="p-4">
             <ol className="space-y-3">

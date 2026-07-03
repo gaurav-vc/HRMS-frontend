@@ -11,23 +11,25 @@ export const ROLES: { value: Role; label: string }[] = [
 ];
 
 export interface Entity { id: string; name: string; code: string; country: string; currency: string; gstin: string; status: "Active" | "Inactive"; }
-export interface Branch { id: string; entityId: string; name: string; code: string; city: string; state: string; head: string; }
-export interface Site { id: string; branchId: string; name: string; address: string; latitude: number; longitude: number; radius: number; qrEnabled: boolean; faceEnabled: boolean; }
-export interface Department { id: string; entityId: string; name: string; code: string; head: string; }
-export interface Designation { id: string; departmentId: string; title: string; grade: string; }
+export interface Branch { id: string; entity: string | number; name: string; code: string; city: string; state: string; head: string; }
+export interface Site { id: string; branch: string | number; name: string; address: string; latitude: number; longitude: number; radius: number; qrEnabled: boolean; faceEnabled: boolean; }
+export interface Department { id: string; entity: string | number; name: string; code: string; head: string; }
+export interface Designation { id: string; department: string | number; title: string; grade: string; }
 export interface Employee {
   id: string; code: string; firstName: string; lastName: string; email: string; phone: string;
-  entityId: string; branchId: string; siteId: string; departmentId: string; designationId: string;
-  managerId?: string; doj: string; dob: string; gender: "Male" | "Female" | "Other"; status: "Active" | "On Leave" | "Inactive";
+  entity: string | number; branch: string | number; site: string | number; department: string | number; designation: string | number;
+  manager?: string | number; doj: string; dob: string; gender: "Male" | "Female" | "Other"; status: "Active" | "On Leave" | "Inactive";
   pan: string; aadhaar: string; uan: string; esi: string; bankName: string; bankAccount: string; ifsc: string;
-  address: string; ctc: number; avatar?: string;
+  address: string; ctc: number; avatar?: string; salaryStructure?: string | number | null; employeeType?: string;
+  bonusApplicable?: boolean; bonusType?: string; bonusValue?: number; bonusMonths?: number; pfApplicable?: boolean;
+  taxRegime?: string; taxSavingDeductions?: number | string;
 }
 export interface Attendance {
   id: string; employeeId: string; date: string; checkIn: string; checkOut?: string;
   location: string; distanceM: number; qrStatus: "Verified" | "Failed" | "N/A"; faceScore: number;
   status: "Present" | "Absent" | "Half Day" | "WFH" | "Late";
 }
-export interface LeaveReq { id: string; employeeId: string; type: "Casual" | "Sick" | "Earned" | "Maternity" | "WFH"; from: string; to: string; days: number; reason: string; status: "Pending" | "Approved" | "Rejected"; }
+export interface LeaveReq { id: string; employeeId: string; type: "Annual Leave" | "LOP"; subType?: "Sick" | "Casual" | "Other"; from: string; to: string; days: number; reason: string; status: "Pending" | "Approved" | "Rejected"; }
 export interface PayrollRun { id: string; period: string; entityId: string; employees: number; gross: number; deductions: number; net: number; status: "Draft" | "Processing" | "Approved" | "Disbursed"; runOn: string; }
 export interface SalaryComponent { id: string; name: string; type: "Earning" | "Deduction"; calc: "Fixed" | "% of Basic" | "% of CTC"; value: number; }
 export interface Loan { id: string; employeeId: string; type: "Personal" | "Salary Advance" | "Education"; amount: number; emi: number; tenure: number; outstanding: number; status: "Active" | "Closed" | "Pending"; }
@@ -51,27 +53,27 @@ function seed() {
     { id: "ent-03", name: "Acme Logistics Ltd", code: "ACME-LOG", country: "India", currency: "INR", gstin: "29AABCA1234B1Z2", status: "Active" },
   ];
   const branches: Branch[] = CITIES.map(([city, st], i) => ({
-    id: id("br", i + 1), entityId: entities[i % 3].id, name: `${city} Branch`, code: `BR-${city.slice(0,3).toUpperCase()}`,
+    id: id("br", i + 1), entity: entities[i % 3].id, name: `${city} Branch`, code: `BR-${city.slice(0,3).toUpperCase()}`,
     city, state: st, head: `${rand(FIRST)} ${rand(LAST)}`,
   }));
   const sites: Site[] = branches.flatMap((b, i) => ([
-    { id: id("site", i*2+1), branchId: b.id, name: `${b.city} HQ`, address: `${randInt(1,500)} Tech Park, ${b.city}`, latitude: 12.9 + i*0.3, longitude: 77.5 + i*0.4, radius: 150, qrEnabled: true, faceEnabled: true },
-    { id: id("site", i*2+2), branchId: b.id, name: `${b.city} Annexe`, address: `${randInt(1,500)} Business Bay, ${b.city}`, latitude: 12.9 + i*0.3 + 0.01, longitude: 77.5 + i*0.4 + 0.01, radius: 100, qrEnabled: true, faceEnabled: false },
+    { id: id("site", i*2+1), branch: b.id, name: `${b.city} HQ`, address: `${randInt(1,500)} Tech Park, ${b.city}`, latitude: 12.9 + i*0.3, longitude: 77.5 + i*0.4, radius: 150, qrEnabled: true, faceEnabled: true },
+    { id: id("site", i*2+2), branch: b.id, name: `${b.city} Annexe`, address: `${randInt(1,500)} Business Bay, ${b.city}`, latitude: 12.9 + i*0.3 + 0.01, longitude: 77.5 + i*0.4 + 0.01, radius: 100, qrEnabled: true, faceEnabled: false },
   ]));
-  const departments: Department[] = DEPTS.map((d, i) => ({ id: id("dept", i+1), entityId: entities[i % 3].id, name: d, code: d.slice(0,3).toUpperCase(), head: `${rand(FIRST)} ${rand(LAST)}` }));
-  const designations: Designation[] = departments.flatMap((d, i) => DESIGS.slice(0, 4).map((t, j) => ({ id: id("desg", i*4+j+1), departmentId: d.id, title: t, grade: `G${j+3}` })));
+  const departments: Department[] = DEPTS.map((d, i) => ({ id: id("dept", i+1), entity: entities[i % 3].id, name: d, code: d.slice(0,3).toUpperCase(), head: `${rand(FIRST)} ${rand(LAST)}` }));
+  const designations: Designation[] = departments.flatMap((d, i) => DESIGS.slice(0, 4).map((t, j) => ({ id: id("desg", i*4+j+1), department: d.id, title: t, grade: `G${j+3}` })));
 
   const employees: Employee[] = Array.from({ length: 48 }).map((_, i) => {
     const f = rand(FIRST), l = rand(LAST);
     const dept = rand(departments);
-    const desg = rand(designations.filter(x => x.departmentId === dept.id));
-    const br = rand(branches.filter(b => b.entityId === dept.entityId)) ?? branches[0];
-    const site = rand(sites.filter(s => s.branchId === br.id)) ?? sites[0];
+    const desg = rand(designations.filter(x => x.department === dept.id));
+    const br = rand(branches.filter(b => b.entity === dept.entity)) ?? branches[0];
+    const site = rand(sites.filter(s => s.branch === br.id)) ?? sites[0];
     return {
       id: id("emp", i+1), code: `EMP${1000+i}`, firstName: f, lastName: l,
       email: `${f.toLowerCase()}.${l.toLowerCase()}@acme.com`, phone: `+91 9${randInt(100000000, 999999999)}`,
-      entityId: dept.entityId, branchId: br.id, siteId: site.id, departmentId: dept.id, designationId: desg.id,
-      managerId: i > 5 ? id("emp", randInt(1, 5)) : undefined,
+      entity: String(dept.entity), branch: br.id, site: site.id, department: dept.id, designation: desg.id,
+      manager: i > 5 ? id("emp", randInt(1, 5)) : undefined,
       doj: `202${randInt(0,4)}-${String(randInt(1,12)).padStart(2,"0")}-${String(randInt(1,28)).padStart(2,"0")}`,
       dob: `19${randInt(80,99)}-${String(randInt(1,12)).padStart(2,"0")}-${String(randInt(1,28)).padStart(2,"0")}`,
       gender: rand(["Male","Female","Other"] as const), status: rand(["Active","Active","Active","On Leave"] as const),
@@ -89,7 +91,7 @@ function seed() {
   employees.slice(0, 20).forEach(emp => {
     for (let d = 0; d < 14; d++) {
       const date = new Date(today); date.setDate(today.getDate() - d);
-      const site = sites.find(s => s.id === emp.siteId)!;
+      const site = sites.find(s => s.id === emp.site)!;
       attendance.push({
         id: id("att", attendance.length + 1), employeeId: emp.id,
         date: date.toISOString().slice(0,10),
@@ -107,7 +109,7 @@ function seed() {
     const emp = rand(employees);
     const from = new Date(); from.setDate(from.getDate() + randInt(-10, 20));
     const to = new Date(from); to.setDate(from.getDate() + randInt(0, 4));
-    return { id: id("lv", i+1), employeeId: emp.id, type: rand(["Casual","Sick","Earned","WFH"] as const),
+    return { id: id("lv", i+1), employeeId: emp.id, type: rand(["Annual Leave","LOP"] as const), subType: rand(["Casual","Sick","Other"] as const),
       from: from.toISOString().slice(0,10), to: to.toISOString().slice(0,10),
       days: Math.max(1, Math.ceil((+to - +from)/86400000)+1),
       reason: rand(["Personal work","Family function","Not feeling well","Vacation","Doctor visit"]),

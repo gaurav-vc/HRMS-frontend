@@ -3,7 +3,8 @@ import {
   LayoutDashboard, Building2, GitBranch, MapPin, Users2, Briefcase, UserSquare2,
   CalendarCheck2, QrCode, ScanFace, Navigation, ClipboardList, CalendarDays,
   Wallet, Sliders, PlayCircle, ReceiptText, FileSpreadsheet, HandCoins, BadgeDollarSign,
-  Settings, FileBarChart2,
+  Settings, FileBarChart2, Clock, CalendarRange, Network, Palmtree, Calendar,
+  FileText, LayoutTemplate
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -12,7 +13,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import type { Role } from "@/lib/mock-data";
 
-interface Item { title: string; url: string; icon: React.ComponentType<{ className?: string }>; roles?: Role[]; }
+interface Item { title: string; url: string; icon: React.ComponentType<{ className?: string }>; }
 interface Group { label: string; items: Item[]; }
 
 const NAV: Group[] = [
@@ -20,17 +21,22 @@ const NAV: Group[] = [
     { title: "Dashboard", url: "/", icon: LayoutDashboard },
   ]},
   { label: "Organisation", items: [
-    { title: "Entities", url: "/entities", icon: Building2, roles: ["super_admin","group_hr"] },
-    { title: "Branches", url: "/branches", icon: GitBranch, roles: ["super_admin","group_hr","entity_hr"] },
-    { title: "Sites", url: "/sites", icon: MapPin, roles: ["super_admin","group_hr","entity_hr"] },
-    { title: "Departments", url: "/departments", icon: Users2, roles: ["super_admin","group_hr","entity_hr"] },
-    { title: "Designations", url: "/designations", icon: Briefcase, roles: ["super_admin","group_hr","entity_hr"] },
+    { title: "Entities", url: "/entities", icon: Building2 },
+    { title: "Branches", url: "/branches", icon: GitBranch },
+    { title: "Sites", url: "/sites", icon: MapPin },
+    { title: "Departments", url: "/departments", icon: Users2 },
+    { title: "Designations", url: "/designations", icon: Briefcase },
   ]},
   { label: "People", items: [
     { title: "Employees", url: "/employees", icon: UserSquare2 },
+    { title: "My Calendar", url: "/my-calendar", icon: CalendarDays },
+    { title: "Offer Letters", url: "/offer-letters", icon: FileText },
+    { title: "Offer Templates", url: "/offer-templates", icon: LayoutTemplate },
   ]},
   { label: "Attendance", items: [
     { title: "Attendance", url: "/attendance", icon: CalendarCheck2 },
+    { title: "Shift Definitions", url: "/attendance/shifts", icon: Clock },
+    { title: "Weekly Roster", url: "/attendance/roster", icon: CalendarRange },
     { title: "QR Check-in", url: "/attendance/qr", icon: QrCode },
     { title: "Face Verification", url: "/attendance/face", icon: ScanFace },
     { title: "GPS Capture", url: "/attendance/gps", icon: Navigation },
@@ -39,19 +45,28 @@ const NAV: Group[] = [
   { label: "Leave", items: [
     { title: "Leave Requests", url: "/leave", icon: CalendarDays },
   ]},
+  { label: "Holiday Planner", items: [
+    { title: "Holiday Planner", url: "/holidays", icon: Palmtree },
+    { title: "Calendar", url: "/holidays/calendar", icon: Calendar },
+  ]},
   { label: "Payroll", items: [
-    { title: "Payroll Overview", url: "/payroll", icon: Wallet, roles: ["super_admin","payroll_admin","group_hr"] },
-    { title: "Salary Structure", url: "/payroll/structure", icon: Sliders, roles: ["super_admin","payroll_admin","group_hr"] },
-    { title: "Run Payroll", url: "/payroll/run", icon: PlayCircle, roles: ["super_admin","payroll_admin"] },
+    { title: "Payroll Overview", url: "/payroll", icon: Wallet },
+    { title: "Salary Structure", url: "/payroll/structure", icon: Sliders },
+    { title: "Run Payroll", url: "/payroll/run", icon: PlayCircle },
     { title: "Salary Slips", url: "/payroll/slips", icon: ReceiptText },
-    { title: "Compliance", url: "/payroll/compliance", icon: FileSpreadsheet, roles: ["super_admin","payroll_admin","group_hr"] },
+    { title: "Compliance", url: "/payroll/compliance", icon: FileSpreadsheet },
     { title: "Loans & Advances", url: "/loans", icon: HandCoins },
     { title: "Reimbursements", url: "/reimbursements", icon: BadgeDollarSign },
   ]},
-  { label: "Insights", items: [
-    { title: "Reports", url: "/reports", icon: FileBarChart2 },
-    { title: "Settings", url: "/settings", icon: Settings, roles: ["super_admin","group_hr"] },
+  { label: "FORM 16", items: [
+    { title: "Form 16 Management", url: "/form-16/management", icon: FileText },
+    { title: "My Form 16", url: "/form-16/my", icon: FileText },
   ]},
+  { label: "Insights", items: [
+    { title: "Organization Tree", url: "/insights/org-tree", icon: Network },
+    { title: "Reports", url: "/reports", icon: FileBarChart2 },
+    { title: "Settings", url: "/settings", icon: Settings },
+  ]}
 ];
 
 export function AppSidebar() {
@@ -61,7 +76,19 @@ export function AppSidebar() {
   const { user } = useAuth();
   const role = user?.role ?? "employee";
 
-  const can = (it: Item) => !it.roles || it.roles.includes(role);
+  const can = (it: Item) => {
+    // 1. If the user is Super Admin, they see everything
+    if (role === "super_admin") return true;
+    
+    // 2. Strict check: only show if explicitly granted view permission
+    if (user?.permissions && user.permissions[it.title]) {
+      const v = user.permissions[it.title].view;
+      return v === true || v === 'self' || v === 'selected_entities';
+    }
+    
+    // Default to hide if no explicit permission is found
+    return false;
+  };
   const isActive = (url: string) => url === "/" ? pathname === "/" : pathname === url || pathname.startsWith(url + "/");
 
   return (

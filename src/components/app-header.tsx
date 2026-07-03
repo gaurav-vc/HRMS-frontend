@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Bell, ChevronRight, LogOut, Search } from "lucide-react";
+import { Bell, ChevronRight, LogOut, Search, CheckCircle2 } from "lucide-react";
+import { useState, useEffect } from "react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth, roleLabel } from "@/lib/auth-context";
 import { ROLES, type Role } from "@/lib/mock-data";
+import { notificationsApi } from "@/api";
 
 const LABELS: Record<string, string> = {
   "": "Dashboard", entities: "Entities", branches: "Branches", sites: "Sites", departments: "Departments",
@@ -19,6 +21,59 @@ const LABELS: Record<string, string> = {
   compliance: "Compliance", loans: "Loans & Advances", reimbursements: "Reimbursements",
   reports: "Reports", settings: "Settings",
 };
+
+function NotificationBell() {
+  const [notifs, setNotifs] = useState<any[]>([]);
+  const { user } = useAuth();
+  
+  useEffect(() => {
+    if (!user) return;
+    notificationsApi.getAll()
+      .then(data => {
+        if(Array.isArray(data)) setNotifs(data);
+      })
+      .catch(() => {});
+  }, [user]);
+
+  const markRead = (id: number) => {
+    notificationsApi.markRead(id)
+      .then(() => setNotifs(n => n.filter(x => x.id !== id)))
+      .catch(() => {});
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="relative">
+          <Bell className="h-4 w-4" />
+          {notifs.length > 0 && <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive animate-pulse" />}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80">
+        <DropdownMenuLabel>Notifications ({notifs.length})</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {notifs.length === 0 ? (
+          <div className="p-4 text-center text-sm text-muted-foreground">No new notifications</div>
+        ) : (
+          <div className="max-h-80 overflow-y-auto">
+            {notifs.map(n => (
+              <div key={n.id} className="p-3 border-b last:border-0 hover:bg-muted/50 cursor-pointer">
+                <div className="flex justify-between items-start">
+                  <div className="font-medium text-sm">{n.title}</div>
+                  <Button variant="ghost" size="icon" className="h-5 w-5 -mt-1" onClick={() => markRead(n.id)}><CheckCircle2 className="h-3 w-3" /></Button>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{n.message}</div>
+                {n.related_run_id && (
+                  <Link to="/payroll/run" className="text-xs text-primary mt-2 block" onClick={() => markRead(n.id)}>View Payroll Run →</Link>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export function AppHeader() {
   const pathname = useRouterState({ select: s => s.location.pathname });
@@ -42,11 +97,7 @@ export function AppHeader() {
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input placeholder="Search employees, sites…" className="pl-8 h-9" />
       </div>
-      <Select value={user?.role} onValueChange={(v) => setRole(v as Role)}>
-        <SelectTrigger className="w-[170px] h-9"><SelectValue /></SelectTrigger>
-        <SelectContent>{ROLES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
-      </Select>
-      <Button variant="ghost" size="icon"><Bell className="h-4 w-4" /></Button>
+      <NotificationBell />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="h-9 px-2 gap-2">

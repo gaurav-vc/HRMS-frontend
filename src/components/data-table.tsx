@@ -41,21 +41,15 @@ export function DataTable<T>({ rows, columns, searchPlaceholder = "Search…", s
   const [page, setPage] = useState(1);
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
-  const [hidden, setHidden] = useState<string[]>([]);
-  const [views, setViews] = useState<SavedView[]>([]);
+  const [hidden, setHidden] = useState<string[]>(() => {
+    try { return typeof localStorage !== "undefined" ? JSON.parse(localStorage.getItem(`${storageKey}:hidden`) || "[]") : []; } catch { return []; }
+  });
+  const [views, setViews] = useState<SavedView[]>(() => {
+    try { return typeof localStorage !== "undefined" ? JSON.parse(localStorage.getItem(`${storageKey}:views`) || "[]") : []; } catch { return []; }
+  });
 
-  useEffect(() => {
-    if (!storageKey) return;
-    try {
-      const v = JSON.parse(localStorage.getItem(`${storageKey}:views`) || "[]");
-      setViews(v);
-      const h = JSON.parse(localStorage.getItem(`${storageKey}:hidden`) || "[]");
-      setHidden(h);
-    } catch { /* ignore */ }
-  }, [storageKey]);
-
-  const persistHidden = (h: string[]) => { setHidden(h); if (storageKey) localStorage.setItem(`${storageKey}:hidden`, JSON.stringify(h)); };
-  const persistViews = (v: SavedView[]) => { setViews(v); if (storageKey) localStorage.setItem(`${storageKey}:views`, JSON.stringify(v)); };
+  const persistHidden = (h: string[]) => { setHidden(h); if (storageKey && typeof localStorage !== "undefined") localStorage.setItem(`${storageKey}:hidden`, JSON.stringify(h)); };
+  const persistViews = (v: SavedView[]) => { setViews(v); if (storageKey && typeof localStorage !== "undefined") localStorage.setItem(`${storageKey}:views`, JSON.stringify(v)); };
 
   const visibleCols = columns.filter(c => !hidden.includes(c.key));
 

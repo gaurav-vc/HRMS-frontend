@@ -1,20 +1,32 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { Users, Wallet, CalendarCheck2, AlertTriangle, TrendingUp, PlayCircle, ArrowRight, QrCode, ScanFace, Navigation, ShieldAlert } from "lucide-react";
+import { Users, Wallet, CalendarCheck2, AlertTriangle, TrendingUp, PlayCircle, ArrowRight, QrCode, ScanFace, Navigation as NavigationIcon, ShieldAlert } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/auth-context";
-import { db, fmtINR, empName } from "@/lib/mock-data";
+import { fmtINR } from "@/lib/mock-data";
 import { StatCard } from "@/components/stat-card";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, PieChart, Pie } from "recharts";
+import { api } from "@/api";
 
-function AttendanceModeWidget() {
-  const { attendance } = db();
-  const qr = attendance.filter(a => a.qrStatus === "Verified").length;
-  const face = attendance.filter(a => a.faceScore >= 85).length;
-  const gps = attendance.filter(a => a.distanceM <= 150).length;
+export const Route = createFileRoute("/")({ 
+  loader: async () => {
+    try {
+      return await api.getDashboardStats();
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  },
+  component: Index 
+});
+
+function AttendanceModeWidget({ modes }: { modes: { qr: number, face: number, gps: number } }) {
+  const qr = modes?.qr || 0;
+  const face = modes?.face || 0;
+  const gps = modes?.gps || 0;
   const data = [
     { name: "QR", value: qr, fill: "var(--color-chart-1)" },
     { name: "Face", value: face, fill: "var(--color-chart-2)" },
@@ -31,36 +43,28 @@ function AttendanceModeWidget() {
       <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
         <div className="flex items-center gap-1.5"><QrCode className="h-3.5 w-3.5" style={{ color: "var(--color-chart-1)" }} />QR <span className="font-semibold ml-auto">{qr}</span></div>
         <div className="flex items-center gap-1.5"><ScanFace className="h-3.5 w-3.5" style={{ color: "var(--color-chart-2)" }} />Face <span className="font-semibold ml-auto">{face}</span></div>
-        <div className="flex items-center gap-1.5"><Navigation className="h-3.5 w-3.5" style={{ color: "var(--color-chart-3)" }} />GPS <span className="font-semibold ml-auto">{gps}</span></div>
+        <div className="flex items-center gap-1.5"><NavigationIcon className="h-3.5 w-3.5" style={{ color: "var(--color-chart-3)" }} />GPS <span className="font-semibold ml-auto">{gps}</span></div>
       </div>
     </Card>
   );
 }
 
-function ExceptionAlertsWidget() {
-  const { attendance, regularizations, leaves } = db();
-  const exceptions = [
-    ...attendance.filter(a => a.distanceM > 150).slice(0, 3).map(a => ({ kind: "Geofence", who: empName(a.employeeId), detail: `${a.distanceM}m off-site on ${a.date}`, tone: "destructive" as const })),
-    ...attendance.filter(a => a.faceScore < 85).slice(0, 2).map(a => ({ kind: "Low face score", who: empName(a.employeeId), detail: `${a.faceScore}% confidence on ${a.date}`, tone: "warning" as const })),
-    ...regularizations.filter(r => r.status === "Pending").slice(0, 2).map(r => ({ kind: "Regularization", who: empName(r.employeeId), detail: `Awaiting review • ${r.reason}`, tone: "info" as const })),
-    ...leaves.filter(l => l.status === "Pending").slice(0, 2).map(l => ({ kind: "Leave", who: empName(l.employeeId), detail: `${l.type} ${l.days}d from ${l.from}`, tone: "info" as const })),
-  ].slice(0, 6);
+function ExceptionAlertsWidget({ exceptions }: { exceptions: any[] }) {
   return (
     <Card className="p-5 shadow-[var(--shadow-card)]">
       <div className="flex items-center justify-between mb-3"><div className="flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-warning-foreground" /><h3 className="font-semibold">Exception Alerts</h3></div><Link to="/attendance/regularize" className="text-xs text-primary">Review queue</Link></div>
       <ul className="space-y-2">
-        {exceptions.map((e, i) => (
+        {exceptions?.map((e, i) => (
           <li key={i} className="flex items-start gap-3 p-2.5 rounded-md border">
             <Badge variant="outline" className={e.tone === "destructive" ? "border-destructive/40 text-destructive" : e.tone === "warning" ? "border-warning/40 text-warning-foreground" : "border-primary/40 text-primary"}>{e.kind}</Badge>
             <div className="flex-1 min-w-0"><div className="text-sm font-medium truncate">{e.who}</div><div className="text-xs text-muted-foreground truncate">{e.detail}</div></div>
           </li>
         ))}
+        {(!exceptions || exceptions.length === 0) && <div className="text-sm text-muted-foreground">No pending exceptions</div>}
       </ul>
     </Card>
   );
 }
-
-export const Route = createFileRoute("/")({ component: Index });
 
 function Index() {
   const { user } = useAuth();
@@ -68,20 +72,19 @@ function Index() {
   useEffect(() => { if (!user) navigate({ to: "/auth" }); }, [user, navigate]);
   if (!user) return null;
 
-  const role = user.role;
-  if (role === "employee") return <EmployeeDashboard />;
-  if (role === "manager") return <ManagerDashboard />;
-  if (role === "payroll_admin") return <PayrollDashboard />;
-  return <ExecutiveDashboard role={role} />;
+  // Use dynamic permissions dashboard_type if available, otherwise fallback to standard role
+  const dashType = user.permissions?.dashboard_type || user.role;
+  
+  if (dashType === "employee") return <EmployeeDashboard />;
+  if (dashType === "manager") return <ManagerDashboard />;
+  if (dashType === "payroll_admin") return <PayrollDashboard />;
+  return <ExecutiveDashboard role={dashType} />;
 }
 
 function ExecutiveDashboard({ role }: { role: string }) {
-  const { employees, payrollRuns, leaves, attendance, entities } = db();
-  const monthly = payrollRuns.map(r => ({ month: r.period.slice(5), net: r.net / 1_00_000, gross: r.gross / 1_00_000 }));
-  const headcountByEntity = entities.map(e => ({ name: e.code, value: employees.filter(emp => emp.entityId === e.id).length }));
-  const presentToday = attendance.filter(a => a.date === new Date().toISOString().slice(0,10) && a.status !== "Absent").length;
-  const pendingLeaves = leaves.filter(l => l.status === "Pending").length;
-  const lastRun = payrollRuns[payrollRuns.length - 1];
+  const data = Route.useLoaderData() as any;
+  if (!data) return <div>Loading...</div>;
+  const stat = data.executive || {};
 
   return (
     <div className="space-y-6">
@@ -91,24 +94,24 @@ function ExecutiveDashboard({ role }: { role: string }) {
           <div>
             <p className="text-xs uppercase tracking-widest opacity-80">{role === "super_admin" ? "CEO Cockpit" : "Executive Overview"}</p>
             <h2 className="text-2xl md:text-3xl font-semibold mt-1">Welcome back — June payroll is ready for approval.</h2>
-            <p className="opacity-80 text-sm mt-1">{employees.length} employees across {entities.length} entities. Estimated net pay: {fmtINR(lastRun.net)}.</p>
+            <p className="opacity-80 text-sm mt-1">{stat.totalHeadcount || 0} employees across {stat.entitiesCount || 1} entities. Estimated net pay: {fmtINR(stat.lastRunNet || 0)}.</p>
           </div>
           <Link to="/payroll/run"><Button size="lg" variant="secondary" className="gap-2"><PlayCircle className="h-5 w-5" />Process Payroll — 1 Click<ArrowRight className="h-4 w-4" /></Button></Link>
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total Headcount" value={String(employees.length)} delta="+3.2%" icon={Users} />
-        <StatCard label="Present Today" value={`${presentToday}/${employees.length}`} delta="+1.4%" icon={CalendarCheck2} tone="success" />
-        <StatCard label="June Net Payroll" value={fmtINR(lastRun.net)} delta="+0.8%" icon={Wallet} tone="info" />
-        <StatCard label="Pending Approvals" value={String(pendingLeaves)} delta="-12%" icon={AlertTriangle} tone="warning" />
+        <StatCard label="Total Headcount" value={String(stat.totalHeadcount || 0)} delta="+3.2%" icon={Users} />
+        <StatCard label="Present Today" value={`${stat.presentToday || 0}/${stat.totalHeadcount || 0}`} delta="+1.4%" icon={CalendarCheck2} tone="success" />
+        <StatCard label="June Net Payroll" value={fmtINR(stat.lastRunNet || 0)} delta="+0.8%" icon={Wallet} tone="info" />
+        <StatCard label="Pending Approvals" value={String(stat.pendingLeaves || 0)} delta="-12%" icon={AlertTriangle} tone="warning" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="p-5 lg:col-span-2 shadow-[var(--shadow-card)]">
-          <div className="flex items-center justify-between mb-4"><div><h3 className="font-semibold">Payroll Trend</h3><p className="text-xs text-muted-foreground">Last 3 months (₹ Lakhs)</p></div><TrendingUp className="h-4 w-4 text-primary" /></div>
+          <div className="flex items-center justify-between mb-4"><div><h3 className="font-semibold">Payroll Trend</h3><p className="text-xs text-muted-foreground">Last 6 months (₹ Lakhs)</p></div><TrendingUp className="h-4 w-4 text-primary" /></div>
           <ResponsiveContainer width="100%" height={260}>
-            <AreaChart data={monthly}>
+            <AreaChart data={stat.payrollTrend || []}>
               <defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--color-chart-1)" stopOpacity={0.5}/><stop offset="100%" stopColor="var(--color-chart-1)" stopOpacity={0}/></linearGradient></defs>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis dataKey="month" fontSize={12} /><YAxis fontSize={12} />
@@ -121,11 +124,11 @@ function ExecutiveDashboard({ role }: { role: string }) {
           <h3 className="font-semibold mb-1">Headcount by Entity</h3>
           <p className="text-xs text-muted-foreground mb-4">Distribution across legal entities</p>
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={headcountByEntity}>
+            <BarChart data={stat.headcountByEntity || []}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis dataKey="name" fontSize={12} /><YAxis fontSize={12} />
               <Tooltip contentStyle={{ background: "var(--color-popover)", border: "1px solid var(--color-border)", borderRadius: 8 }} />
-              <Bar dataKey="value" radius={[6,6,0,0]}>{headcountByEntity.map((_, i) => <Cell key={i} fill={`var(--color-chart-${(i%5)+1})`} />)}</Bar>
+              <Bar dataKey="value" radius={[6,6,0,0]}>{stat.headcountByEntity?.map((_: any, i: number) => <Cell key={i} fill={`var(--color-chart-${(i%5)+1})`} />)}</Bar>
             </BarChart>
           </ResponsiveContainer>
         </Card>
@@ -135,78 +138,87 @@ function ExecutiveDashboard({ role }: { role: string }) {
         <Card className="p-5 shadow-[var(--shadow-card)]">
           <div className="flex items-center justify-between mb-3"><h3 className="font-semibold">Pending Leave Approvals</h3><Link to="/leave" className="text-xs text-primary">View all</Link></div>
           <div className="space-y-2">
-            {leaves.filter(l => l.status === "Pending").slice(0, 5).map(l => (
+            {stat.pendingLeaveList?.map((l: any) => (
               <div key={l.id} className="flex items-center justify-between p-3 rounded-md border">
-                <div className="flex items-center gap-3 min-w-0"><Avatar className="h-8 w-8"><AvatarFallback className="text-xs bg-primary/10 text-primary">{empName(l.employeeId).split(" ").map(s => s[0]).join("")}</AvatarFallback></Avatar>
-                  <div className="min-w-0"><div className="text-sm font-medium truncate">{empName(l.employeeId)}</div><div className="text-xs text-muted-foreground">{l.type} • {l.days}d • {l.from}</div></div></div>
+                <div className="flex items-center gap-3 min-w-0"><Avatar className="h-8 w-8"><AvatarFallback className="text-xs bg-primary/10 text-primary">{l.empName.split(" ").map((s: string) => s[0]).join("")}</AvatarFallback></Avatar>
+                  <div className="min-w-0"><div className="text-sm font-medium truncate">{l.empName}</div><div className="text-xs text-muted-foreground">{l.type} • {l.days}d • {l.from}</div></div></div>
                 <Badge variant="outline">{l.status}</Badge>
               </div>
             ))}
+            {(!stat.pendingLeaveList || stat.pendingLeaveList.length === 0) && <div className="text-sm text-muted-foreground">No pending leaves</div>}
           </div>
         </Card>
         <Card className="p-5 shadow-[var(--shadow-card)]">
           <div className="flex items-center justify-between mb-3"><h3 className="font-semibold">Recent Payroll Runs</h3><Link to="/payroll" className="text-xs text-primary">View all</Link></div>
           <div className="space-y-2">
-            {payrollRuns.slice().reverse().map(r => (
+            {stat.recentRuns?.map((r: any) => (
               <div key={r.id} className="flex items-center justify-between p-3 rounded-md border">
                 <div className="min-w-0"><div className="text-sm font-medium">{r.period}</div><div className="text-xs text-muted-foreground">{r.employees} employees • {fmtINR(r.net)} net</div></div>
                 <Badge className={r.status === "Disbursed" ? "bg-success text-success-foreground" : r.status === "Draft" ? "bg-warning text-warning-foreground" : ""}>{r.status}</Badge>
               </div>
             ))}
+            {(!stat.recentRuns || stat.recentRuns.length === 0) && <div className="text-sm text-muted-foreground">No recent runs</div>}
           </div>
         </Card>
       </div>
 
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <AttendanceModeWidget />
-        <ExceptionAlertsWidget />
+        <AttendanceModeWidget modes={stat.attendanceModes} />
+        <ExceptionAlertsWidget exceptions={stat.exceptionAlerts} />
       </div>
     </div>
   );
 }
 
 function ManagerDashboard() {
-  const { employees, leaves, attendance } = db();
-  const myTeam = employees.slice(0, 8);
+  const data = Route.useLoaderData() as any;
+  if (!data) return <div>Loading...</div>;
+  const stat = data.manager || {};
+  const exec = data.executive || {};
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="My Team" value={String(myTeam.length)} icon={Users} />
-        <StatCard label="On Leave Today" value="2" icon={CalendarCheck2} tone="warning" />
-        <StatCard label="Pending Approvals" value={String(leaves.filter(l => l.status === "Pending").slice(0,5).length)} icon={AlertTriangle} tone="info" />
+        <StatCard label="My Team" value={String(stat.myTeamCount || 0)} icon={Users} />
+        <StatCard label="On Leave Today" value={String(stat.onLeaveToday || 0)} icon={CalendarCheck2} tone="warning" />
+        <StatCard label="Pending Approvals" value={String(stat.pendingApprovals || 0)} icon={AlertTriangle} tone="info" />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
-        <AttendanceModeWidget />
-        <ExceptionAlertsWidget />
+        <AttendanceModeWidget modes={exec.attendanceModes} />
+        <ExceptionAlertsWidget exceptions={exec.exceptionAlerts} />
       </div>
       <Card className="p-5 shadow-[var(--shadow-card)]">
         <h3 className="font-semibold mb-3">Team Roster</h3>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">{myTeam.map(e => (
-          <div key={e.id} className="p-4 rounded-md border flex items-center gap-3"><Avatar><AvatarFallback className="bg-primary/10 text-primary">{e.firstName[0]}{e.lastName[0]}</AvatarFallback></Avatar>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">{stat.teamRoster?.map((e: any) => (
+          <div key={e.id} className="p-4 rounded-md border flex items-center gap-3"><Avatar><AvatarFallback className="bg-primary/10 text-primary">{e.firstName?.[0] || '?'}{e.lastName?.[0] || '?'}</AvatarFallback></Avatar>
             <div className="min-w-0"><div className="text-sm font-medium truncate">{e.firstName} {e.lastName}</div><div className="text-xs text-muted-foreground truncate">{e.code}</div></div></div>
         ))}</div>
       </Card>
       <Card className="p-5 shadow-[var(--shadow-card)]">
         <h3 className="font-semibold mb-3">Today's Team Attendance</h3>
-        <ul className="divide-y">{attendance.slice(0, 6).map(a => (
-          <li key={a.id} className="py-3 flex items-center justify-between text-sm"><span>{empName(a.employeeId)}</span><span className="text-muted-foreground">{a.checkIn} • {a.status}</span></li>
-        ))}</ul>
+        <ul className="divide-y">{stat.todayAttendance?.map((a: any) => (
+          <li key={a.id} className="py-3 flex items-center justify-between text-sm"><span>{a.empName}</span><span className="text-muted-foreground">{a.checkIn} • {a.status}</span></li>
+        ))}
+        {(!stat.todayAttendance || stat.todayAttendance.length === 0) && <li className="py-3 text-sm text-muted-foreground">No punches today</li>}
+        </ul>
       </Card>
     </div>
   );
 }
 
 function PayrollDashboard() {
-  const { payrollRuns, employees, loans, reimbursements } = db();
+  const data = Route.useLoaderData() as any;
+  if (!data) return <div>Loading...</div>;
+  const stat = data.payroll || {};
 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Active Cycle" value="June 2026" icon={Wallet} tone="info" />
-        <StatCard label="Employees in Cycle" value={String(employees.length)} icon={Users} />
-        <StatCard label="Active Loans" value={String(loans.filter(l => l.status === "Active").length)} icon={Wallet} tone="warning" />
-        <StatCard label="Reimbursements Pending" value={String(reimbursements.filter(r => r.status === "Pending").length)} icon={Wallet} />
+        <StatCard label="Active Cycle" value={stat.activeCycle || "2026-06"} icon={Wallet} tone="info" />
+        <StatCard label="Employees in Cycle" value={String(stat.employeesInCycle || 0)} icon={Users} />
+        <StatCard label="Active Loans" value={String(stat.activeLoans || 0)} icon={Wallet} tone="warning" />
+        <StatCard label="Reimbursements Pending" value={String(stat.pendingReimbursements || 0)} icon={Wallet} />
       </div>
       <Card className="p-6 shadow-[var(--shadow-card)]">
         <h3 className="font-semibold mb-4">Payroll Cycle Status</h3>
@@ -223,18 +235,21 @@ function PayrollDashboard() {
       </Card>
       <Card className="p-5 shadow-[var(--shadow-card)]">
         <h3 className="font-semibold mb-3">Recent runs</h3>
-        <ul className="divide-y">{payrollRuns.map(r => (
-          <li key={r.id} className="py-3 flex items-center justify-between"><span>{r.period} — {fmtINR(r.net)}</span><Badge>{r.status}</Badge></li>
-        ))}</ul>
+        <ul className="divide-y">{stat.recentRuns?.map((r: any) => (
+          <li key={r.id} className="py-3 flex items-center justify-between"><span>{r.period} — {fmtINR(r.net)}</span><Badge className={r.status === "Disbursed" ? "bg-success text-success-foreground" : r.status === "Draft" ? "bg-warning text-warning-foreground" : ""}>{r.status}</Badge></li>
+        ))}
+        {(!stat.recentRuns || stat.recentRuns.length === 0) && <li className="py-3 text-sm text-muted-foreground">No recent runs</li>}
+        </ul>
       </Card>
     </div>
   );
 }
 
-
-
 function EmployeeDashboard() {
-  const { attendance, leaves, payrollRuns } = db();
+  const data = Route.useLoaderData() as any;
+  if (!data) return <div>Loading...</div>;
+  const stat = data.employee || {};
+
   return (
     <div className="space-y-6">
       <div className="rounded-xl p-6 text-primary-foreground" style={{ background: "linear-gradient(120deg, oklch(0.42 0.18 262), oklch(0.55 0.16 240))" }}>
@@ -247,16 +262,20 @@ function EmployeeDashboard() {
         </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="This Month Present" value="18 / 22" icon={CalendarCheck2} tone="success" />
-        <StatCard label="Leave Balance" value="12 days" icon={CalendarCheck2} tone="info" />
-        <StatCard label="Last Net Pay" value={fmtINR(payrollRuns[payrollRuns.length-2].net / 48)} icon={Wallet} />
+        <StatCard label="This Month Present" value={`${stat.presentThisMonth || 0} / ${stat.workingDays || 22}`} icon={CalendarCheck2} tone="success" />
+        <StatCard label="Leave Balance" value={`${stat.leaveBalance || 0} days`} icon={CalendarCheck2} tone="info" />
+        <StatCard label="Last Net Pay" value={fmtINR(stat.lastNetPay || 0)} icon={Wallet} />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="p-5 shadow-[var(--shadow-card)]"><h3 className="font-semibold mb-3">Recent Attendance</h3>
-          <ul className="divide-y">{attendance.slice(0, 5).map(a => (<li key={a.id} className="py-2 flex justify-between text-sm"><span>{a.date}</span><span className="text-muted-foreground">{a.checkIn} → {a.checkOut}</span></li>))}</ul>
+          <ul className="divide-y">{stat.recentAttendance?.map((a: any) => (<li key={a.id} className="py-2 flex justify-between text-sm"><span>{a.date}</span><span className="text-muted-foreground">{a.checkIn} → {a.checkOut}</span></li>))}
+          {(!stat.recentAttendance || stat.recentAttendance.length === 0) && <li className="py-2 text-sm text-muted-foreground">No attendance records</li>}
+          </ul>
         </Card>
         <Card className="p-5 shadow-[var(--shadow-card)]"><h3 className="font-semibold mb-3">My Leave Requests</h3>
-          <ul className="divide-y">{leaves.slice(0, 5).map(l => (<li key={l.id} className="py-2 flex justify-between text-sm"><span>{l.type} • {l.from}</span><Badge variant="outline">{l.status}</Badge></li>))}</ul>
+          <ul className="divide-y">{stat.myLeaveRequests?.map((l: any) => (<li key={l.id} className="py-2 flex justify-between text-sm"><span>{l.type} • {l.from}</span><Badge variant="outline">{l.status}</Badge></li>))}
+          {(!stat.myLeaveRequests || stat.myLeaveRequests.length === 0) && <li className="py-2 text-sm text-muted-foreground">No leave requests</li>}
+          </ul>
         </Card>
       </div>
     </div>

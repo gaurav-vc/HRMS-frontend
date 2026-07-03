@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  Outlet, createRootRouteWithContext, useRouterState, HeadContent, Scripts, Link,
+  Outlet, createRootRouteWithContext, useRouterState, HeadContent, Scripts, Link, useRouter,
 } from "@tanstack/react-router";
-import { type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
@@ -32,6 +32,55 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       </div>
     </div>
   ),
+  errorComponent: ({ error, info }) => {
+    const router = useRouter();
+    const isSSR = typeof window === "undefined";
+    
+    useEffect(() => {
+        if (!isSSR && error.message === "Unauthorized" && localStorage.getItem("access_token")) {
+            // Server threw Unauthorized due to lack of localStorage. Force client to re-fetch with token!
+            router.invalidate();
+        } else if (!isSSR && error.message === "Unauthorized") {
+            window.location.href = "/auth";
+        }
+    }, [isSSR, error, router]);
+
+    if (error.message === "Unauthorized") {
+        return <div className="min-h-screen grid place-items-center p-6 text-muted-foreground bg-background">Authenticating...</div>;
+    }
+
+    return (
+      <div className="min-h-screen grid place-items-center p-6 bg-red-50/50">
+        <div className="bg-red-50 border border-red-500 rounded-lg p-6 max-w-4xl w-full shadow-lg overflow-hidden">
+          <h1 className="text-2xl font-bold text-red-700 mb-4 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            Application Crash
+          </h1>
+          <p className="text-red-900 font-medium mb-4 text-lg">
+            {error.message || "An unexpected error occurred."}
+          </p>
+          {(error.stack || info?.componentStack) && (
+            <div className="mt-4 bg-red-950 rounded-md p-4 overflow-x-auto text-left">
+              <pre className="text-red-300 font-mono text-sm leading-relaxed whitespace-pre-wrap break-words">
+                {error.stack}
+                {info?.componentStack && `\n\nComponent Stack:\n${info.componentStack}`}
+              </pre>
+            </div>
+          )}
+          <div className="mt-6">
+            <button 
+              onClick={() => window.location.reload()} 
+              className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-6 rounded-md transition-colors"
+            >
+              Reload Application
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  },
 });
 
 function RootShell({ children }: { children: ReactNode }) {
@@ -57,8 +106,15 @@ function RootComponent() {
 
 function Shell() {
   const pathname = useRouterState({ select: s => s.location.pathname });
-  const { user } = useAuth();
-  if (pathname === "/auth" || !user) return <Outlet />;
+  const { user, init } = useAuth();
+  if (!init) return null; // Wait for hydration!
+  
+  if (pathname === "/auth") return <Outlet />;
+  
+  if (!user) {
+      if (typeof window !== 'undefined') window.location.href = '/auth';
+      return null;
+  }
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">

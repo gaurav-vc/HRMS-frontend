@@ -17,9 +17,8 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const { login, user } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("alex.ceo@acme.com");
-  const [password, setPassword] = useState("demo1234");
-  const [role, setRole] = useState<Role>("super_admin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   useEffect(() => { if (user) navigate({ to: "/" }); }, [user, navigate]);
 
@@ -49,26 +48,26 @@ function AuthPage() {
         <Card className="w-full max-w-md p-8 shadow-[var(--shadow-elegant)]">
           <div className="flex items-center gap-2 mb-1 text-primary text-xs uppercase tracking-widest"><Sparkles className="h-3 w-3" /> Welcome back</div>
           <h2 className="text-2xl font-semibold">Sign in to PeoplePulse</h2>
-          <p className="text-sm text-muted-foreground mt-1">Use any email — this is a clickable prototype.</p>
+          <p className="text-sm text-muted-foreground mt-1">Enter your credentials to continue.</p>
 
-          <form className="mt-6 space-y-4" onSubmit={(e) => { e.preventDefault(); login(email, role); navigate({ to: "/" }); }}>
+          <form className="mt-6 space-y-4" onSubmit={async (e) => { 
+              e.preventDefault(); 
+              try {
+                  await login(email, password); 
+                  navigate({ to: "/" }); 
+              } catch (err: any) {
+                  alert(err.message || 'Invalid credentials');
+              }
+          }}>
             <div className="space-y-1.5">
-              <Label htmlFor="email">Work email</Label>
+              <Label htmlFor="email">Work email / Username</Label>
               <div className="relative"><Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input id="email" className="pl-8" value={email} onChange={e => setEmail(e.target.value)} /></div>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="pw">Password</Label>
               <div className="relative"><Lock className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input id="pw" type="password" className="pl-8" value={password} onChange={e => setPassword(e.target.value)} /></div>
             </div>
-            <div className="space-y-1.5">
-              <Label>Sign in as</Label>
-              <Select value={role} onValueChange={v => setRole(v as Role)}>
-                <SelectTrigger><Building2 className="h-4 w-4 mr-1" /><SelectValue /></SelectTrigger>
-                <SelectContent>{ROLES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
             <Button type="submit" className="w-full">Sign in</Button>
-            <p className="text-xs text-center text-muted-foreground">Switch roles anytime from the top bar.</p>
           </form>
         </Card>
       </div>
