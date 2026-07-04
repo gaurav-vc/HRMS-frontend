@@ -256,8 +256,8 @@ function EmployeeDashboard() {
         <h2 className="text-2xl font-semibold">Good morning!</h2>
         <p className="opacity-80 text-sm mt-1">Ready to mark attendance?</p>
         <div className="flex flex-wrap gap-2 mt-4">
-          <Link to="/attendance/qr"><Button variant="secondary">Scan QR</Button></Link>
-          <Link to="/attendance/face"><Button variant="secondary">Face Check-in</Button></Link>
+          {stat.siteQrEnabled !== false && <Link to="/attendance/qr"><Button variant="secondary">Scan QR</Button></Link>}
+          {stat.siteFaceEnabled !== false && <Link to="/attendance/face"><Button variant="secondary">Face Check-in</Button></Link>}
           <Link to="/leave"><Button variant="outline" className="bg-transparent text-primary-foreground border-primary-foreground/30">Apply Leave</Button></Link>
         </div>
       </div>

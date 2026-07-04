@@ -5,14 +5,14 @@ import { Download, FileBarChart2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { employeesApi, attendanceApi, payrollApi } from "@/api";
+import { api, employeesApi, attendanceApi, payrollApi } from "@/api";
 
 export const Route = createFileRoute("/reports")({ component: ReportsPage });
 
 const CATS = [
   { name: "People", items: ["Headcount Snapshot","Attrition Analysis","Diversity Report","New Joiners","Exits"] },
   { name: "Attendance", items: ["Daily Attendance","Monthly Summary","Late Marks","Geofence Violations","Overtime"] },
-  { name: "Payroll", items: ["Monthly Payroll Register","CTC Distribution","Cost by Department","Variable Pay","Bonus Provision"] },
+  { name: "Payroll", items: ["Payroll with Attendance", "Monthly Payroll Register","CTC Distribution","Cost by Department","Variable Pay","Bonus Provision"] },
   { name: "Compliance", items: ["PF ECR","ESI Return","PT State-wise","TDS 24Q","Form 16"] },
 ];
 
@@ -76,6 +76,8 @@ function ReportsPage() {
         }));
         if (reportName === "Late Marks") data = data.filter(d => d.Status === "Late");
         if (reportName === "Geofence Violations") data = data.filter(d => d["Geofence Verification"] === "Failed");
+      } else if (reportName === "Payroll with Attendance") {
+        data = await api.getPayrollAttendanceReport();
       } else if (reportName === "Monthly Payroll Register") {
         const slips = await payrollApi.getSlips("2026-04"); // Defaulting to an active period for demo
         data = slips.map((s: any) => ({

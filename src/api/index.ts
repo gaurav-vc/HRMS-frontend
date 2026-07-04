@@ -4,6 +4,8 @@ import { redirect } from "@tanstack/react-router";
 // Simulated network delay
 const delay = (ms: number = 300) => new Promise(resolve => setTimeout(resolve, ms));
 
+const API_BASE_URL = import.meta.env.PROD ? 'https://hrms.vibecopilot.ai' : 'http://127.0.0.1:8000';
+
 // Example API services that currently use the mock-data DB but return Promises.
 // You can replace the internal implementation with actual fetch/axios calls using apiClient.
 const apiCall = async (url: string, method: string = 'GET', body?: any) => {
@@ -26,7 +28,7 @@ const apiCall = async (url: string, method: string = 'GET', body?: any) => {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  let res = await fetch(`http://127.0.0.1:8000${base}${url}`, {
+  let res = await fetch(`${API_BASE_URL}${base}${url}`, {
     method,
     headers,
     cache: 'no-store',
@@ -37,7 +39,7 @@ const apiCall = async (url: string, method: string = 'GET', body?: any) => {
   if (res.status === 401 && !url.includes('/token')) {
       const refresh = typeof localStorage !== "undefined" ? localStorage.getItem('refresh_token') : null;
       if (refresh) {
-          const refreshRes = await fetch(`http://127.0.0.1:8000/api/auth/token/refresh/`, {
+          const refreshRes = await fetch(`${API_BASE_URL}/api/auth/token/refresh/`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ refresh })
@@ -50,7 +52,7 @@ const apiCall = async (url: string, method: string = 'GET', body?: any) => {
               }
               headers['Authorization'] = `Bearer ${data.access}`;
               // Retry original request
-              res = await fetch(`http://127.0.0.1:8000${base}${url}`, { method, headers, cache: 'no-store', body: body ? JSON.stringify(body) : undefined });
+              res = await fetch(`${API_BASE_URL}${base}${url}`, { method, headers, cache: 'no-store', body: body ? JSON.stringify(body) : undefined });
           } else {
               if (typeof window !== "undefined") {
                   localStorage.removeItem('hrms-auth');
@@ -87,6 +89,7 @@ const apiCall = async (url: string, method: string = 'GET', body?: any) => {
 
 export const api = {
   getDashboardStats: () => apiCall('/dashboard/stats/'),
+  getPayrollAttendanceReport: () => apiCall('/api/reports/payroll-attendance/'),
 };
 
 export const authApi = {
@@ -109,7 +112,7 @@ export const employeesApi = {
     const token = typeof localStorage !== "undefined" ? localStorage.getItem('access_token') : null;
     const headers: Record<string, string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch(`http://127.0.0.1:8000/api/employees/bulk_import/`, {
+    const res = await fetch(`${API_BASE_URL}/api/employees/bulk_import/`, {
       method: 'POST',
       headers,
       body: formData,
@@ -188,7 +191,7 @@ export const attendanceApi = {
     const token = typeof localStorage !== "undefined" ? localStorage.getItem('access_token') : null;
     const headers: Record<string, string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch(`http://127.0.0.1:8000/api/attendance/punch/`, {
+    const res = await fetch(`${API_BASE_URL}/api/attendance/punch/`, {
       method: 'POST',
       headers,
       body: formData,
@@ -203,7 +206,7 @@ export const attendanceApi = {
     const token = typeof localStorage !== "undefined" ? localStorage.getItem('access_token') : null;
     const headers: Record<string, string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch(`http://127.0.0.1:8000/api/attendance/register_face/`, {
+    const res = await fetch(`${API_BASE_URL}/api/attendance/register_face/`, {
       method: 'POST',
       headers,
       body: formData,
@@ -354,7 +357,7 @@ export const form16Api = {
     const token = typeof localStorage !== "undefined" ? localStorage.getItem('access_token') : null;
     const headers: Record<string, string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch(`http://127.0.0.1:8000/api/payroll/form16/`, {
+    const res = await fetch(`${API_BASE_URL}/api/payroll/form16/`, {
       method: 'POST',
       headers,
       body: formData,
@@ -366,7 +369,7 @@ export const form16Api = {
     const token = typeof localStorage !== "undefined" ? localStorage.getItem('access_token') : null;
     const headers: Record<string, string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch(`http://127.0.0.1:8000/api/payroll/form16/bulk_upload/`, {
+    const res = await fetch(`${API_BASE_URL}/api/payroll/form16/bulk_upload/`, {
       method: 'POST',
       headers,
       body: formData,

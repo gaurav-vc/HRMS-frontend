@@ -24,7 +24,7 @@ function ScanPunchPage() {
   const { sites } = Route.useLoaderData();
   const site = sites[0]; // Assuming first site for demo
 
-  const [step, setStep] = useState<ScanStep>("QR");
+  const [step, setStep] = useState<ScanStep>(site && site.qrEnabled === false ? "FACE_LIVENESS" : "QR");
   const [qrToken, setQrToken] = useState<string | null>(null);
   const [faceImageBlob, setFaceImageBlob] = useState<Blob | null>(null);
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(site ? { lat: site.latitude + 0.0005, lng: site.longitude - 0.0003 } : null);
@@ -39,6 +39,7 @@ function ScanPunchPage() {
   const [errorMsg, setErrorMsg] = useState("");
   
   const webcamRef = useRef<Webcam>(null);
+  const [isCameraReady, setIsCameraReady] = useState(false);
 
   // 1. QR Scanner Handler
   const handleQrScan = (detectedCodes: any[]) => {
@@ -52,7 +53,7 @@ function ScanPunchPage() {
 
   // 2. Liveness Challenge & Face Capture
   useEffect(() => {
-    if (step !== "FACE_LIVENESS") return;
+    if (step !== "FACE_LIVENESS" || !isCameraReady) return;
     
     // Fetch the dynamic challenge from the backend
     const fetchChallenge = async () => {
@@ -91,7 +92,7 @@ function ScanPunchPage() {
     };
     
     fetchChallenge();
-  }, [step]);
+  }, [step, isCameraReady]);
 
   const captureFace = useCallback(() => {
     const imageSrc = webcamRef.current?.getScreenshot();
@@ -143,7 +144,7 @@ function ScanPunchPage() {
       isSubmitting.current = false;
       return;
     }
-    if (!qrToken || !faceImageBlob || !location) return;
+    if ((site && site.qrEnabled !== false && !qrToken) || !faceImageBlob || !location) return;
     if (isSubmitting.current) return;
     isSubmitting.current = true;
 
@@ -152,7 +153,9 @@ function ScanPunchPage() {
         const formData = new FormData();
         formData.append("punch_type", punchType);
         formData.append("source", "ALL");
-        formData.append("qr_token", qrToken);
+        if (qrToken) {
+            formData.append("qr_token", qrToken);
+        }
         formData.append("latitude", location.lat.toString());
         formData.append("longitude", location.lng.toString());
         formData.append("face_image", faceImageBlob, "face.jpg");
@@ -199,7 +202,8 @@ function ScanPunchPage() {
     setLocation(null);
     setErrorMsg("");
     setVerifyStatus("");
-    setStep("QR");
+    setIsCameraReady(false);
+    setStep(site && site.qrEnabled === false ? "FACE_LIVENESS" : "QR");
   };
 
   return (
@@ -246,11 +250,16 @@ function ScanPunchPage() {
                   screenshotFormat="image/jpeg"
                   className="w-full h-full object-cover"
                   videoConstraints={{ facingMode: "user" }}
+                  onUserMedia={() => setIsCameraReady(true)}
+                  onUserMediaError={() => {
+                    setErrorMsg("Camera permission denied or device unavailable.");
+                    setStep("ERROR");
+                  }}
                 />
                 <div className="absolute inset-0 border-[8px] border-slate-900/50 mix-blend-overlay pointer-events-none" />
                 <div className="absolute inset-x-0 bottom-8 text-center px-4">
                    <div className="bg-black/70 backdrop-blur text-white px-4 py-2 rounded-full inline-block animate-pulse font-medium text-sm">
-                     {livenessPrompt}
+                     {isCameraReady ? livenessPrompt : "Initializing camera..."}
                    </div>
                 </div>
                 {/* Face Mesh visualizer overlay (mock) */}
