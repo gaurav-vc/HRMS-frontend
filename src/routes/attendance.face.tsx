@@ -58,10 +58,7 @@ function ScanPunchPage() {
     // Fetch the dynamic challenge from the backend
     const fetchChallenge = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/api/attendance/get_liveness_challenge/", {
-          headers: { "Authorization": `Bearer ${typeof localStorage !== "undefined" ? localStorage.getItem('access_token') : null}` }
-        });
-        const data = await response.json();
+        const data = await attendanceApi.getLivenessChallenge();
         
         // Handle both camelCase (from DRF renderer) and snake_case
         const chalId = data.challengeId || data.challenge_id;
@@ -150,37 +147,18 @@ function ScanPunchPage() {
 
     const submitPunch = async () => {
       try {
-        const formData = new FormData();
-        formData.append("punch_type", punchType);
-        formData.append("source", "ALL");
-        if (qrToken) {
-            formData.append("qr_token", qrToken);
-        }
-        formData.append("latitude", location.lat.toString());
-        formData.append("longitude", location.lng.toString());
-        formData.append("face_image", faceImageBlob, "face.jpg");
-        if (challengeId) {
-            formData.append("challenge_id", challengeId);
-        }
+        const payload: any = {
+            punch_type: punchType,
+            source: "ALL",
+            latitude: location.lat.toString(),
+            longitude: location.lng.toString(),
+        };
+        if (qrToken) payload.qr_token = qrToken;
+        if (challengeId) payload.challenge_id = challengeId;
 
-        // The API returns 202 for PENDING_ML_INSTALL or 200 for VERIFIED
-        const response = await fetch("http://127.0.0.1:8000/api/attendance/punch/", {
-            method: "POST",
-            body: formData,
-            headers: {
-                "Authorization": `Bearer ${typeof localStorage !== "undefined" ? localStorage.getItem('access_token') : null}`
-            }
-        });
+        const data = await attendanceApi.punchWithFace(payload, new File([faceImageBlob], "face.jpg", { type: "image/jpeg" }));
         
-        const data = await response.json();
-        
-        if (!response.ok) {
-           setErrorMsg(data.error || data.detail || (typeof data === 'object' ? JSON.stringify(data) : data) || "Verification failed");
-           setStep("ERROR");
-           return;
-        }
-
-        if (response.status === 202 && data.status === 'PENDING_ML_INSTALL') {
+        if (data.status === 'PENDING_ML_INSTALL') {
            setVerifyStatus("PENDING ML INSTALL");
         } else {
            setVerifyStatus("VERIFIED");
@@ -188,7 +166,12 @@ function ScanPunchPage() {
         
         setStep("DONE");
       } catch (err: any) {
-        setErrorMsg(err.message || "Network Error");
+        let msg = err.message || "Network Error";
+        try {
+            const parsed = JSON.parse(msg);
+            msg = parsed.error || parsed.detail || msg;
+        } catch (e) {}
+        setErrorMsg(msg);
         setStep("ERROR");
       }
     };

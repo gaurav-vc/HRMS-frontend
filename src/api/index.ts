@@ -182,6 +182,7 @@ export const attendancePoliciesApi = {
 
 export const attendanceApi = {
   punch: async (data: any): Promise<any> => apiCall('/attendance/punch/', 'POST', data),
+  getLivenessChallenge: async (): Promise<any> => apiCall('/attendance/get_liveness_challenge/'),
   punchWithFace: async (data: any, faceImage: File): Promise<any> => {
     const formData = new FormData();
     formData.append('face_image', faceImage);
