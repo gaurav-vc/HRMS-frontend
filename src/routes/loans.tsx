@@ -69,13 +69,13 @@ function LoansPage() {
       <PageHeader title="Loans & Advances" description="Employee loans with EMI auto-recovery from payroll"
         actions={<Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />New Loan</Button>} />
       
-      <DataTable rows={rows} rowKey={r => r.id} searchKeys={[r => empName(r.employee || r.employee_id)]} filename="loans.csv"
+      <DataTable rows={rows} rowKey={r => r.id} searchKeys={[r => empName(r.employee || r.employeeId || r.employee_id)]} filename="loans.csv"
         filters={[
           { label: "Type", key: "type", options: ["Personal","Salary Advance","Education"].map(s => ({ value: s, label: s })), predicate: (r, v) => r.type === v },
           { label: "Status", key: "status", options: ["Active","Closed","Pending"].map(s => ({ value: s, label: s })), predicate: (r, v) => r.status === v },
         ]}
         columns={[
-          { key: "emp", header: "Employee", render: r => empName(r.employee || r.employee_id) },
+          { key: "emp", header: "Employee", render: r => empName(r.employee || r.employeeId || r.employee_id) },
           { key: "type", header: "Type", render: r => <Badge variant="outline">{r.type}</Badge> },
           { key: "amount", header: "Principal", accessor: r => r.amount, render: r => fmtINR(r.amount) },
           { key: "emi", header: "EMI", render: r => fmtINR(r.emi) },

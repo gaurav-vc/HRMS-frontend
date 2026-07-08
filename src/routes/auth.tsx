@@ -20,7 +20,15 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  useEffect(() => { if (user) navigate({ to: "/" }); }, [user, navigate]);
+  useEffect(() => { 
+    if (user) {
+      if (user.role === "super_admin" || user.role_name === "Super Admin") {
+        navigate({ to: "/superadmin-dashboard" });
+      } else {
+        navigate({ to: "/" });
+      }
+    } 
+  }, [user, navigate]);
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
@@ -54,7 +62,7 @@ function AuthPage() {
               e.preventDefault(); 
               try {
                   await login(email, password); 
-                  navigate({ to: "/" }); 
+                  // Navigation is handled by the useEffect above automatically based on the user's role
               } catch (err: any) {
                   alert(err.message || 'Invalid credentials');
               }

@@ -67,13 +67,13 @@ function ReimbPage() {
     <>
       <PageHeader title="Reimbursements" description="Expense claims integrated with payroll"
         actions={<Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />Submit Claim</Button>} />
-      <DataTable rows={rows} rowKey={r => r.id} searchKeys={[r => empName(r.employee || r.employee_id), "category"]} filename="reimbursements.csv"
+      <DataTable rows={rows} rowKey={r => r.id} searchKeys={[r => empName(r.employee || r.employeeId || r.employee_id), "category"]} filename="reimbursements.csv"
         filters={[
           { label: "Category", key: "category", options: ["Travel","Meals","Internet","Medical"].map(s => ({ value: s, label: s })), predicate: (r, v) => r.category === v },
           { label: "Status", key: "status", options: ["Pending","Approved","Rejected","Paid"].map(s => ({ value: s, label: s })), predicate: (r, v) => r.status === v },
         ]}
         columns={[
-          { key: "emp", header: "Employee", render: r => empName(r.employee || r.employee_id) },
+          { key: "emp", header: "Employee", render: r => empName(r.employee || r.employeeId || r.employee_id) },
           { key: "category", header: "Category", render: r => <Badge variant="outline">{r.category}</Badge> },
           { key: "amount", header: "Amount", accessor: r => r.amount, render: r => fmtINR(r.amount) },
           { key: "date", header: "Date", accessor: r => r.date, sortable: true },

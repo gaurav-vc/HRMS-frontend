@@ -14,27 +14,51 @@ import { employeesApi, departmentsApi, designationsApi, branchesApi, entitiesApi
 export const Route = createFileRoute("/employees/$id")({
   component: EmployeeDetail,
   loader: async ({ params }) => {
-    try {
-      const [e, allEmps, depts, desgs, branches, sites, entities, structures] = await Promise.all([
-        employeesApi.getById(params.id),
-        employeesApi.getAll(),
-        departmentsApi.getAll(),
-        designationsApi.getAll(),
-        branchesApi.getAll(),
-        sitesApi.getAll(),
-        entitiesApi.getAll(),
-        payrollApi.getStructures()
-      ]);
-      return { e, allEmps, depts, desgs, branches, sites, entities, structures };
-    } catch (err) {
-      throw notFound();
-    }
+    const [e, allEmps, depts, desgs, branches, sites, entities, structures] = await Promise.all([
+      employeesApi.getById(params.id).catch(e => { throw new Error(`getById failed: ${e.message}`) }),
+      employeesApi.getAll().catch(e => { throw new Error(`getAll failed: ${e.message}`) }),
+      departmentsApi.getAll().catch(e => { throw new Error(`depts failed: ${e.message}`) }),
+      designationsApi.getAll().catch(e => { throw new Error(`desgs failed: ${e.message}`) }),
+      branchesApi.getAll().catch(e => { throw new Error(`branches failed: ${e.message}`) }),
+      sitesApi.getAll().catch(e => { throw new Error(`sites failed: ${e.message}`) }),
+      entitiesApi.getAll().catch(e => { throw new Error(`entities failed: ${e.message}`) }),
+      payrollApi.getStructures().catch(e => { throw new Error(`structures failed: ${e.message}`) })
+    ]);
+    return { e, allEmps, depts, desgs, branches, sites, entities, structures };
   },
+  pendingComponent: () => <div className="p-12 text-center text-lg animate-pulse font-semibold">Loading employee data... Please wait.</div>,
+  errorComponent: ({ error }: any) => (
+    <div style={{ margin: '2rem', padding: '2rem', backgroundColor: '#fee2e2', border: '5px solid #ef4444', color: '#7f1d1d', borderRadius: '8px' }}>
+      <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem' }}>CRITICAL UI CRASH</h1>
+      <p style={{ fontSize: '1.25rem' }}>The page failed to load due to the following error:</p>
+      <pre style={{ backgroundColor: 'black', color: 'red', padding: '1rem', marginTop: '1rem', overflowX: 'auto' }}>
+        {error?.message || String(error)}
+      </pre>
+      <div style={{ marginTop: '2rem' }}>
+        <Link to="/employees" style={{ textDecoration: 'underline', color: '#2563eb', fontWeight: 'bold' }}>
+          Go back to Employee List
+        </Link>
+      </div>
+    </div>
+  ),
   notFoundComponent: () => <div className="p-8 text-center"><p>Employee not found.</p><Link to="/employees" className="text-primary underline">Back to list</Link></div>,
 });
 
 function EmployeeDetail() {
-  const { e, allEmps, depts, desgs, branches, sites, entities, structures } = Route.useLoaderData();
+  const { e: rawE, allEmps, depts, desgs, branches, sites, entities, structures } = Route.useLoaderData();
+  
+  // Normalize snake_case to camelCase in case the backend renderer missed it
+  const e = {
+    ...rawE,
+    firstName: rawE.firstName || (rawE as any).first_name,
+    lastName: rawE.lastName || (rawE as any).last_name,
+    salaryStructure: rawE.salaryStructure || (rawE as any).salary_structure,
+    taxRegime: rawE.taxRegime || (rawE as any).tax_regime,
+    taxSavingDeductions: rawE.taxSavingDeductions || (rawE as any).tax_saving_deductions,
+    bankName: rawE.bankName || (rawE as any).bank_name,
+    bankAccount: rawE.bankAccount || (rawE as any).bank_account,
+  };
+
   const [tab, setTab] = useState("personal");
   const [ctc, setCtc] = useState(e.ctc || 0);
   const [structureId, setStructureId] = useState(e.salaryStructure ? String(e.salaryStructure) : "");
@@ -54,13 +78,21 @@ function EmployeeDetail() {
     }
   };
 
-  const dept = depts.find(d => String(d.id) === String(e.department));
-  const desg = desgs.find(d => String(d.id) === String(e.designation));
-  const branch = branches.find(b => String(b.id) === String(e.branch));
-  const site = sites.find(s => String(s.id) === String(e.site));
-  const entity = entities.find(en => String(en.id) === String(e.entity));
+  const deptsArray = Array.isArray(depts) ? depts : ((depts as any)?.results || []);
+  const desgsArray = Array.isArray(desgs) ? desgs : ((desgs as any)?.results || []);
+  const branchesArray = Array.isArray(branches) ? branches : ((branches as any)?.results || []);
+  const sitesArray = Array.isArray(sites) ? sites : ((sites as any)?.results || []);
+  const entitiesArray = Array.isArray(entities) ? entities : ((entities as any)?.results || []);
+  const allEmpsArray = Array.isArray(allEmps) ? allEmps : ((allEmps as any)?.results || []);
+  const structuresArray = Array.isArray(structures) ? structures : ((structures as any)?.results || []);
+
+  const dept = deptsArray.find((d: any) => String(d.id) === String(e.department));
+  const desg = desgsArray.find((d: any) => String(d.id) === String(e.designation));
+  const branch = branchesArray.find((b: any) => String(b.id) === String(e.branch));
+  const site = sitesArray.find((s: any) => String(s.id) === String(e.site));
+  const entity = entitiesArray.find((en: any) => String(en.id) === String(e.entity));
   
-  const manager = e.manager ? allEmps.find(x => String(x.id) === String(e.manager)) : null;
+  const manager = e.manager ? allEmpsArray.find((x: any) => String(x.id) === String(e.manager)) : null;
   const managerName = manager ? `${manager.firstName} ${manager.lastName}` : "—";
 
   return (
@@ -139,7 +171,7 @@ function EmployeeDetail() {
                 <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   value={structureId} onChange={ev => setStructureId(ev.target.value)}>
                   <option value="">-- No Structure Assigned --</option>
-                  {structures.map((s: any) => (
+                  {structuresArray.map((s: any) => (
                     <option key={s.id} value={s.id}>{s.name} ({s.status})</option>
                   ))}
                 </select>
@@ -213,8 +245,8 @@ function EmployeeDetail() {
           <Card className="p-6 grid sm:grid-cols-2 gap-4">
             <FieldRO label="Site" value={site?.name ?? "—"} />
             <FieldRO label="Address" value={site?.address ?? "—"} />
-            <FieldRO label="Geo-fence" value={site ? `${site.radius}m radius` : "—"} />
-            <FieldRO label="Coordinates" value={site ? `${site.latitude.toFixed(4)}, ${site.longitude.toFixed(4)}` : "—"} />
+            <FieldRO label="Geo-fence" value={site ? `${site.radius || 0}m radius` : "—"} />
+            <FieldRO label="Coordinates" value={site && site.latitude != null && site.longitude != null ? `${Number(site.latitude).toFixed(4)}, ${Number(site.longitude).toFixed(4)}` : "—"} />
             <FieldRO label="QR Enabled" value={site?.qrEnabled ? "Yes" : "No"} />
             <FieldRO label="Face Verification" value={site?.faceEnabled ? "Yes" : "No"} />
           </Card>

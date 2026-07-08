@@ -72,12 +72,6 @@ function SlipsPage() {
   const { data } = Route.useLoaderData();
   const period = data.period;
   const rows = data.slips.map((s: any) => {
-    // Inject mock metrics for demonstration purposes if they have absences
-    if (s.daysAbsent > 0 && !s.lopDays && !s.lateMarks) {
-      const lop = Math.floor(s.daysAbsent / 2);
-      const late = s.daysAbsent - lop;
-      return { ...s, lopDays: lop, lateMarks: late };
-    }
     return s;
   });
 
@@ -282,12 +276,13 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
       {/* Attendance & Basic Info Grid */}
       <div className="p-4 px-6 grid grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50/30 border-b border-border/40 text-sm">
         <div className="space-y-5">
-          <div className="flex items-center"><span className="text-slate-500 w-28 text-[13px]">Days Paid</span><span className="font-bold text-slate-800 text-[13px]">{emp.daysPaid ?? emp.presentDays ?? 30}</span></div>
-          <div className="flex items-center"><span className="text-slate-500 w-28 text-[13px]">Days Present</span><span className="font-bold text-slate-800 text-[13px]">{emp.daysPresent ?? emp.presentDays ?? 26}</span></div>
+          <div className="flex items-center"><span className="text-slate-500 w-28 text-[13px]">Days Paid</span><span className="font-bold text-slate-800 text-[13px]">{emp.daysPaid ?? 0}</span></div>
+          <div className="flex items-center"><span className="text-slate-500 w-28 text-[13px]">Days Present</span><span className="font-bold text-slate-800 text-[13px]">{emp.daysPresent ?? 0}</span></div>
+          <div className="flex items-center"><span className="text-slate-500 w-28 text-[13px]">Paid Leaves</span><span className="font-bold text-slate-800 text-[13px]">{emp.paidLeaves ?? 0}</span></div>
         </div>
         <div className="space-y-5">
-          <div className="flex items-center"><span className="text-slate-500 w-28 text-[13px]">W.Off / Pd.Off</span><span className="font-bold text-slate-800 text-[13px]">{emp.daysOff ?? 0}</span></div>
-          <div className="flex items-center"><span className="text-slate-500 w-28 text-[13px]">LWP / Absent</span><span className="font-bold text-slate-800 text-[13px]">{emp.daysAbsent ?? Math.max(0, (emp.totalDays || 30) - (emp.presentDays || 30))}</span></div>
+          <div className="flex items-center"><span className="text-slate-500 w-28 text-[13px]">Weekly Off</span><span className="font-bold text-slate-800 text-[13px]">{emp.daysOff ?? 0}</span></div>
+          <div className="flex items-center"><span className="text-slate-500 w-28 text-[13px]">LWP / Absent</span><span className="font-bold text-slate-800 text-[13px]">{emp.daysAbsent ?? 0}</span></div>
           <div className="flex items-center"><span className="text-slate-500 w-28 text-[13px]">Overtime Hrs</span><span className="font-bold text-slate-800 text-[13px]">{emp.overtimeHours ?? 0}</span></div>
         </div>
         <div className="space-y-5">

@@ -101,7 +101,7 @@ function OfferTemplatesPage() {
               
               <h3 className="font-semibold text-base text-foreground pr-6">{template.name}</h3>
               <p className="text-xs text-muted-foreground mt-1 mb-4">
-                Updated {new Date(template.updated_at).toLocaleDateString()}
+                Updated {new Date(template.updatedAt || template.updated_at).toLocaleDateString()}
               </p>
               
               <div className="flex flex-wrap gap-2 mt-auto pt-4 border-t border-dashed">

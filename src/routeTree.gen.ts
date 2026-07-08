@@ -9,11 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SuperadminSitesRouteImport } from './routes/superadmin-sites'
+import { Route as SuperadminDashboardRouteImport } from './routes/superadmin-dashboard'
 import { Route as SitesRouteImport } from './routes/sites'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ReimbursementsRouteImport } from './routes/reimbursements'
 import { Route as PayrollRouteImport } from './routes/payroll'
+import { Route as OrganizationsRouteImport } from './routes/organizations'
 import { Route as OfferTemplatesRouteImport } from './routes/offer-templates'
 import { Route as OfferLettersRouteImport } from './routes/offer-letters'
 import { Route as MyCalendarRouteImport } from './routes/my-calendar'
@@ -24,6 +27,7 @@ import { Route as EmployeesRouteImport } from './routes/employees'
 import { Route as DesignationsRouteImport } from './routes/designations'
 import { Route as DepartmentsRouteImport } from './routes/departments'
 import { Route as BranchesRouteImport } from './routes/branches'
+import { Route as BillingPaymentsRouteImport } from './routes/billing-payments'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AttendanceRouteImport } from './routes/attendance'
 import { Route as AllOffersRouteImport } from './routes/all-offers'
@@ -35,12 +39,14 @@ import { Route as PayrollStructureRouteImport } from './routes/payroll.structure
 import { Route as PayrollSlipsRouteImport } from './routes/payroll.slips'
 import { Route as PayrollRunRouteImport } from './routes/payroll.run'
 import { Route as PayrollComplianceRouteImport } from './routes/payroll.compliance'
+import { Route as OrganizationsOrgIdRouteImport } from './routes/organizations.$orgId'
 import { Route as InsightsOrgTreeRouteImport } from './routes/insights.org-tree'
 import { Route as HolidaysCalendarRouteImport } from './routes/holidays.calendar'
 import { Route as Form16MyRouteImport } from './routes/form-16.my'
 import { Route as Form16ManagementRouteImport } from './routes/form-16.management'
 import { Route as Form16BulkRouteImport } from './routes/form-16.bulk'
 import { Route as EmployeesIdRouteImport } from './routes/employees.$id'
+import { Route as BillingPaymentsOrgIdRouteImport } from './routes/billing-payments.$orgId'
 import { Route as AttendanceShiftsRouteImport } from './routes/attendance.shifts'
 import { Route as AttendanceRosterRouteImport } from './routes/attendance.roster'
 import { Route as AttendanceRegularizeRouteImport } from './routes/attendance.regularize'
@@ -48,6 +54,16 @@ import { Route as AttendanceQrRouteImport } from './routes/attendance.qr'
 import { Route as AttendanceGpsRouteImport } from './routes/attendance.gps'
 import { Route as AttendanceFaceRouteImport } from './routes/attendance.face'
 
+const SuperadminSitesRoute = SuperadminSitesRouteImport.update({
+  id: '/superadmin-sites',
+  path: '/superadmin-sites',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuperadminDashboardRoute = SuperadminDashboardRouteImport.update({
+  id: '/superadmin-dashboard',
+  path: '/superadmin-dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitesRoute = SitesRouteImport.update({
   id: '/sites',
   path: '/sites',
@@ -71,6 +87,11 @@ const ReimbursementsRoute = ReimbursementsRouteImport.update({
 const PayrollRoute = PayrollRouteImport.update({
   id: '/payroll',
   path: '/payroll',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrganizationsRoute = OrganizationsRouteImport.update({
+  id: '/organizations',
+  path: '/organizations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OfferTemplatesRoute = OfferTemplatesRouteImport.update({
@@ -121,6 +142,11 @@ const DepartmentsRoute = DepartmentsRouteImport.update({
 const BranchesRoute = BranchesRouteImport.update({
   id: '/branches',
   path: '/branches',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BillingPaymentsRoute = BillingPaymentsRouteImport.update({
+  id: '/billing-payments',
+  path: '/billing-payments',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -178,6 +204,11 @@ const PayrollComplianceRoute = PayrollComplianceRouteImport.update({
   path: '/compliance',
   getParentRoute: () => PayrollRoute,
 } as any)
+const OrganizationsOrgIdRoute = OrganizationsOrgIdRouteImport.update({
+  id: '/$orgId',
+  path: '/$orgId',
+  getParentRoute: () => OrganizationsRoute,
+} as any)
 const InsightsOrgTreeRoute = InsightsOrgTreeRouteImport.update({
   id: '/insights/org-tree',
   path: '/insights/org-tree',
@@ -207,6 +238,11 @@ const EmployeesIdRoute = EmployeesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => EmployeesRoute,
+} as any)
+const BillingPaymentsOrgIdRoute = BillingPaymentsOrgIdRouteImport.update({
+  id: '/$orgId',
+  path: '/$orgId',
+  getParentRoute: () => BillingPaymentsRoute,
 } as any)
 const AttendanceShiftsRoute = AttendanceShiftsRouteImport.update({
   id: '/shifts',
@@ -244,6 +280,7 @@ export interface FileRoutesByFullPath {
   '/all-offers': typeof AllOffersRoute
   '/attendance': typeof AttendanceRouteWithChildren
   '/auth': typeof AuthRoute
+  '/billing-payments': typeof BillingPaymentsRouteWithChildren
   '/branches': typeof BranchesRoute
   '/departments': typeof DepartmentsRoute
   '/designations': typeof DesignationsRoute
@@ -254,23 +291,28 @@ export interface FileRoutesByFullPath {
   '/my-calendar': typeof MyCalendarRoute
   '/offer-letters': typeof OfferLettersRoute
   '/offer-templates': typeof OfferTemplatesRoute
+  '/organizations': typeof OrganizationsRouteWithChildren
   '/payroll': typeof PayrollRouteWithChildren
   '/reimbursements': typeof ReimbursementsRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/sites': typeof SitesRoute
+  '/superadmin-dashboard': typeof SuperadminDashboardRoute
+  '/superadmin-sites': typeof SuperadminSitesRoute
   '/attendance/face': typeof AttendanceFaceRoute
   '/attendance/gps': typeof AttendanceGpsRoute
   '/attendance/qr': typeof AttendanceQrRoute
   '/attendance/regularize': typeof AttendanceRegularizeRoute
   '/attendance/roster': typeof AttendanceRosterRoute
   '/attendance/shifts': typeof AttendanceShiftsRoute
+  '/billing-payments/$orgId': typeof BillingPaymentsOrgIdRoute
   '/employees/$id': typeof EmployeesIdRoute
   '/form-16/bulk': typeof Form16BulkRoute
   '/form-16/management': typeof Form16ManagementRoute
   '/form-16/my': typeof Form16MyRoute
   '/holidays/calendar': typeof HolidaysCalendarRoute
   '/insights/org-tree': typeof InsightsOrgTreeRoute
+  '/organizations/$orgId': typeof OrganizationsOrgIdRoute
   '/payroll/compliance': typeof PayrollComplianceRoute
   '/payroll/run': typeof PayrollRunRoute
   '/payroll/slips': typeof PayrollSlipsRoute
@@ -283,6 +325,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/all-offers': typeof AllOffersRoute
   '/auth': typeof AuthRoute
+  '/billing-payments': typeof BillingPaymentsRouteWithChildren
   '/branches': typeof BranchesRoute
   '/departments': typeof DepartmentsRoute
   '/designations': typeof DesignationsRoute
@@ -293,22 +336,27 @@ export interface FileRoutesByTo {
   '/my-calendar': typeof MyCalendarRoute
   '/offer-letters': typeof OfferLettersRoute
   '/offer-templates': typeof OfferTemplatesRoute
+  '/organizations': typeof OrganizationsRouteWithChildren
   '/reimbursements': typeof ReimbursementsRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/sites': typeof SitesRoute
+  '/superadmin-dashboard': typeof SuperadminDashboardRoute
+  '/superadmin-sites': typeof SuperadminSitesRoute
   '/attendance/face': typeof AttendanceFaceRoute
   '/attendance/gps': typeof AttendanceGpsRoute
   '/attendance/qr': typeof AttendanceQrRoute
   '/attendance/regularize': typeof AttendanceRegularizeRoute
   '/attendance/roster': typeof AttendanceRosterRoute
   '/attendance/shifts': typeof AttendanceShiftsRoute
+  '/billing-payments/$orgId': typeof BillingPaymentsOrgIdRoute
   '/employees/$id': typeof EmployeesIdRoute
   '/form-16/bulk': typeof Form16BulkRoute
   '/form-16/management': typeof Form16ManagementRoute
   '/form-16/my': typeof Form16MyRoute
   '/holidays/calendar': typeof HolidaysCalendarRoute
   '/insights/org-tree': typeof InsightsOrgTreeRoute
+  '/organizations/$orgId': typeof OrganizationsOrgIdRoute
   '/payroll/compliance': typeof PayrollComplianceRoute
   '/payroll/run': typeof PayrollRunRoute
   '/payroll/slips': typeof PayrollSlipsRoute
@@ -323,6 +371,7 @@ export interface FileRoutesById {
   '/all-offers': typeof AllOffersRoute
   '/attendance': typeof AttendanceRouteWithChildren
   '/auth': typeof AuthRoute
+  '/billing-payments': typeof BillingPaymentsRouteWithChildren
   '/branches': typeof BranchesRoute
   '/departments': typeof DepartmentsRoute
   '/designations': typeof DesignationsRoute
@@ -333,23 +382,28 @@ export interface FileRoutesById {
   '/my-calendar': typeof MyCalendarRoute
   '/offer-letters': typeof OfferLettersRoute
   '/offer-templates': typeof OfferTemplatesRoute
+  '/organizations': typeof OrganizationsRouteWithChildren
   '/payroll': typeof PayrollRouteWithChildren
   '/reimbursements': typeof ReimbursementsRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/sites': typeof SitesRoute
+  '/superadmin-dashboard': typeof SuperadminDashboardRoute
+  '/superadmin-sites': typeof SuperadminSitesRoute
   '/attendance/face': typeof AttendanceFaceRoute
   '/attendance/gps': typeof AttendanceGpsRoute
   '/attendance/qr': typeof AttendanceQrRoute
   '/attendance/regularize': typeof AttendanceRegularizeRoute
   '/attendance/roster': typeof AttendanceRosterRoute
   '/attendance/shifts': typeof AttendanceShiftsRoute
+  '/billing-payments/$orgId': typeof BillingPaymentsOrgIdRoute
   '/employees/$id': typeof EmployeesIdRoute
   '/form-16/bulk': typeof Form16BulkRoute
   '/form-16/management': typeof Form16ManagementRoute
   '/form-16/my': typeof Form16MyRoute
   '/holidays/calendar': typeof HolidaysCalendarRoute
   '/insights/org-tree': typeof InsightsOrgTreeRoute
+  '/organizations/$orgId': typeof OrganizationsOrgIdRoute
   '/payroll/compliance': typeof PayrollComplianceRoute
   '/payroll/run': typeof PayrollRunRoute
   '/payroll/slips': typeof PayrollSlipsRoute
@@ -365,6 +419,7 @@ export interface FileRouteTypes {
     | '/all-offers'
     | '/attendance'
     | '/auth'
+    | '/billing-payments'
     | '/branches'
     | '/departments'
     | '/designations'
@@ -375,23 +430,28 @@ export interface FileRouteTypes {
     | '/my-calendar'
     | '/offer-letters'
     | '/offer-templates'
+    | '/organizations'
     | '/payroll'
     | '/reimbursements'
     | '/reports'
     | '/settings'
     | '/sites'
+    | '/superadmin-dashboard'
+    | '/superadmin-sites'
     | '/attendance/face'
     | '/attendance/gps'
     | '/attendance/qr'
     | '/attendance/regularize'
     | '/attendance/roster'
     | '/attendance/shifts'
+    | '/billing-payments/$orgId'
     | '/employees/$id'
     | '/form-16/bulk'
     | '/form-16/management'
     | '/form-16/my'
     | '/holidays/calendar'
     | '/insights/org-tree'
+    | '/organizations/$orgId'
     | '/payroll/compliance'
     | '/payroll/run'
     | '/payroll/slips'
@@ -404,6 +464,7 @@ export interface FileRouteTypes {
     | '/'
     | '/all-offers'
     | '/auth'
+    | '/billing-payments'
     | '/branches'
     | '/departments'
     | '/designations'
@@ -414,22 +475,27 @@ export interface FileRouteTypes {
     | '/my-calendar'
     | '/offer-letters'
     | '/offer-templates'
+    | '/organizations'
     | '/reimbursements'
     | '/reports'
     | '/settings'
     | '/sites'
+    | '/superadmin-dashboard'
+    | '/superadmin-sites'
     | '/attendance/face'
     | '/attendance/gps'
     | '/attendance/qr'
     | '/attendance/regularize'
     | '/attendance/roster'
     | '/attendance/shifts'
+    | '/billing-payments/$orgId'
     | '/employees/$id'
     | '/form-16/bulk'
     | '/form-16/management'
     | '/form-16/my'
     | '/holidays/calendar'
     | '/insights/org-tree'
+    | '/organizations/$orgId'
     | '/payroll/compliance'
     | '/payroll/run'
     | '/payroll/slips'
@@ -443,6 +509,7 @@ export interface FileRouteTypes {
     | '/all-offers'
     | '/attendance'
     | '/auth'
+    | '/billing-payments'
     | '/branches'
     | '/departments'
     | '/designations'
@@ -453,23 +520,28 @@ export interface FileRouteTypes {
     | '/my-calendar'
     | '/offer-letters'
     | '/offer-templates'
+    | '/organizations'
     | '/payroll'
     | '/reimbursements'
     | '/reports'
     | '/settings'
     | '/sites'
+    | '/superadmin-dashboard'
+    | '/superadmin-sites'
     | '/attendance/face'
     | '/attendance/gps'
     | '/attendance/qr'
     | '/attendance/regularize'
     | '/attendance/roster'
     | '/attendance/shifts'
+    | '/billing-payments/$orgId'
     | '/employees/$id'
     | '/form-16/bulk'
     | '/form-16/management'
     | '/form-16/my'
     | '/holidays/calendar'
     | '/insights/org-tree'
+    | '/organizations/$orgId'
     | '/payroll/compliance'
     | '/payroll/run'
     | '/payroll/slips'
@@ -484,6 +556,7 @@ export interface RootRouteChildren {
   AllOffersRoute: typeof AllOffersRoute
   AttendanceRoute: typeof AttendanceRouteWithChildren
   AuthRoute: typeof AuthRoute
+  BillingPaymentsRoute: typeof BillingPaymentsRouteWithChildren
   BranchesRoute: typeof BranchesRoute
   DepartmentsRoute: typeof DepartmentsRoute
   DesignationsRoute: typeof DesignationsRoute
@@ -494,11 +567,14 @@ export interface RootRouteChildren {
   MyCalendarRoute: typeof MyCalendarRoute
   OfferLettersRoute: typeof OfferLettersRoute
   OfferTemplatesRoute: typeof OfferTemplatesRoute
+  OrganizationsRoute: typeof OrganizationsRouteWithChildren
   PayrollRoute: typeof PayrollRouteWithChildren
   ReimbursementsRoute: typeof ReimbursementsRoute
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
   SitesRoute: typeof SitesRoute
+  SuperadminDashboardRoute: typeof SuperadminDashboardRoute
+  SuperadminSitesRoute: typeof SuperadminSitesRoute
   Form16BulkRoute: typeof Form16BulkRoute
   Form16ManagementRoute: typeof Form16ManagementRoute
   Form16MyRoute: typeof Form16MyRoute
@@ -509,6 +585,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/superadmin-sites': {
+      id: '/superadmin-sites'
+      path: '/superadmin-sites'
+      fullPath: '/superadmin-sites'
+      preLoaderRoute: typeof SuperadminSitesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/superadmin-dashboard': {
+      id: '/superadmin-dashboard'
+      path: '/superadmin-dashboard'
+      fullPath: '/superadmin-dashboard'
+      preLoaderRoute: typeof SuperadminDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sites': {
       id: '/sites'
       path: '/sites'
@@ -542,6 +632,13 @@ declare module '@tanstack/react-router' {
       path: '/payroll'
       fullPath: '/payroll'
       preLoaderRoute: typeof PayrollRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/organizations': {
+      id: '/organizations'
+      path: '/organizations'
+      fullPath: '/organizations'
+      preLoaderRoute: typeof OrganizationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/offer-templates': {
@@ -612,6 +709,13 @@ declare module '@tanstack/react-router' {
       path: '/branches'
       fullPath: '/branches'
       preLoaderRoute: typeof BranchesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/billing-payments': {
+      id: '/billing-payments'
+      path: '/billing-payments'
+      fullPath: '/billing-payments'
+      preLoaderRoute: typeof BillingPaymentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -691,6 +795,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PayrollComplianceRouteImport
       parentRoute: typeof PayrollRoute
     }
+    '/organizations/$orgId': {
+      id: '/organizations/$orgId'
+      path: '/$orgId'
+      fullPath: '/organizations/$orgId'
+      preLoaderRoute: typeof OrganizationsOrgIdRouteImport
+      parentRoute: typeof OrganizationsRoute
+    }
     '/insights/org-tree': {
       id: '/insights/org-tree'
       path: '/insights/org-tree'
@@ -732,6 +843,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/employees/$id'
       preLoaderRoute: typeof EmployeesIdRouteImport
       parentRoute: typeof EmployeesRoute
+    }
+    '/billing-payments/$orgId': {
+      id: '/billing-payments/$orgId'
+      path: '/$orgId'
+      fullPath: '/billing-payments/$orgId'
+      preLoaderRoute: typeof BillingPaymentsOrgIdRouteImport
+      parentRoute: typeof BillingPaymentsRoute
     }
     '/attendance/shifts': {
       id: '/attendance/shifts'
@@ -802,6 +920,18 @@ const AttendanceRouteWithChildren = AttendanceRoute._addFileChildren(
   AttendanceRouteChildren,
 )
 
+interface BillingPaymentsRouteChildren {
+  BillingPaymentsOrgIdRoute: typeof BillingPaymentsOrgIdRoute
+}
+
+const BillingPaymentsRouteChildren: BillingPaymentsRouteChildren = {
+  BillingPaymentsOrgIdRoute: BillingPaymentsOrgIdRoute,
+}
+
+const BillingPaymentsRouteWithChildren = BillingPaymentsRoute._addFileChildren(
+  BillingPaymentsRouteChildren,
+)
+
 interface EmployeesRouteChildren {
   EmployeesIdRoute: typeof EmployeesIdRoute
 }
@@ -812,6 +942,18 @@ const EmployeesRouteChildren: EmployeesRouteChildren = {
 
 const EmployeesRouteWithChildren = EmployeesRoute._addFileChildren(
   EmployeesRouteChildren,
+)
+
+interface OrganizationsRouteChildren {
+  OrganizationsOrgIdRoute: typeof OrganizationsOrgIdRoute
+}
+
+const OrganizationsRouteChildren: OrganizationsRouteChildren = {
+  OrganizationsOrgIdRoute: OrganizationsOrgIdRoute,
+}
+
+const OrganizationsRouteWithChildren = OrganizationsRoute._addFileChildren(
+  OrganizationsRouteChildren,
 )
 
 interface PayrollRouteChildren {
@@ -838,6 +980,7 @@ const rootRouteChildren: RootRouteChildren = {
   AllOffersRoute: AllOffersRoute,
   AttendanceRoute: AttendanceRouteWithChildren,
   AuthRoute: AuthRoute,
+  BillingPaymentsRoute: BillingPaymentsRouteWithChildren,
   BranchesRoute: BranchesRoute,
   DepartmentsRoute: DepartmentsRoute,
   DesignationsRoute: DesignationsRoute,
@@ -848,11 +991,14 @@ const rootRouteChildren: RootRouteChildren = {
   MyCalendarRoute: MyCalendarRoute,
   OfferLettersRoute: OfferLettersRoute,
   OfferTemplatesRoute: OfferTemplatesRoute,
+  OrganizationsRoute: OrganizationsRouteWithChildren,
   PayrollRoute: PayrollRouteWithChildren,
   ReimbursementsRoute: ReimbursementsRoute,
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
   SitesRoute: SitesRoute,
+  SuperadminDashboardRoute: SuperadminDashboardRoute,
+  SuperadminSitesRoute: SuperadminSitesRoute,
   Form16BulkRoute: Form16BulkRoute,
   Form16ManagementRoute: Form16ManagementRoute,
   Form16MyRoute: Form16MyRoute,

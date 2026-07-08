@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { Eye, Pencil, Trash2, UserPlus, Calculator, Send, CheckCircle, MailPlus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
@@ -95,24 +95,7 @@ function EmployeesPage() {
       } else {
         const { id, ...data } = cleanData;
         const result = await employeesApi.create(data);
-        toast.success("Employee created");
-        
-        // Auto-generate a pending offer
-        try {
-          if (!result || !result.id) {
-            toast.error(`Employee was created, but backend didn't return the ID to create an offer! Response: ${JSON.stringify(result)}`);
-          } else {
-            await offersApi.create({
-              employee: result.id,
-              offer_number: `OFF-${result.code || Date.now()}`,
-              status: "Pending Approval"
-            });
-            toast.success("Added to Pending Offers");
-          }
-        } catch(offErr: any) {
-          console.error("Failed to create offer", offErr);
-          toast.error(`Backend Error Creating Offer: ${offErr?.message || JSON.stringify(offErr)}`, { duration: 10000 });
-        }
+        toast.success("Employee created and added to Pending Offers!");
       }
       setOpen(false); setEditing(null);
       router.invalidate();
@@ -147,28 +130,33 @@ function EmployeesPage() {
           filters={[
             { label: "Entity", key: "entity", options: entities.map(e => ({ value: e.id, label: e.code })), predicate: (r, v) => String(r.entity) === String(v) },
             { label: "Department", key: "department", options: departments.map(d => ({ value: d.id, label: d.name })), predicate: (r, v) => String(r.department) === String(v) },
-            { label: "Status", key: "status", options: ["Active","On Leave","Inactive"].map(s => ({ value: s, label: s })), predicate: (r, v) => r.status === v },
+            { label: "Status", key: "status", options: ["Active","On Leave","Inactive","Draft"].map(s => ({ value: s, label: s })), predicate: (r, v) => r.status === v },
           ]}
           onCreate={() => { setEditing(null); setOpen(true); }} createLabel="Onboard Employee" filename="employees.csv"
           columns={[
-            { key: "emp", header: "Employee", accessor: r => `${r.firstName} ${r.lastName}`, sortable: true, render: r => (
+            { key: "emp", header: "Employee", accessor: (r: any) => `${r.firstName || r.first_name || ""} ${r.lastName || r.last_name || ""}`, sortable: true, render: (r: any) => {
+              const fName = r.firstName || r.first_name || "";
+              const lName = r.lastName || r.last_name || "";
+              return (
               <Link to="/employees/$id" params={{ id: String(r.id) }} className="flex items-center gap-3 group">
-                <Avatar className="h-8 w-8"><AvatarFallback className="text-xs bg-primary/10 text-primary">{(r.firstName?.[0]||"")}{(r.lastName?.[0]||"")}</AvatarFallback></Avatar>
-                <div className="min-w-0"><div className="font-medium group-hover:text-primary truncate">{r.firstName} {r.lastName}</div><div className="text-xs text-muted-foreground truncate">{r.code} • {r.email}</div></div>
+                <Avatar className="h-8 w-8"><AvatarFallback className="text-xs bg-primary/10 text-primary">{(fName?.[0]||"")}{(lName?.[0]||"")}</AvatarFallback></Avatar>
+                <div className="min-w-0"><div className="font-medium group-hover:text-primary truncate">{fName} {lName}</div><div className="text-xs text-muted-foreground truncate">{r.code} • {r.email}</div></div>
               </Link>
-            )},
+            )}},
             { key: "desg", header: "Designation", render: r => designations.find(d => String(d.id) === String(r.designation))?.title ?? "—" },
             { key: "dept", header: "Department", render: r => departments.find(d => String(d.id) === String(r.department))?.name ?? "—" },
             { key: "branch", header: "Branch", render: r => branches.find(b => String(b.id) === String(r.branch))?.name ?? "—" },
             { key: "doj", header: "Joined", accessor: r => r.doj, sortable: true },
-            { key: "status", header: "Status", render: r => <Badge className={r.status === "Active" ? "bg-success text-success-foreground" : r.status === "On Leave" ? "bg-warning text-warning-foreground" : ""}>{r.status}</Badge> },
+            { key: "status", header: "Status", render: r => <Badge className={r.status === "Active" ? "bg-success text-success-foreground" : r.status === "On Leave" ? "bg-warning text-warning-foreground" : r.status === "Draft" ? "bg-secondary text-secondary-foreground" : ""}>{r.status}</Badge> },
           ]}
           actions={r => <div className="flex justify-end gap-1">
-            <Button size="icon" variant="ghost" asChild>
-              <Link to="/employees/$id" params={{ id: String(r.id) }}>
-                <Eye className="h-4 w-4" />
-              </Link>
-            </Button>
+            <Link 
+              to="/employees/$id" 
+              params={{ id: String(r.id) }} 
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-10 w-10"
+            >
+              <Eye className="h-4 w-4" />
+            </Link>
             <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
             <Button size="icon" variant="ghost" onClick={() => handleDelete(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
           </div>}
@@ -231,7 +219,7 @@ function EmployeeDialog({ open, onOpenChange, employee, onSave, departments, des
                   <SelectTrigger><SelectValue placeholder="Select Entity" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value=" ">None</SelectItem>
-                    {(entities || []).map((e: Entity) => <SelectItem key={e?.id || Math.random()} value={String(e?.id)}>{e?.name || 'Unknown'}</SelectItem>)}
+                    {(entities || []).map((e: Entity, idx: number) => <SelectItem key={e?.id || `ent-${idx}`} value={String(e?.id)}>{e?.name || 'Unknown'}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </Field>
@@ -240,7 +228,7 @@ function EmployeeDialog({ open, onOpenChange, employee, onSave, departments, des
                   <SelectTrigger><SelectValue placeholder="Select Branch" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value=" ">None</SelectItem>
-                    {(branches || []).filter((b: Branch) => !form.entity || String(b?.entity) === String(form.entity)).map((b: Branch) => <SelectItem key={b?.id || Math.random()} value={String(b?.id)}>{b?.name || 'Unknown'}</SelectItem>)}
+                    {(branches || []).filter((b: Branch) => !form.entity || String(b?.entity) === String(form.entity)).map((b: Branch, idx: number) => <SelectItem key={b?.id || `br-${idx}`} value={String(b?.id)}>{b?.name || 'Unknown'}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </Field>
@@ -249,7 +237,7 @@ function EmployeeDialog({ open, onOpenChange, employee, onSave, departments, des
                   <SelectTrigger><SelectValue placeholder="Select Site" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value=" ">None</SelectItem>
-                    {(sites || []).filter((s: Site) => !form.branch || String(s?.branch) === String(form.branch)).map((s: Site) => <SelectItem key={s?.id || Math.random()} value={String(s?.id)}>{s?.name || 'Unknown'}</SelectItem>)}
+                    {(sites || []).filter((s: Site) => !form.branch || String(s?.branch) === String(form.branch)).map((s: Site, idx: number) => <SelectItem key={s?.id || `st-${idx}`} value={String(s?.id)}>{s?.name || 'Unknown'}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </Field>
@@ -258,7 +246,7 @@ function EmployeeDialog({ open, onOpenChange, employee, onSave, departments, des
                   <SelectTrigger><SelectValue placeholder="Select Department" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value=" ">None</SelectItem>
-                    {(departments || []).filter((d: Department) => !form.entity || String(d?.entity) === String(form.entity)).map((d: Department) => <SelectItem key={d?.id || Math.random()} value={String(d?.id)}>{d?.name || 'Unknown'}</SelectItem>)}
+                    {(departments || []).filter((d: Department) => !form.entity || String(d?.entity) === String(form.entity)).map((d: Department, idx: number) => <SelectItem key={d?.id || `dept-${idx}`} value={String(d?.id)}>{d?.name || 'Unknown'}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </Field>
@@ -267,20 +255,20 @@ function EmployeeDialog({ open, onOpenChange, employee, onSave, departments, des
                   <SelectTrigger><SelectValue placeholder="Select Designation" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value=" ">None</SelectItem>
-                    {(designations || []).filter((d: Designation) => !form.department || String(d?.department) === String(form.department)).map((d: Designation) => <SelectItem key={d?.id || Math.random()} value={String(d?.id)}>{d?.title || 'Unknown'}</SelectItem>)}
+                    {(designations || []).filter((d: Designation) => !form.department || String(d?.department) === String(form.department)).map((d: Designation, idx: number) => <SelectItem key={d?.id || `desg-${idx}`} value={String(d?.id)}>{d?.title || 'Unknown'}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </Field>
               <Field label="Reporting Manager">
                 <Select value={String(form.manager || '')} onValueChange={v => setForm({ ...form, manager: v || undefined } as any)}>
                   <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
-                  <SelectContent><SelectItem value=" ">None</SelectItem>{(employees || []).map((e: Employee) => <SelectItem key={e?.id || Math.random()} value={String(e?.id)}>{e?.firstName} {e?.lastName}</SelectItem>)}</SelectContent>
+                  <SelectContent><SelectItem value=" ">None</SelectItem>{(employees || []).map((e: Employee, idx: number) => <SelectItem key={e?.id || `emp-${idx}`} value={String(e?.id)}>{e?.firstName} {e?.lastName}</SelectItem>)}</SelectContent>
                 </Select>
               </Field>
               <Field label="Status">
                 <Select value={form.status} onValueChange={v => setForm({ ...form, status: v as any })}>
                   <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-                  <SelectContent><SelectItem value="Active">Active</SelectItem><SelectItem value="On Leave">On Leave</SelectItem><SelectItem value="Inactive">Inactive</SelectItem></SelectContent>
+                  <SelectContent><SelectItem value="Active">Active</SelectItem><SelectItem value="On Leave">On Leave</SelectItem><SelectItem value="Inactive">Inactive</SelectItem><SelectItem value="Draft">Draft</SelectItem></SelectContent>
                 </Select>
               </Field>
               <Field label="CTC (Annual)">
@@ -312,7 +300,7 @@ function EmployeeDialog({ open, onOpenChange, employee, onSave, departments, des
                       } else {
                         return s.name !== 'Service Structure';
                       }
-                    }).map((s: any) => <SelectItem key={s?.id || Math.random()} value={String(s?.id)}>{s?.name || 'Unknown'}</SelectItem>)}
+                    }).map((s: any, idx: number) => <SelectItem key={s?.id || `struct-${idx}`} value={String(s?.id)}>{s?.name || 'Unknown'}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </Field>
@@ -392,7 +380,14 @@ function EmployeeDialog({ open, onOpenChange, employee, onSave, departments, des
             </div>
           </div>}
         </div>
-        <DialogFooter className="mt-6 border-t pt-4"><Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button><Button onClick={() => onSave(form)}>Save Employee</Button></DialogFooter>
+        <DialogFooter className="mt-6 border-t pt-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          {tab === "compliance" ? (
+            <Button onClick={() => onSave(form)}>Save Employee</Button>
+          ) : (
+            <Button onClick={() => onSave({ ...form, status: "Draft" })}>Save Draft</Button>
+          )}
+        </DialogFooter>
       </DialogContent>
       {showEstimator && (
         <SalaryEstimatorModal 
@@ -416,76 +411,78 @@ function SalaryEstimatorModal({ isOpen, onClose, ctc }: { isOpen: boolean, onClo
   const [deduction80D, setDeduction80D] = useState(0);
   const [hraExemption, setHraExemption] = useState(0);
 
-  // Math Setup
-  // CTC = Gross + EmployerPF(12% Basic) + Gratuity(4.81% Basic)
-  // Gross = 2.5 * Basic
-  // CTC = 2.5 * Basic + 0.12 * Basic + 0.0481 * Basic
-  let factor = 2.5;
-  if (includeEmployerPF) factor += 0.12;
-  if (includeGratuity) factor += 0.0481;
-  
-  const basic = Math.round(ctc / factor);
-  const gross = Math.round(2.5 * basic);
-  const hra = Math.round(0.4 * basic);
-  const allowances = gross - basic - hra;
-  
-  const employerPF = includeEmployerPF ? Math.round(0.12 * basic) : 0;
-  const gratuity = includeGratuity ? Math.round(0.0481 * basic) : 0;
-  const employeePF = includeEmployeePF ? Math.round(0.12 * basic) : 0;
-  const professionalTax = includePT ? 2500 : 0;
+  const taxMath = useMemo(() => {
+    let factor = 2.5;
+    if (includeEmployerPF) factor += 0.12;
+    if (includeGratuity) factor += 0.0481;
+    
+    const basic = Math.round(ctc / factor);
+    const gross = Math.round(2.5 * basic);
+    const hra = Math.round(0.4 * basic);
+    const allowances = gross - basic - hra;
+    
+    const employerPF = includeEmployerPF ? Math.round(0.12 * basic) : 0;
+    const gratuity = includeGratuity ? Math.round(0.0481 * basic) : 0;
+    const employeePF = includeEmployeePF ? Math.round(0.12 * basic) : 0;
+    const professionalTax = includePT ? 2500 : 0;
 
-  // Old Regime Tax Math
-  const standardDeductionOld = 50000;
-  const oldTaxable = Math.max(0, gross - standardDeductionOld - employeePF - professionalTax - deduction80C - deduction80D - hraExemption);
-  let oldTax = 0;
-  if (oldTaxable > 250000) {
-    if (oldTaxable <= 500000) oldTax = (oldTaxable - 250000) * 0.05;
-    else if (oldTaxable <= 1000000) oldTax = 12500 + (oldTaxable - 500000) * 0.20;
-    else oldTax = 112500 + (oldTaxable - 1000000) * 0.30;
-  }
-  // 87A Rebate for Old Regime (Income up to 5L)
-  if (oldTaxable <= 500000) oldTax = 0;
-  oldTax = Math.round(oldTax * 1.04); // 4% Health & Education Cess
+    // Old Regime Tax Math
+    const standardDeductionOld = 50000;
+    const oldTaxable = Math.max(0, gross - standardDeductionOld - employeePF - professionalTax - deduction80C - deduction80D - hraExemption);
+    let oldTax = 0;
+    if (oldTaxable > 250000) {
+      if (oldTaxable <= 500000) oldTax = (oldTaxable - 250000) * 0.05;
+      else if (oldTaxable <= 1000000) oldTax = 12500 + (oldTaxable - 500000) * 0.20;
+      else oldTax = 112500 + (oldTaxable - 1000000) * 0.30;
+    }
+    // 87A Rebate for Old Regime (Income up to 5L)
+    if (oldTaxable <= 500000) oldTax = 0;
+    oldTax = Math.round(oldTax * 1.04); // 4% Health & Education Cess
 
-  // New Regime Tax Math 2026-27
-  const standardDeductionNew = 75000;
-  const newTaxable = Math.max(0, gross - standardDeductionNew);
-  let newTax = 0;
-  const slabs = [
-    { limit: 400000, rate: 0.0 },
-    { limit: 800000, rate: 0.05 },
-    { limit: 1200000, rate: 0.10 },
-    { limit: 1600000, rate: 0.15 },
-    { limit: 2000000, rate: 0.20 },
-    { limit: 2400000, rate: 0.25 },
-    { limit: 10000000, rate: 0.30 },
-    { limit: Infinity, rate: 0.45 }
-  ];
-  let remainingNew = newTaxable;
-  let prevLimit = 0;
-  for (const slab of slabs) {
-    if (remainingNew <= 0) break;
-    const taxableInSlab = Math.min(remainingNew, slab.limit - prevLimit);
-    newTax += taxableInSlab * slab.rate;
-    remainingNew -= taxableInSlab;
-    prevLimit = slab.limit;
-  }
-  // Rebate up to 12L for New Regime 2026-27 assumption
-  if (newTaxable <= 1200000) newTax = 0;
-  newTax = Math.round(newTax * 1.04);
+    // New Regime Tax Math 2026-27
+    const standardDeductionNew = 75000;
+    const newTaxable = Math.max(0, gross - standardDeductionNew);
+    let newTax = 0;
+    const slabs = [
+      { limit: 400000, rate: 0.0 },
+      { limit: 800000, rate: 0.05 },
+      { limit: 1200000, rate: 0.10 },
+      { limit: 1600000, rate: 0.15 },
+      { limit: 2000000, rate: 0.20 },
+      { limit: 2400000, rate: 0.25 },
+      { limit: 10000000, rate: 0.30 },
+      { limit: Infinity, rate: 0.45 }
+    ];
+    let remainingNew = newTaxable;
+    let prevLimit = 0;
+    for (const slab of slabs) {
+      if (remainingNew <= 0) break;
+      const taxableInSlab = Math.min(remainingNew, slab.limit - prevLimit);
+      newTax += taxableInSlab * slab.rate;
+      remainingNew -= taxableInSlab;
+      prevLimit = slab.limit;
+    }
+    // Rebate up to 12L for New Regime 2026-27 assumption
+    if (newTaxable <= 1200000) newTax = 0;
+    newTax = Math.round(newTax * 1.04);
 
-  // In-Hand Calculations
-  const monthlyGross = Math.round(gross / 12);
-  const monthlyOldTax = Math.round(oldTax / 12);
-  const monthlyNewTax = Math.round(newTax / 12);
-  const monthlyEmpPF = Math.round(employeePF / 12);
-  const monthlyPT = Math.round(professionalTax / 12);
+    // In-Hand Calculations
+    const monthlyGross = Math.round(gross / 12);
+    const monthlyOldTax = Math.round(oldTax / 12);
+    const monthlyNewTax = Math.round(newTax / 12);
+    const monthlyEmpPF = Math.round(employeePF / 12);
+    const monthlyPT = Math.round(professionalTax / 12);
 
-  const monthlyInHandOld = monthlyGross - monthlyEmpPF - monthlyPT - monthlyOldTax;
-  const monthlyInHandNew = monthlyGross - monthlyEmpPF - monthlyPT - monthlyNewTax;
+    const monthlyInHandOld = monthlyGross - monthlyEmpPF - monthlyPT - monthlyOldTax;
+    const monthlyInHandNew = monthlyGross - monthlyEmpPF - monthlyPT - monthlyNewTax;
 
-  const recRegime = newTax <= oldTax ? "New Regime" : "Old Regime";
-  const taxSavings = Math.abs(oldTax - newTax);
+    const recRegime = newTax <= oldTax ? "New Regime" : "Old Regime";
+    const taxSavings = Math.abs(oldTax - newTax);
+
+    return { basic, gross, hra, allowances, employerPF, gratuity, employeePF, professionalTax, standardDeductionOld, oldTax, standardDeductionNew, newTax, monthlyGross, monthlyOldTax, monthlyNewTax, monthlyEmpPF, monthlyPT, monthlyInHandOld, monthlyInHandNew, recRegime, taxSavings };
+  }, [ctc, includeEmployerPF, includeEmployeePF, includeGratuity, includePT, deduction80C, deduction80D, hraExemption]);
+
+  const { basic, gross, hra, allowances, employerPF, gratuity, employeePF, professionalTax, standardDeductionOld, oldTax, standardDeductionNew, newTax, monthlyGross, monthlyOldTax, monthlyNewTax, monthlyEmpPF, monthlyPT, monthlyInHandOld, monthlyInHandNew, recRegime, taxSavings } = taxMath;
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
@@ -601,5 +598,3 @@ function SalaryEstimatorModal({ isOpen, onClose, ctc }: { isOpen: boolean, onClo
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-1.5"><Label className="text-xs text-muted-foreground uppercase font-semibold">{label}</Label>{children}</div>; }
-
-

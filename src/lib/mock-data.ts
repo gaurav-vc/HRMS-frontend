@@ -18,7 +18,7 @@ export interface Designation { id: string; department: string | number; title: s
 export interface Employee {
   id: string; code: string; firstName: string; lastName: string; email: string; phone: string;
   entity: string | number; branch: string | number; site: string | number; department: string | number; designation: string | number;
-  manager?: string | number; doj: string; dob: string; gender: "Male" | "Female" | "Other"; status: "Active" | "On Leave" | "Inactive";
+  manager?: string | number; doj: string; dob: string; gender: "Male" | "Female" | "Other"; status: "Active" | "On Leave" | "Inactive" | "Draft";
   pan: string; aadhaar: string; uan: string; esi: string; bankName: string; bankAccount: string; ifsc: string;
   address: string; ctc: number; avatar?: string; salaryStructure?: string | number | null; employeeType?: string;
   bonusApplicable?: boolean; bonusType?: string; bonusValue?: number; bonusMonths?: number; pfApplicable?: boolean;

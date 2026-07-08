@@ -4,7 +4,7 @@ import {
   CalendarCheck2, QrCode, ScanFace, Navigation, ClipboardList, CalendarDays,
   Wallet, Sliders, PlayCircle, ReceiptText, FileSpreadsheet, HandCoins, BadgeDollarSign,
   Settings, FileBarChart2, Clock, CalendarRange, Network, Palmtree, Calendar,
-  FileText, LayoutTemplate
+  FileText, LayoutTemplate, CreditCard
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -69,6 +69,15 @@ const NAV: Group[] = [
   ]}
 ];
 
+const SUPER_ADMIN_NAV: Group[] = [
+  { label: "Super Admin", items: [
+    { title: "Dashboard", url: "/superadmin-dashboard", icon: LayoutDashboard },
+    { title: "Organizations", url: "/organizations", icon: Network },
+    { title: "Sites", url: "/superadmin-sites", icon: MapPin },
+    { title: "Billing & Payments", url: "/billing-payments", icon: CreditCard },
+  ]},
+];
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -77,8 +86,8 @@ export function AppSidebar() {
   const role = user?.role ?? "employee";
 
   const can = (it: Item) => {
-    // 1. If the user is Super Admin, they see everything
-    if (role === "super_admin") return true;
+    // 1. If the user is Vibe_admin, they see everything
+    if (user?.username === "Vibe_admin") return true;
     
     // 2. Strict check: only show if explicitly granted view permission
     if (user?.permissions && user.permissions[it.title]) {
@@ -91,6 +100,8 @@ export function AppSidebar() {
   };
   const isActive = (url: string) => url === "/" ? pathname === "/" : pathname === url || pathname.startsWith(url + "/");
 
+  const nav = user?.username === "Vibe_admin" ? SUPER_ADMIN_NAV : NAV;
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-4 py-4 border-b border-sidebar-border">
@@ -100,8 +111,8 @@ export function AppSidebar() {
         </Link>
       </SidebarHeader>
       <SidebarContent>
-        {NAV.map(group => {
-          const items = group.items.filter(can);
+        {nav.map(group => {
+          const items = user?.username === "Vibe_admin" ? group.items : group.items.filter(can);
           if (!items.length) return null;
           return (
             <SidebarGroup key={group.label}>

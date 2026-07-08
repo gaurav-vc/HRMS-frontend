@@ -22,6 +22,8 @@ const apiCall = async (url: string, method: string = 'GET', body?: any) => {
   if (url.startsWith('/offer-letters')) base = '/api';
   if (url.startsWith('/offer-templates')) base = '/api';
   if (url.startsWith('/leaves/config')) base = '/api'; // Config is under leaves/config
+  if (url.startsWith('/organizations')) base = '/api/admin_org';
+  if (url.startsWith('/invoices')) base = '/api/admin_org';
   if (url.startsWith('/api')) base = ''; // direct path
   
   const token = typeof localStorage !== "undefined" ? localStorage.getItem('access_token') : null;
@@ -81,6 +83,7 @@ const apiCall = async (url: string, method: string = 'GET', body?: any) => {
       const errBody = await res.json();
       if (errBody && errBody.message) errMsg = errBody.message;
       else if (errBody && errBody.error) errMsg = errBody.error;
+      else if (errBody) errMsg = JSON.stringify(errBody);
     } catch (e) {}
     throw new Error(errMsg);
   }
@@ -134,6 +137,22 @@ export const employeesApi = {
   getExits: async () => apiCall('/exits/'),
   createExit: async (data: any) => apiCall('/exits/', 'POST', data),
   updateExit: async (id: string | number, data: any) => apiCall(`/exits/${id}/`, 'PATCH', data),
+};
+
+export const organizationsApi = {
+  getAll: async () => apiCall('/organizations/'),
+  getById: async (id: string | number) => apiCall(`/organizations/${id}/`),
+  create: async (data: any) => apiCall('/organizations/', 'POST', data),
+  update: async (id: string | number, data: any) => apiCall(`/organizations/${id}/`, 'PUT', data),
+  delete: async (id: string | number) => apiCall(`/organizations/${id}/`, 'DELETE'),
+  resendEmail: async (id: string | number) => apiCall(`/organizations/${id}/resend-email/`, 'POST'),
+};
+
+export const invoicesApi = {
+  getAll: async (orgId?: string) => {
+    const query = orgId ? `?organization=${orgId}` : '';
+    return apiCall(`/invoices/${query}`);
+  },
 };
 
 export const branchesApi = {

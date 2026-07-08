@@ -41,7 +41,7 @@ function CompliancePage() {
   const nextDue = pending.length > 0 ? new Date(Math.min(...pending.map((r: any) => new Date(r.due).getTime()))) : null;
   const daysRemaining = nextDue ? Math.ceil((nextDue.getTime() - new Date().getTime()) / (1000 * 3600 * 24)) : 0;
   
-  const lastFiled = filed.length > 0 ? [...filed].sort((a: any, b: any) => new Date(b.filed_on).getTime() - new Date(a.filed_on).getTime())[0] : null;
+  const lastFiled = filed.length > 0 ? [...filed].sort((a: any, b: any) => new Date(b.filedOn || b.filed_on).getTime() - new Date(a.filedOn || a.filed_on).getTime())[0] : null;
 
   return (
     <div className="pb-10">
@@ -166,7 +166,7 @@ function CompliancePage() {
                   <tr key={r.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4 font-medium text-slate-900">{r.period}</td>
                     <td className="px-6 py-4 font-medium text-slate-700">{fmtINR(r.amount)}</td>
-                    <td className="px-6 py-4 text-slate-500 font-mono text-xs">{r.challan_number || '—'}</td>
+                    <td className="px-6 py-4 text-slate-500 font-mono text-xs">{r.challanNumber || r.challan_number || '—'}</td>
                     <td className="px-6 py-4">
                       <Badge className={
                         r.status === "Filed" ? "bg-[#dcfce7] text-[#166534] hover:bg-[#dcfce7] shadow-none border-0" : 
@@ -176,7 +176,7 @@ function CompliancePage() {
                         {r.status}
                       </Badge>
                     </td>
-                    <td className="px-6 py-4 text-slate-500">{r.filed_on ? new Date(r.filed_on).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</td>
+                    <td className="px-6 py-4 text-slate-500">{(r.filedOn || r.filed_on) ? new Date(r.filedOn || r.filed_on).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</td>
                     <td className="px-6 py-4 text-right">
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-700" onClick={() => toast.success(`Downloaded ${r.period} challan`)}>
                         <Download className="h-4 w-4" />

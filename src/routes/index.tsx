@@ -69,8 +69,17 @@ function ExceptionAlertsWidget({ exceptions }: { exceptions: any[] }) {
 function Index() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  useEffect(() => { if (!user) navigate({ to: "/auth" }); }, [user, navigate]);
+  
+  useEffect(() => { 
+    if (!user) {
+      navigate({ to: "/auth" }); 
+    } else if (user.username === "Vibe_admin") {
+      navigate({ to: "/superadmin-dashboard" });
+    }
+  }, [user, navigate]);
+  
   if (!user) return null;
+  if (user.username === "Vibe_admin") return null;
 
   // Use dynamic permissions dashboard_type if available, otherwise fallback to standard role
   const dashType = user.permissions?.dashboard_type || user.role;

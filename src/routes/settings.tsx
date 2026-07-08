@@ -1143,7 +1143,7 @@ function AttendanceSettingsTab() {
                     .filter(e => scope === 'entity' ? e.entity == selectedId : e.site == selectedId)
                     .map(e => (
                       <SelectItem key={e.id} value={e.id.toString()}>
-                        {e.first_name} {e.last_name} ({e.code || e.id})
+                        {e.firstName || e.first_name} {e.lastName || e.last_name} ({e.code || e.id})
                       </SelectItem>
                     ))}
                 </SelectContent>

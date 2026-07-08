@@ -1,15 +1,17 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useMemo, type ReactNode } from "react";
 import type { Role } from "./mock-data";
 import { ROLES } from "./mock-data";
 import { authApi } from "@/api";
 
 interface User { 
   name: string; 
+  username: string;
   email: string; 
   role: Role; 
   avatar?: string;
   permissions?: any; 
   role_name?: string;
+  employee_id?: string | number;
 }
 interface AuthCtx {
   user: User | null;
@@ -43,11 +45,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (mounted) {
               const updatedUser = {
                 name: `${me.firstName || ''} ${me.lastName || ''}`.trim() || me.email?.split("@")[0] || "User",
+                username: me.username || '',
                 email: me.email,
                 role: me.role as Role || 'employee',
                 permissions: me.permissions || {},
-                role_name: me.role_name || '',
-                employee_id: me.employee_id || me.employeeId,
+                role_name: me.roleName || me.role_name || '',
+                employee_id: me.employeeId || me.employee_id,
               };
               setUser(updatedUser);
               if (typeof localStorage !== "undefined") {
@@ -96,8 +99,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const me = await authApi.getMe();
               persist({
                   name: `${me.firstName || ''} ${me.lastName || ''}`.trim() || email.split("@")[0],
+                  username: me.username || email.split("@")[0],
                   email: email,
-                  role: me.role as Role || 'employee',
+                  role: (me.role as Role) || "employee",
                   permissions: me.permissions || {},
                   role_name: me.role_name || '',
                   employee_id: me.employee_id || me.employeeId,
@@ -116,14 +120,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       persist(null);
   };
 
+  const contextValue = useMemo(() => ({
+    user,
+    init,
+    login: performLogin as any,
+    logout: performLogout,
+    setRole: (r: Role) => user && persist({ ...user, role: r }),
+  }), [user, init]);
+
   return (
-    <Ctx.Provider value={{
-      user,
-      init,
-      login: performLogin as any,
-      logout: performLogout,
-      setRole: (r) => user && persist({ ...user, role: r }),
-    }}>
+    <Ctx.Provider value={contextValue}>
       {children}
     </Ctx.Provider>
   );

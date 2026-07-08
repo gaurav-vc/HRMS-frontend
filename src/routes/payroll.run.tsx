@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect, useRef, Fragment } from "react";
+import { useState, useEffect, useRef, Fragment, useMemo } from "react";
 import { toast } from "sonner";
 import { PlayCircle, CheckCircle2, AlertCircle, Sparkles, Rocket, ArrowLeft, ArrowRight, FileCheck2, CalendarRange, ShieldCheck, ChevronDown, ChevronUp, Download, Settings2, Pencil, X, Loader2, FileSpreadsheet, Eye, Mail, History } from "lucide-react";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -88,7 +88,7 @@ function OneClickPanel({ onConfirmChange, canViewConfidential }: { onConfirmChan
   const ref = useRef<HTMLDivElement>(null);
   const [period, setPeriod] = useState("2026-06");
   const [cutoff, setCutoff] = useState("2026-06-25");
-  const [entity, setEntity] = useState<string>("__all__");
+  const [selectedEntities, setSelectedEntities] = useState<string[]>(() => entities.map((e: any) => String(e.id)));
   const [includeReimb, setIncludeReimb] = useState(true);
   const [includeLoans, setIncludeLoans] = useState(true);
   const [includeBonus, setIncludeBonus] = useState(true);
@@ -119,16 +119,16 @@ function OneClickPanel({ onConfirmChange, canViewConfidential }: { onConfirmChan
 
   const ALL_COLUMNS = [
     { id: "name", label: "Employee Name" },
-    { id: "email", label: "Email" },
-    { id: "number", label: "Number" },
-    { id: "workFrom", label: "Work From" },
     { id: "entity", label: "Entity" },
     { id: "department", label: "Department" },
-    { id: "bankName", label: "Bank Name" },
     { id: "acNo", label: "Ac No" },
     { id: "ifscCode", label: "IFSC Code" },
     { id: "currentSalary", label: "Current Salary" },
-    { id: "attendance", label: "Attendance" },
+    { id: "presentDays", label: "Total Days present" },
+    { id: "leaves", label: "Annual Leaves" },
+    { id: "lopDays", label: "LOP" },
+    { id: "ot", label: "OT Overtime" },
+    { id: "daysPaid", label: "Payable Days" },
     { id: "totalAmount", label: "Total Amount" },
     { id: "deduction", label: "Deduction" },
     { id: "pf", label: "PF" },
@@ -149,7 +149,6 @@ function OneClickPanel({ onConfirmChange, canViewConfidential }: { onConfirmChan
     const rows = [headers.join(",")];
     for (const emp of employees) {
       const rowData = ALL_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(c => {
-        if (c.id === 'attendance') return `"${emp.totalDays} Paid / ${emp.presentDays} Present"`;
         let val = emp[c.id];
         if (typeof val === 'number') val = val.toFixed(2);
         return `"${String(val || '').replace(/"/g, '""')}"`;
@@ -172,7 +171,8 @@ function OneClickPanel({ onConfirmChange, canViewConfidential }: { onConfirmChan
     if (onConfirmChange) onConfirmChange(true);
     setIsLoadingPreview(true);
     try {
-      const res = await payrollApi.getPreview({ period, entity: entity === "__all__" ? undefined : entity });
+      const entityParam = selectedEntities.length === entities.length ? "__all__" : selectedEntities.join(",");
+      const res = await payrollApi.getPreview({ period, entity: entityParam === "__all__" ? undefined : entityParam });
       setPreviewData(res.data);
     } catch (e: any) {
       toast.error("Failed to fetch preview: " + e.message);
@@ -181,15 +181,29 @@ function OneClickPanel({ onConfirmChange, canViewConfidential }: { onConfirmChan
     }
   };
 
-  const filteredEmployees = entity === "__all__" ? employees : employees.filter((e: any) => e.entity === entity);
+  const filteredEmployees = useMemo(() => 
+    employees.filter((e: any) => selectedEntities.includes(String(e.entity))), 
+  [employees, selectedEntities]);
   const empCount = filteredEmployees.length;
   
-  const grossEst = filteredEmployees.reduce((sum: number, emp: any) => sum + ((emp.ctc || 0) / 12), 0);
+  const grossEst = useMemo(() => 
+    filteredEmployees.reduce((sum: number, emp: any) => sum + ((emp.ctc || 0) / 12), 0),
+  [filteredEmployees]);
   const dedEst = grossEst * 0.10; 
   const netEst = grossEst - dedEst;
 
-  useEffect(() => {
-    if (phase !== "running") return;
+  const flatEmployees = useMemo(() => 
+    previewData.filter(d => entityFilter === "__all__" || d.entity === entityFilter).flatMap(d => {
+       return (d.employeeDetails || []).map((emp: any) => ({ ...emp, _entity: d.entity }));
+    }),
+  [previewData, entityFilter]);
+
+  const startEngine = () => {
+    setPhase("running");
+    setPct(0);
+    setLogs([]);
+    if (onConfirmChange) onConfirmChange(false);
+
     const messages = [
       `Locking attendance cutoff at ${cutoff}…`, `Validating master data for ${employees.length} employees…`,
       "Applying salary structures…", "Computing earnings & deductions…",
@@ -208,9 +222,9 @@ function OneClickPanel({ onConfirmChange, canViewConfidential }: { onConfirmChan
         clearInterval(t); 
         
         const entitiesWithEmployees = new Set(employees.filter((e: any) => e.status === 'Active' && e.entity).map((e: any) => String(e.entity)));
-        const entitiesToRun = (entity === "__all__" ? entities.map((e: any) => String(e.id)) : [String(entity)]).filter(id => entitiesWithEmployees.has(id));
+        const entitiesToRun = selectedEntities.filter((id: string) => entitiesWithEmployees.has(id));
         
-        Promise.all(entitiesToRun.map(entId => {
+        Promise.all(entitiesToRun.map((entId: string) => {
           return payrollApi.createRun({
             period,
             entity: entId,
@@ -230,15 +244,11 @@ function OneClickPanel({ onConfirmChange, canViewConfidential }: { onConfirmChan
         });
       }
     }, 320);
-    return () => clearInterval(t);
-  }, [phase, cutoff, employees.length, includeBonus, includeLoans, includeReimb, period, entity, empCount, grossEst, dedEst, netEst, entities]);
+  };
 
   useEffect(() => { ref.current?.scrollTo({ top: ref.current.scrollHeight, behavior: "smooth" }); }, [logs]);
 
   if (phase === "confirm") {
-    const flatEmployees = previewData.filter(d => entityFilter === "__all__" || d.entity === entityFilter).flatMap(d => {
-       return (d.employeeDetails || []).map((emp: any) => ({ ...emp, _entity: d.entity }));
-    });
     
     return (
       <div className="animate-in fade-in slide-in-from-bottom-4 mt-2">
@@ -305,8 +315,8 @@ function OneClickPanel({ onConfirmChange, canViewConfidential }: { onConfirmChan
                             {ALL_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => {
                               const isFinancial = ['totalAmount', 'deduction', 'pf', 'pt', 'reimbursement', 'incentive', 'payableSalary', 'currentSalary'].includes(col.id);
                               return (
-                                <td key={col.id} className="px-2.5 py-1.5 align-middle border-r border-border">
-                                  {isEditing && isFinancial ? (
+                              <td key={col.id} className={`px-2.5 py-1.5 align-middle border-r border-border ${isFinancial ? 'text-right' : ['presentDays', 'leaves', 'lopDays', 'ot', 'daysPaid'].includes(col.id) ? 'text-center' : 'text-left'}`}>
+                                {isEditing && isFinancial ? (
                                     <Input type="number" className="h-7 w-24 px-2 text-xs font-mono border-primary/50 focus-visible:ring-primary/30" value={editForm[col.id]} onChange={e => setEditForm({...editForm, [col.id]: parseFloat(e.target.value) || 0})} />
                                   ) : col.id === 'attendance' ? (
                                     <div className="flex flex-col w-36 text-[11px] bg-muted/20 p-2 rounded border border-border/40 shadow-sm">
@@ -332,7 +342,7 @@ function OneClickPanel({ onConfirmChange, canViewConfidential }: { onConfirmChan
                                     ) : (
                                       isFinancial 
                                         ? (canViewConfidential ? fmtINR(emp[col.id] || 0) : "****") 
-                                        : (typeof emp[col.id] === 'number' && !isFinancial) ? emp[col.id] : emp[col.id] || "—"
+                                        : (emp[col.id] !== undefined && emp[col.id] !== null && emp[col.id] !== "") ? emp[col.id] : "—"
                                   )}
                                 </td>
                               );
@@ -356,13 +366,15 @@ function OneClickPanel({ onConfirmChange, canViewConfidential }: { onConfirmChan
               </div>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-4 border-t">
                 <div className="flex gap-6">
+                  <Stat label="Total Employees" value={String(empCount)} />
+                  <Stat label="Month" value={`${new Date(period + "-01").toLocaleString("en-US", { month: "short" })} (${new Date(parseInt(period.split('-')[0]), parseInt(period.split('-')[1]), 0).getDate()} days)`} />
                   <Stat label="Total Gross" value={canViewConfidential ? fmtINR(previewData.reduce((sum, d) => sum + d.gross, 0)) : "***"} />
                   <Stat label="Total Deductions" value={canViewConfidential ? fmtINR(previewData.reduce((sum, d) => sum + d.deduction, 0)) : "***"} />
                   <Stat label="Total Net Payout" value={canViewConfidential ? fmtINR(previewData.reduce((sum, d) => sum + d.net, 0)) : "***"} tone="success" />
                 </div>
                 <div className="flex items-center gap-3">
                   <Button variant="outline" onClick={() => { setPhase("setup"); if (onConfirmChange) onConfirmChange(false); }}>Cancel</Button>
-                  <Button onClick={() => { setPhase("running"); setPct(0); setLogs([]); if (onConfirmChange) onConfirmChange(false); }} className="gap-2 px-8 bg-indigo-600 hover:bg-indigo-700" disabled={isLoadingPreview || previewData.length === 0}><Rocket className="h-4 w-4" />Process & Send to CEO for Review</Button>
+                  <Button onClick={startEngine} className="gap-2 px-8 bg-indigo-600 hover:bg-indigo-700" disabled={isLoadingPreview || previewData.length === 0}><Rocket className="h-4 w-4" />Process & Send to CEO for Review</Button>
                 </div>
               </div>
             </div>
@@ -392,10 +404,33 @@ function OneClickPanel({ onConfirmChange, canViewConfidential }: { onConfirmChan
                   <Input type="date" value={cutoff} onChange={e => setCutoff(e.target.value)} className="pl-8" /></div>
               </div>
               <div className="sm:col-span-2"><Label className="text-xs">Entity</Label>
-                <Select value={entity} onValueChange={setEntity}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
-                  <SelectItem value="__all__">All entities ({employees.length} employees)</SelectItem>
-                  {entities.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.name} ({employees.filter((emp: any) => emp.entity === e.id).length})</SelectItem>)}
-                </SelectContent></Select>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between font-normal h-10 px-3">
+                      {selectedEntities.length === entities.length ? `All entities (${employees.length} employees)` : `${selectedEntities.length} entities selected`}
+                      <ChevronDown className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-full min-w-[300px] p-2 space-y-1">
+                    <DropdownMenuItem onSelect={(e) => {
+                      e.preventDefault();
+                      if (selectedEntities.length === entities.length) setSelectedEntities([]);
+                      else setSelectedEntities(entities.map((e: any) => String(e.id)));
+                    }} className="flex items-center gap-2 cursor-pointer font-medium border-b pb-2 mb-1">
+                      <Checkbox checked={selectedEntities.length === entities.length} className="border-slate-400" />
+                      All entities ({employees.length} employees)
+                    </DropdownMenuItem>
+                    {entities.map((e: any) => (
+                      <DropdownMenuItem key={e.id} onSelect={(ev) => {
+                        ev.preventDefault();
+                        setSelectedEntities(prev => prev.includes(String(e.id)) ? prev.filter(id => id !== String(e.id)) : [...prev, String(e.id)]);
+                      }} className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox checked={selectedEntities.includes(String(e.id))} className="border-slate-400" />
+                        {e.name} ({employees.filter((emp: any) => String(emp.entity) === String(e.id)).length})
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
             <div className="grid sm:grid-cols-3 gap-2 pt-2">
@@ -605,11 +640,11 @@ function ApprovalsPanel({ pendingRuns, canApprove, canViewConfidential }: { pend
     }
   };
 
-  const handleApprove = async (id: number) => {
+  const handleApprove = async () => {
     setIsProcessing(true);
     try {
-      await payrollApi.approveRun(id);
-      toast.success("✅ Payroll approved successfully! The run has been moved to Finance.", { duration: 5000 });
+      await Promise.all(pendingRuns.map((run: any) => payrollApi.approveRun(run.id)));
+      toast.success("✅ All pending payrolls approved successfully! They have been moved to Finance.", { duration: 5000 });
       setTimeout(() => window.location.reload(), 1500);
     } catch(e: any) {
       toast.error(e.message);
@@ -617,12 +652,12 @@ function ApprovalsPanel({ pendingRuns, canApprove, canViewConfidential }: { pend
     }
   };
 
-  const handleReject = async (id: number) => {
+  const handleReject = async () => {
     if (!comment) { toast.error("Please provide a rejection comment"); return; }
     setIsProcessing(true);
     try {
-      await payrollApi.rejectRun(id, comment);
-      toast.success("❌ Payroll rejected successfully.", { duration: 5000 });
+      await Promise.all(pendingRuns.map((run: any) => payrollApi.rejectRun(run.id, comment)));
+      toast.success("❌ All pending payrolls rejected successfully.", { duration: 5000 });
       setTimeout(() => window.location.reload(), 1500);
     } catch(e: any) {
       toast.error(e.message);
@@ -642,20 +677,20 @@ function ApprovalsPanel({ pendingRuns, canApprove, canViewConfidential }: { pend
 
   const ALL_COLUMNS = [
     { id: 'name', label: 'Employee Name' },
-    { id: 'email', label: 'Email' },
-    { id: 'number', label: 'Number' },
-    { id: 'workFrom', label: 'Work From' },
     { id: 'entity', label: 'Entity' },
     { id: 'department', label: 'Department' },
-    { id: 'bankName', label: 'Bank Name' },
     { id: 'acNo', label: 'AC No' },
-    { id: 'attendance', label: 'Attendance' },
+    { id: "presentDays", label: "Total Days present" },
+    { id: "leaves", label: "Annual Leaves" },
+    { id: "lopDays", label: "LOP" },
+    { id: "ot", label: "OT Overtime" },
+    { id: "daysPaid", label: "Payable Days" },
     { id: 'totalAmount', label: 'Total Amount' },
     { id: 'deduction', label: 'Deductions' },
     { id: 'payableSalary', label: 'Payable Salary' }
   ];
   
-  const visibleColumns = ['name', 'email', 'number', 'workFrom', 'entity', 'department', 'bankName', 'acNo', 'totalAmount', 'deduction', 'payableSalary'];
+  const visibleColumns = ALL_COLUMNS.map(c => c.id);
 
   return (
     <div className="space-y-4 mt-4">
@@ -685,7 +720,7 @@ function ApprovalsPanel({ pendingRuns, canApprove, canViewConfidential }: { pend
                   <div className="max-h-24 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                     {run.comments.map((c: any, i: number) => (
                       <div key={i} className="text-xs border-b border-border/50 pb-2 last:border-0 last:pb-0">
-                        <span className="font-semibold text-foreground">{c.author_name}</span> 
+                        <span className="font-semibold text-foreground">{c.authorName || c.author_name}</span> 
                         <span className="text-muted-foreground ml-2">{new Date(c.timestamp).toLocaleString()}</span>
                         <p className={`mt-1 ${c.comment.toLowerCase().includes('reject') ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>{c.comment}</p>
                       </div>
@@ -707,8 +742,9 @@ function ApprovalsPanel({ pendingRuns, canApprove, canViewConfidential }: { pend
           
           {expandedRun === run.id && (
             <div className="mb-6 border rounded-md p-4 bg-muted/10">
-              <div className="grid sm:grid-cols-3 gap-4 mb-4">
+              <div className="grid sm:grid-cols-4 gap-4 mb-4">
                 <Stat label="Total Employees" value={String(run.employees)} />
+                <Stat label="Month" value={`${new Date(run.period + "-01").toLocaleString("en-US", { month: "short" })} (${new Date(parseInt(run.period.split('-')[0]), parseInt(run.period.split('-')[1]), 0).getDate()} days)`} />
                 <Stat label="Total Gross" value={canViewConfidential ? fmtINR(run.gross) : "****"} />
                 <Stat label="Total Deductions" value={canViewConfidential ? fmtINR(run.deductions) : "****"} />
               </div>
@@ -735,9 +771,13 @@ function ApprovalsPanel({ pendingRuns, canApprove, canViewConfidential }: { pend
                   <table className="w-full text-left border-collapse">
                     <thead className="bg-muted text-muted-foreground uppercase text-[10px] whitespace-nowrap sticky top-0 z-30 shadow-sm backdrop-blur-sm">
                       <tr>
-                        {ALL_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
-                          <th key={col.id} className="px-2.5 py-1.5 font-bold bg-muted border-b border-r border-border">{col.label}</th>
-                        ))}
+                        {ALL_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => {
+                          const isFinancial = ['totalAmount', 'deduction', 'payableSalary', 'pf', 'pt', 'reimbursement', 'incentive'].includes(col.id);
+                          const alignClass = isFinancial ? 'text-right' : ['presentDays', 'leaves', 'lopDays', 'ot', 'daysPaid'].includes(col.id) ? 'text-center' : 'text-left';
+                          return (
+                            <th key={col.id} className={`px-2.5 py-1.5 font-bold bg-muted border-b border-r border-border ${alignClass}`}>{col.label}</th>
+                          );
+                        })}
                       </tr>
                     </thead>
                     <tbody className="whitespace-nowrap text-[12px]">
@@ -749,14 +789,11 @@ function ApprovalsPanel({ pendingRuns, canApprove, canViewConfidential }: { pend
                             {ALL_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => {
                               const isFinancial = ['totalAmount', 'deduction', 'payableSalary', 'pf', 'pt', 'reimbursement', 'incentive'].includes(col.id);
                               return (
-                                <td key={col.id} className="px-2.5 py-1.5 align-middle border-r border-border">
-                                  {col.id === 'attendance' ? (
-                                    <div className="flex gap-2"><span className="text-muted-foreground">Total:</span>{emp.totalDays} <span className="text-muted-foreground ml-2">Paid:</span>{emp.presentDays}</div>
-                                  ) : (
-                                    isFinancial
-                                      ? (canViewConfidential ? fmtINR(emp[col.id] || 0) : "****")
-                                      : (typeof emp[col.id] === 'number' ? emp[col.id] : emp[col.id])
-                                  )}
+                              <td key={col.id} className={`px-2.5 py-1.5 align-middle border-r border-border ${isFinancial ? 'text-right' : ['presentDays', 'leaves', 'lopDays', 'ot', 'daysPaid'].includes(col.id) ? 'text-center' : 'text-left'}`}>
+                                {isFinancial
+                                  ? (canViewConfidential ? fmtINR(emp[col.id] || 0) : "****")
+                                  : (emp[col.id] !== undefined && emp[col.id] !== null && emp[col.id] !== "") ? emp[col.id] : "—"
+                                }
                                 </td>
                               );
                             })}
@@ -769,19 +806,31 @@ function ApprovalsPanel({ pendingRuns, canApprove, canViewConfidential }: { pend
               )}
             </div>
           )}
-          
-          <div className="flex items-center gap-4 mt-4">
-            <div className="flex-1 space-y-1">
-              <Label className="text-xs text-muted-foreground">Rejection Comment (Required if rejecting)</Label>
-              <Input className="h-9 bg-background" value={comment} onChange={e => setComment(e.target.value)} placeholder="E.g. Bonus amounts look incorrect for sales team..." />
-            </div>
-            <div className="flex gap-3 pt-5">
-              <Button variant="destructive" onClick={() => handleReject(run.id)} disabled={isProcessing || !canApprove}>Reject</Button>
-              <Button className="bg-success text-success-foreground hover:bg-success/90" onClick={() => handleApprove(run.id)} disabled={isProcessing || !canApprove}>Accept</Button>
-            </div>
-          </div>
         </Card>
       ))}
+
+      <Card className="p-6 mt-8 border-primary/30 shadow-md bg-muted/10 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-1 h-full bg-primary/60"></div>
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" /> Batch Approval Action</h3>
+          <p className="text-sm text-muted-foreground mt-1">Accept or reject all pending entity payroll runs simultaneously. This action applies to all {pendingRuns.length} pending runs above.</p>
+        </div>
+        
+        <div className="flex flex-col md:flex-row md:items-start gap-6 bg-white p-4 rounded border shadow-sm">
+          <div className="flex-1 space-y-1.5">
+            <Label className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Rejection Comment (Required if rejecting)</Label>
+            <Input className="h-10 bg-background focus-visible:ring-primary/50" value={comment} onChange={e => setComment(e.target.value)} placeholder="E.g. Bonus amounts look incorrect for sales team..." />
+          </div>
+          <div className="flex gap-3 md:pt-6 w-full md:w-auto">
+            <Button variant="destructive" className="flex-1 md:flex-none shadow-sm hover:shadow" onClick={handleReject} disabled={isProcessing || !canApprove}>
+              Reject All
+            </Button>
+            <Button className="flex-1 md:flex-none bg-success text-success-foreground hover:bg-success/90 shadow-sm hover:shadow" onClick={handleApprove} disabled={isProcessing || !canApprove}>
+              Accept All
+            </Button>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }

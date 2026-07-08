@@ -69,11 +69,11 @@ function LeavePage() {
 
   const mappedLeaves = leaves.map((r: any) => ({
     ...r,
-    from: r.start_date,
-    to: r.end_date,
-    days: r.total_days,
-    type: r.leave_type_code,
-    empName: r.employee_name
+    from: r.startDate || r.start_date,
+    to: r.endDate || r.end_date,
+    days: r.totalDays || r.total_days,
+    type: r.leaveTypeCode || r.leave_type_code,
+    empName: r.employeeName || r.employee_name
   }));
 
   return (
