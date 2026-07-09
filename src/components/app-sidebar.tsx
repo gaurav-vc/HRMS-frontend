@@ -4,7 +4,7 @@ import {
   CalendarCheck2, QrCode, ScanFace, Navigation, ClipboardList, CalendarDays,
   Wallet, Sliders, PlayCircle, ReceiptText, FileSpreadsheet, HandCoins, BadgeDollarSign,
   Settings, FileBarChart2, Clock, CalendarRange, Network, Palmtree, Calendar,
-  FileText, LayoutTemplate, CreditCard
+  FileText, LayoutTemplate, CreditCard, Inbox
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -44,6 +44,7 @@ const NAV: Group[] = [
   ]},
   { label: "Leave", items: [
     { title: "Leave Requests", url: "/leave", icon: CalendarDays },
+    { title: "Inbox", url: "/leave-inbox", icon: Inbox },
   ]},
   { label: "Holiday Planner", items: [
     { title: "Holiday Planner", url: "/holidays", icon: Palmtree },
@@ -52,6 +53,7 @@ const NAV: Group[] = [
   { label: "Payroll", items: [
     { title: "Payroll Overview", url: "/payroll", icon: Wallet },
     { title: "Salary Structure", url: "/payroll/structure", icon: Sliders },
+    { title: "Import CTC", url: "/payroll/import-ctc", icon: FileSpreadsheet },
     { title: "Run Payroll", url: "/payroll/run", icon: PlayCircle },
     { title: "Salary Slips", url: "/payroll/slips", icon: ReceiptText },
     { title: "Compliance", url: "/payroll/compliance", icon: FileSpreadsheet },

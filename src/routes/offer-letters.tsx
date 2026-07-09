@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { PageHeader } from "@/components/page-header";
 import { useEffect, useState } from "react";
 import { offersApi } from "@/api";
@@ -10,6 +10,7 @@ export const Route = createFileRoute("/offer-letters")({
 });
 
 function OfferLettersDashboard() {
+  const navigate = useNavigate();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -56,7 +57,11 @@ function OfferLettersDashboard() {
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {stats.map((stat, i) => (
-              <Card key={i} className="p-4 flex items-center justify-between">
+              <Card 
+                key={i} 
+                className="p-4 flex items-center justify-between cursor-pointer hover:shadow-md transition-all hover:border-primary/50 active:scale-[0.98]"
+                onClick={() => navigate({ to: '/all-offers', search: { filter: stat.label } })}
+              >
                 <div className="space-y-1">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{stat.label}</p>
                   <p className={`text-2xl font-bold ${stat.value > 0 ? stat.color : "text-foreground"}`}>{stat.value}</p>

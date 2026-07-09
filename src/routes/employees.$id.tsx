@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Briefcase, Building2, Calendar, FileText, Landmark, MapPin, Phone, Upload, User } from "lucide-react";
+import { ArrowLeft, Briefcase, Building2, Calendar, FileText, Landmark, MapPin, Phone, Upload, User, Loader2, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -11,10 +11,40 @@ import { Label } from "@/components/ui/label";
 import { fmtINR } from "@/lib/mock-data";
 import { employeesApi, departmentsApi, designationsApi, branchesApi, entitiesApi, sitesApi, payrollApi } from "@/api";
 
+import React from "react";
+
+class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
+  constructor(props: any) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error: any) { return { hasError: true, error }; }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ margin: '2rem', padding: '2rem', backgroundColor: '#fee2e2', border: '5px solid #ef4444', color: '#7f1d1d', borderRadius: '8px' }}>
+          <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem' }}>CRITICAL UI CRASH</h1>
+          <p style={{ fontSize: '1.25rem' }}>The page failed to load due to the following render error:</p>
+          <pre style={{ backgroundColor: 'black', color: 'red', padding: '1rem', marginTop: '1rem', overflowX: 'auto', whiteSpace: 'pre-wrap' }}>
+            {this.state.error?.stack || this.state.error?.message || String(this.state.error)}
+          </pre>
+          <div style={{ marginTop: '2rem' }}>
+            <Link to="/employees" style={{ textDecoration: 'underline', color: '#2563eb', fontWeight: 'bold' }}>
+              Go back to Employee List
+            </Link>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function EmployeeDetailWrapped() {
+  return <ErrorBoundary><EmployeeDetail /></ErrorBoundary>;
+}
+
 export const Route = createFileRoute("/employees/$id")({
-  component: EmployeeDetail,
+  component: EmployeeDetailWrapped,
   loader: async ({ params }) => {
-    const [e, allEmps, depts, desgs, branches, sites, entities, structures] = await Promise.all([
+    const [e, allEmps, depts, desgs, branches, sites, entities, structures, documents] = await Promise.all([
       employeesApi.getById(params.id).catch(e => { throw new Error(`getById failed: ${e.message}`) }),
       employeesApi.getAll().catch(e => { throw new Error(`getAll failed: ${e.message}`) }),
       departmentsApi.getAll().catch(e => { throw new Error(`depts failed: ${e.message}`) }),
@@ -22,9 +52,10 @@ export const Route = createFileRoute("/employees/$id")({
       branchesApi.getAll().catch(e => { throw new Error(`branches failed: ${e.message}`) }),
       sitesApi.getAll().catch(e => { throw new Error(`sites failed: ${e.message}`) }),
       entitiesApi.getAll().catch(e => { throw new Error(`entities failed: ${e.message}`) }),
-      payrollApi.getStructures().catch(e => { throw new Error(`structures failed: ${e.message}`) })
+      payrollApi.getStructures().catch(e => { throw new Error(`structures failed: ${e.message}`) }),
+      employeesApi.getDocuments(params.id).catch(() => [])
     ]);
-    return { e, allEmps, depts, desgs, branches, sites, entities, structures };
+    return { e, allEmps, depts, desgs, branches, sites, entities, structures, documents };
   },
   pendingComponent: () => <div className="p-12 text-center text-lg animate-pulse font-semibold">Loading employee data... Please wait.</div>,
   errorComponent: ({ error }: any) => (
@@ -45,7 +76,7 @@ export const Route = createFileRoute("/employees/$id")({
 });
 
 function EmployeeDetail() {
-  const { e: rawE, allEmps, depts, desgs, branches, sites, entities, structures } = Route.useLoaderData();
+  const { e: rawE, allEmps, depts, desgs, branches, sites, entities, structures, documents: initialDocs } = Route.useLoaderData();
   
   // Normalize snake_case to camelCase in case the backend renderer missed it
   const e = {
@@ -65,6 +96,7 @@ function EmployeeDetail() {
   const [taxRegime, setTaxRegime] = useState(e.taxRegime || "New");
   const [taxSavingDeductions, setTaxSavingDeductions] = useState(e.taxSavingDeductions || "0.00");
   const [isSaving, setIsSaving] = useState(false);
+  const [docs, setDocs] = useState<any[]>(Array.isArray(initialDocs) ? initialDocs : ((initialDocs as any)?.results || []));
 
   const handleSavePayroll = async () => {
     try {
@@ -217,11 +249,34 @@ function EmployeeDetail() {
         {tab === "documents" && (
           <Card className="p-6">
             <div className="grid sm:grid-cols-3 gap-3">
-              {["Offer Letter","Aadhaar Card","PAN Card","Bank Passbook","Previous Form 16","Address Proof"].map(d => (
-                <div key={d} className="p-4 rounded-md border flex items-center justify-between"><div><div className="text-sm font-medium">{d}</div><div className="text-xs text-muted-foreground">Uploaded</div></div><Button size="sm" variant="outline">View</Button></div>
+              {docs.map(d => (
+                <div key={d.id} className="p-4 rounded-md border flex items-center justify-between">
+                  <div className="min-w-0 pr-2">
+                    <div className="text-sm font-medium truncate">{d.documentType || d.document_type}</div>
+                    <div className="text-xs text-muted-foreground truncate">{d.name}</div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button size="sm" variant="outline" asChild>
+                      <a href={d.file} target="_blank" rel="noopener noreferrer">View</a>
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={async () => {
+                      if (confirm("Are you sure you want to delete this document?")) {
+                        try {
+                          await employeesApi.deleteDocument(d.id);
+                          setDocs(docs.filter(doc => doc.id !== d.id));
+                          toast.success("Document deleted");
+                        } catch (e: any) {
+                          toast.error(e.message || "Failed to delete document");
+                        }
+                      }
+                    }}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
               ))}
+              {docs.length === 0 && <div className="text-muted-foreground text-sm col-span-3">No documents uploaded for this employee.</div>}
             </div>
-            <Button className="mt-4"><Upload className="h-4 w-4 mr-1" />Upload Document</Button>
           </Card>
         )}
         

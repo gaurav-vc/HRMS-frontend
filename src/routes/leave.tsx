@@ -6,8 +6,6 @@ import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { StatCard } from "@/components/stat-card";
-import { CalendarDays } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -17,9 +15,8 @@ import { leavesApi, employeesApi } from "@/api";
 
 export const Route = createFileRoute("/leave")({ 
   loader: async () => {
-    const [leavesRaw, dashboard, typesRaw, balancesRaw, employeesRaw] = await Promise.all([
-      leavesApi.getAll(),
-      leavesApi.getDashboard(),
+    const [leavesRaw, typesRaw, balancesRaw, employeesRaw] = await Promise.all([
+      leavesApi.getAll('my_leaves'),
       leavesApi.getTypes(),
       leavesApi.getLeaveBalances(),
       employeesApi.getAll()
@@ -28,28 +25,17 @@ export const Route = createFileRoute("/leave")({
     const types = Array.isArray(typesRaw) ? typesRaw : (typesRaw as any)?.results || [];
     const balances = Array.isArray(balancesRaw) ? balancesRaw : (balancesRaw as any)?.results || [];
     const employees = Array.isArray(employeesRaw) ? employeesRaw : (employeesRaw as any)?.results || [];
-    return { leaves, dashboard, types, balances, employees };
+    return { leaves, types, balances, employees };
   },
   component: LeavePage 
 });
 
 function LeavePage() {
-  const { leaves, dashboard, types, balances, employees } = Route.useLoaderData();
+  const { leaves, types, balances, employees } = Route.useLoaderData();
   const router = useRouter();
   const [createOpen, setCreateOpen] = useState(false);
   const [balancesOpen, setBalancesOpen] = useState(false);
   const [form, setForm] = useState({ employee: "", leave_type: "", start_date: "", end_date: "", total_days: "", reason: "" });
-
-  const act = async (id: string | number, s: "Approved" | "Rejected") => { 
-    try {
-      if (s === "Approved") await leavesApi.approveLeave(id, { manager_comments: "Approved by manager" });
-      else await leavesApi.rejectLeave(id, { manager_comments: "Rejected by manager" });
-      toast.success(`Leave ${s.toLowerCase()}`); 
-      router.invalidate();
-    } catch(err: any) {
-      toast.error(err.message || `Failed to ${s.toLowerCase()} leave`);
-    }
-  };
 
   const submitNew = async () => {
     if (!form.employee || !form.leave_type || !form.start_date || !form.end_date) {
@@ -79,40 +65,33 @@ function LeavePage() {
   return (
     <>
       <PageHeader 
-        title="Leave Management" 
-        description="Apply, approve and track leaves across the company" 
+        title="My Leave Requests" 
+        description="Track your requested leaves and their approval status." 
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setBalancesOpen(true)}>View Balances</Button>
-            <Button onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4 mr-1" />Apply Leave</Button>
+            <Button onClick={() => setCreateOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white"><Plus className="h-4 w-4 mr-1" />Apply for leave</Button>
           </div>
         } 
       />
-      <div className="grid gap-4 sm:grid-cols-3 mb-6">
-        <StatCard label="Pending" value={String(dashboard?.pending || 0)} icon={CalendarDays} tone="warning" />
-        <StatCard label="Approved" value={String(dashboard?.approved || 0)} icon={CalendarDays} tone="success" />
-        <StatCard label="Rejected" value={String(dashboard?.rejected || 0)} icon={CalendarDays} />
-      </div>
       
-      <DataTable rows={mappedLeaves} rowKey={(r: any) => r.id} searchKeys={[(r: any) => r.empName, "reason"]} filename="leaves.csv"
-        filters={[
-          { label: "Status", key: "status", options: ["Pending","Approved","Rejected"].map(s => ({ value: s, label: s })), predicate: (r: any, v: any) => r.status === v },
-          { label: "Type", key: "type", options: types.map((t: any) => ({ value: t.code, label: t.name })), predicate: (r: any, v: any) => r.type === v },
-        ]}
-        columns={[
-          { key: "empName", header: "Employee", accessor: (r: any) => r.empName },
-          { key: "type", header: "Type", render: (r: any) => <Badge variant="outline">{r.type}</Badge> },
-          { key: "from", header: "From", accessor: (r: any) => r.from, sortable: true },
-          { key: "to", header: "To", accessor: (r: any) => r.to },
-          { key: "days", header: "Days", accessor: (r: any) => r.days },
-          { key: "reason", header: "Reason", accessor: (r: any) => r.reason },
-          { key: "status", header: "Status", render: (r: any) => <Badge className={r.status === "Approved" ? "bg-success text-success-foreground" : r.status === "Rejected" ? "bg-destructive text-destructive-foreground" : "bg-warning text-warning-foreground"}>{r.status}</Badge> },
-        ]}
-        actions={(r: any) => r.status === "Pending" ? <div className="flex justify-end gap-1">
-          <Button size="sm" variant="outline" className="text-success border-success/40" onClick={() => act(r.id, "Approved")}><Check className="h-4 w-4" /></Button>
-          <Button size="sm" variant="outline" className="text-destructive border-destructive/40" onClick={() => act(r.id, "Rejected")}><X className="h-4 w-4" /></Button>
-        </div> : <span className="text-xs text-muted-foreground">—</span>}
-      />
+      <div className="bg-white border rounded-lg shadow-sm mt-6">
+        <DataTable rows={mappedLeaves} rowKey={(r: any) => r.id} searchKeys={[(r: any) => r.empName, "reason"]} filename="my_leaves.csv"
+          filters={[
+            { label: "Status", key: "status", options: ["Pending","Approved","Rejected"].map(s => ({ value: s, label: s })), predicate: (r: any, v: any) => r.status === v },
+            { label: "Type", key: "type", options: types.map((t: any) => ({ value: t.code, label: t.name })), predicate: (r: any, v: any) => r.type === v },
+          ]}
+          columns={[
+            { key: "empName", header: "Employee", accessor: (r: any) => r.empName },
+            { key: "type", header: "Type", render: (r: any) => <Badge variant="outline">{r.type}</Badge> },
+            { key: "from", header: "From", accessor: (r: any) => r.from, sortable: true },
+            { key: "to", header: "To", accessor: (r: any) => r.to },
+            { key: "days", header: "Days", accessor: (r: any) => r.days },
+            { key: "reason", header: "Reason", accessor: (r: any) => r.reason },
+            { key: "status", header: "Status", render: (r: any) => <Badge className={r.status === "Approved" ? "bg-success text-success-foreground" : r.status === "Rejected" ? "bg-destructive text-destructive-foreground" : "bg-warning text-warning-foreground"}>{r.status}</Badge> },
+          ]}
+        />
+      </div>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-2xl">
@@ -144,20 +123,24 @@ function LeavePage() {
       </Dialog>
 
       <Dialog open={balancesOpen} onOpenChange={setBalancesOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Employee Leave Balances</DialogTitle><DialogDescription>Current leave allocation and utilization.</DialogDescription></DialogHeader>
+          
           <DataTable rows={balances} rowKey={(r: any) => r.id} searchKeys={[(r: any) => r.employeeName]} filename="balances.csv"
             columns={[
-              { key: "empName", header: "Employee", accessor: (r: any) => r.employeeName },
-              { key: "type", header: "Leave Type", accessor: (r: any) => r.leaveTypeCode },
-              { key: "allocated", header: "Allocated", accessor: (r: any) => r.allocatedDays },
-              { key: "used", header: "Used", accessor: (r: any) => r.usedDays },
-              { key: "remaining", header: "Remaining", accessor: (r: any) => r.remainingDays },
-              { key: "status", header: "Status", render: (r: any) => (
-                <Badge variant={r.remainingDays < 2 ? "destructive" : "outline"}>
-                  {r.remainingDays < 2 ? "Low Balance" : "Healthy"}
-                </Badge>
-              )}
+              { key: "employeeName", header: "Employee" },
+              { key: "leaveTypeCode", header: "Leave Type" },
+              { key: "allocatedDays", header: "Allocated" },
+              { key: "usedDays", header: "Used" },
+              { key: "remainingDays", header: "Remaining" },
+              { key: "status", header: "Status", render: (r: any) => {
+                const rem = Number(r.remainingDays) || 0;
+                return (
+                  <Badge variant={rem < 2 ? "destructive" : "outline"}>
+                    {rem < 2 ? "Low Balance" : "Healthy"}
+                  </Badge>
+                );
+              }}
             ]}
           />
         </DialogContent>

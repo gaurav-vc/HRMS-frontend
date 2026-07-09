@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import React, { useState } from "react";
 import { toast } from "sonner";
 import { Download, Mail, Eye, FileDown } from "lucide-react";
@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { db, empName, fmtINR, type Employee } from "@/lib/mock-data";
 import { openPayslipPdf } from "@/lib/payslip-pdf";
 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { payrollApi } from "@/api";
 
 const getHtmlToImage = () => {
@@ -61,8 +62,14 @@ const generatePdf = async (element: HTMLElement, filename: string, download: boo
 };
 
 export const Route = createFileRoute("/payroll/slips")({
-  loader: async () => {
-    const data = await payrollApi.getSlips();
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      period: search.period as string | undefined,
+    }
+  },
+  loaderDeps: ({ search: { period } }) => ({ period }),
+  loader: async ({ deps: { period } }) => {
+    const data = await payrollApi.getSlips(period);
     return { data };
   },
   component: SlipsPage
@@ -70,6 +77,7 @@ export const Route = createFileRoute("/payroll/slips")({
 
 function SlipsPage() {
   const { data } = Route.useLoaderData();
+  const navigate = useNavigate({ from: Route.fullPath });
   const period = data.period;
   const rows = data.slips.map((s: any) => {
     return s;
@@ -82,11 +90,39 @@ function SlipsPage() {
   const [open, setOpen] = useState<any | null>(null);
 
   const totalPayroll = rows.reduce((acc: number, r: any) => acc + r.gross, 0);
-  const avgNetPay = rows.length > 0 ? Math.round(rows.reduce((acc: number, r: any) => acc + r.net, 0) / rows.length) : 0;
+  
+  const [yearStr, monthStr] = period.split('-');
+  const daysInMonth = new Date(parseInt(yearStr), parseInt(monthStr), 0).getDate();
+
+  const handlePeriodChange = (val: string) => {
+    navigate({ search: { period: val } });
+  };
+
+  // Generate last 12 months for dropdown
+  const periodOptions = [];
+  let d = new Date();
+  for (let i = 0; i < 12; i++) {
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const y = d.getFullYear();
+    periodOptions.push(`${y}-${m}`);
+    d.setMonth(d.getMonth() - 1);
+  }
 
   return (
     <>
-      <PageHeader title="Salary Slips" description={`Payslips for ${period}`} />
+      <div className="flex justify-between items-center mb-6">
+        <PageHeader title="Salary Slips" description={`Payslips for ${period}`} />
+        <div className="w-[180px]">
+          <Select value={period} onValueChange={handlePeriodChange}>
+            <SelectTrigger><SelectValue placeholder="Select Month" /></SelectTrigger>
+            <SelectContent>
+              {periodOptions.map(p => (
+                <SelectItem key={p} value={p}>{p}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       <div className="grid sm:grid-cols-3 gap-4 mb-6">
         <Card className="p-5 shadow-[var(--shadow-card)]">
@@ -100,15 +136,18 @@ function SlipsPage() {
           <div className="text-xs text-muted-foreground mt-2">On schedule</div>
         </Card>
         <Card className="p-5 shadow-[var(--shadow-card)]">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Avg. Net Pay</div>
-          <div className="text-2xl font-bold">{fmtINR(avgNetPay)}</div>
+          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Total Working Days</div>
+          <div className="text-2xl font-bold">{daysInMonth}</div>
+          <div className="text-xs text-muted-foreground mt-2">
+            Days in {new Date(parseInt(yearStr), parseInt(monthStr) - 1).toLocaleString('default', { month: 'long' })} {yearStr}
+          </div>
         </Card>
       </div>
 
       <DataTable rows={rows} rowKey={r => r.id} tableId="payslips" searchKeys={["firstName", "lastName", "code", "email"]} filename={`payslips-${period}.csv`}
         columns={[
-          { key: "emp", header: "Employee", render: r => <div><div className="font-medium">{r.firstName} {r.lastName}</div><div className="text-xs text-muted-foreground">{r.code}</div></div> },
-          { key: "bank", header: "Bank", render: r => <span className="text-xs">{r.bankName} • ****{r.bankAccount?.slice(-4)}</span> },
+          { key: "emp", header: "Employee", render: r => <div><div className="font-medium">{r.firstName} {r.lastName}</div><div className="text-xs text-muted-foreground">{r.code}</div></div>, accessor: r => `${r.firstName || ''} ${r.lastName || ''}`.trim() },
+          { key: "bank", header: "Bank", render: r => <span className="text-xs">{r.bankName} • ****{r.bankAccount?.slice(-4)}</span>, accessor: r => r.bankName ? `${r.bankName} • ****${r.bankAccount?.slice(-4)}` : "—" },
           { key: "gross", header: "Gross", accessor: r => r.gross, render: r => fmtINR(r.gross), sortable: true },
           { key: "ded", header: "Deductions", accessor: r => r.ded, render: r => fmtINR(r.ded), sortable: true },
           { key: "net", header: "Net Pay", accessor: r => r.net, render: r => <span className="font-semibold text-success">{fmtINR(r.net)}</span>, sortable: true },

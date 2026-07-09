@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { attendanceApi } from "@/api";
-import { format, addDays, startOfWeek, subWeeks, addWeeks } from "date-fns";
+import { format, addDays, startOfWeek, subWeeks, addWeeks, isToday } from "date-fns";
 
 export const Route = createFileRoute("/attendance/roster")({
   component: RosterPage,
@@ -166,12 +166,15 @@ function RosterPage() {
           <thead className="bg-muted/50 border-b">
             <tr>
               <th className="px-4 py-3 font-medium text-muted-foreground border-r w-[250px]">Employee</th>
-              {days.map(d => (
-                <th key={d.toISOString()} className="px-4 py-3 font-medium border-r min-w-[140px] align-top">
-                  <div className="text-xs text-muted-foreground uppercase">{format(d, "EEE")}</div>
-                  <div className="font-semibold text-foreground">{format(d, "MMM d")}</div>
+              {days.map(d => {
+                const isCurrentDay = isToday(d);
+                return (
+                <th key={d.toISOString()} className={`px-4 py-3 font-medium border-r min-w-[140px] align-top relative ${isCurrentDay ? 'bg-primary/5' : ''}`}>
+                  {isCurrentDay && <div className="absolute top-0 left-0 w-full h-1 bg-primary" />}
+                  <div className={`text-xs uppercase ${isCurrentDay ? 'text-primary font-bold' : 'text-muted-foreground'}`}>{format(d, "EEE")}</div>
+                  <div className={`font-semibold ${isCurrentDay ? 'text-primary' : 'text-foreground'}`}>{format(d, "MMM d")}</div>
                 </th>
-              ))}
+              )})}
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -184,11 +187,12 @@ function RosterPage() {
                 {days.map(d => {
                   const dateStr = format(d, "yyyy-MM-dd");
                   const assignment = (row.shifts || {})[dateStr];
+                  const isCurrentDay = isToday(d);
                   
                   return (
                     <td 
                       key={dateStr} 
-                      className="p-1.5 border-r border-dashed cursor-pointer hover:bg-muted/80 transition-colors"
+                      className={`p-1.5 border-r border-dashed cursor-pointer hover:bg-muted/80 transition-colors ${isCurrentDay ? 'bg-primary/[0.03]' : ''}`}
                       onClick={() => handleCellClick(row.employee?.id, dateStr)}
                     >
                       {assignment && assignment.shiftDetails ? (

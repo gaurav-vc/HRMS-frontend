@@ -135,14 +135,14 @@ function RegPage() {
       <DataTable rows={rows} rowKey={r => String(r.id)} tableId="regularize" searchKeys={[r => r.employeeName, "reason"]} filename="regularizations.csv"
         filters={[{ label: "Status", key: "status", options: ["Pending","Approved","Rejected"].map(s => ({ value: s, label: s })), predicate: (r, v) => r.status === v }]}
         columns={[
-          { key: "emp", header: "Employee", render: r => r.employeeName },
+          { key: "emp", header: "Employee", render: r => r.employeeName, accessor: r => r.employeeName },
           { key: "date", header: "Date", render: r => r.attendanceDate, accessor: r => r.attendanceDate, sortable: true },
           { key: "in", header: "In", render: r => r.requestedCheckIn, accessor: r => r.requestedCheckIn },
           { key: "out", header: "Out", render: r => r.requestedCheckOut, accessor: r => r.requestedCheckOut },
-          { key: "reason", header: "Reason", render: r => <span className="text-sm">{r.reason}</span> },
-          { key: "reviewer", header: "Reviewer", render: r => r.managerComments ? <div className="text-xs"><div>Manager</div></div> : <span className="text-xs text-muted-foreground">—</span> },
-          { key: "comment", header: "Comment", render: r => r.managerComments ? <span className="text-xs italic">"{r.managerComments}"</span> : <span className="text-xs text-muted-foreground">—</span> },
-          { key: "status", header: "Status", render: r => <StatusBadge s={r.status} /> },
+          { key: "reason", header: "Reason", render: r => <span className="text-sm">{r.reason}</span>, accessor: r => r.reason },
+          { key: "reviewer", header: "Reviewer", render: r => r.managerComments ? <div className="text-xs"><div>Manager</div></div> : <span className="text-xs text-muted-foreground">—</span>, accessor: r => r.managerComments ? "Manager" : "—" },
+          { key: "comment", header: "Comment", render: r => r.managerComments ? <span className="text-xs italic">"{r.managerComments}"</span> : <span className="text-xs text-muted-foreground">—</span>, accessor: r => r.managerComments || "—" },
+          { key: "status", header: "Status", render: r => <StatusBadge s={r.status} />, accessor: r => r.status },
         ]}
         actions={r => <div className="flex justify-end gap-1">
           <Button size="sm" variant="ghost" title="History" onClick={() => setDetail(r)}><History className="h-4 w-4" /></Button>

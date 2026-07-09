@@ -1,7 +1,7 @@
-import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
+import { createFileRoute, useRouter, Link, Outlet, useMatchRoute } from "@tanstack/react-router";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { toast } from "sonner";
-import { Eye, Pencil, Trash2, UserPlus, Calculator, Send, CheckCircle, MailPlus } from "lucide-react";
+import { Eye, Pencil, Trash2, UserPlus, Calculator, Send, CheckCircle, MailPlus, Upload, Download } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -14,8 +14,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { employeesApi, departmentsApi, designationsApi, branchesApi, entitiesApi, sitesApi, payrollApi, offersApi, offerTemplatesApi } from "@/api";
 import type { Employee, Department, Designation, Branch, Entity, Site } from "@/lib/mock-data";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/employees")({
+  validateSearch: (search: Record<string, unknown>): { edit?: string; tab?: string } => {
+    return {
+      edit: search.edit as string | undefined,
+      tab: search.tab as string | undefined,
+    };
+  },
   loader: async () => {
     const [employees, departments, designations, branches, entities, sites, structures, offers, offerTemplates] = await Promise.all([
       employeesApi.getAll(),
@@ -47,6 +54,7 @@ function EmployeesPage() {
   const [editing, setEditing] = useState<Employee | null>(null);
   const [activeTab, setActiveTab] = useState("directory");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const matchRoute = useMatchRoute();
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -72,13 +80,41 @@ function EmployeesPage() {
     // Reset input
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
+  const downloadSampleTemplate = () => {
+    const headers = "First Name,Last Name,Email,Phone,Date of Birth,Gender,Address,Employee Code,Date of Joining,Entity,Branch,Site,Department,Designation,Reporting Manager,Status,PAN,Aadhaar,UAN,ESI No.,Bank Name,IFSC Code,Bank Account No.\n";
+    const sampleRow = "John,Doe,john.doe@example.com,\t9876543210,01-01-1990,Male,123 Tech Park,EMP1001,01-01-2024,Main Entity,HQ,Site A,Engineering,Software Engineer,None,Active,ABCDE1234F,\t123456789012,\t100000000000,\tESI1234,HDFC Bank,HDFC0001234,\t12345678901234\n";
+    const blob = new Blob(["\uFEFF" + headers + sampleRow], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "Employee_Bulk_Import_Template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const searchParams = Route.useSearch();
 
   useEffect(() => { setRows(initial); }, [initial]);
 
-  const save = async (e: Employee) => {
+  useEffect(() => {
+    const editId = searchParams.edit;
+    if (editId && initial.length > 0) {
+      const emp = initial.find(e => String(e.id) === String(editId));
+      if (emp) {
+        setEditing(emp);
+        setOpen(true);
+      }
+    }
+  }, [initial, searchParams.edit]);
+  const save = async (e: Employee, pendingDocs?: {file: File, type: string}[]) => {
     try {
       const cleanData: any = { ...e };
-      // Convert empty strings to null for DRF validation
+      
+      if (!cleanData.firstName || !cleanData.lastName || !cleanData.email) {
+        toast.error("First Name, Last Name, and Email are required.");
+        return;
+      }
+      
       if (!cleanData.dob) cleanData.dob = null;
       if (!cleanData.doj) cleanData.doj = null;
       if (!cleanData.manager || cleanData.manager === " ") cleanData.manager = null;
@@ -89,14 +125,33 @@ function EmployeesPage() {
       if (!cleanData.designation) cleanData.designation = null;
       if (!cleanData.salaryStructure || cleanData.salaryStructure === " ") cleanData.salaryStructure = null;
 
+      let empId = e.id;
       if (editing && e.id) {
         await employeesApi.update(e.id, cleanData);
         toast.success("Employee updated");
       } else {
         const { id, ...data } = cleanData;
         const result = await employeesApi.create(data);
+        empId = result.id;
         toast.success("Employee created and added to Pending Offers!");
       }
+      
+      if (pendingDocs && pendingDocs.length > 0 && empId) {
+        toast.info("Uploading documents...");
+        let allSuccess = true;
+        for (const doc of pendingDocs) {
+          try {
+            await employeesApi.uploadDocument(empId, doc.file, doc.type);
+          } catch (err: any) {
+            allSuccess = false;
+            toast.error(`Failed to upload ${doc.file.name}: ${err.message}`);
+          }
+        }
+        if (allSuccess) {
+          toast.success("Documents uploaded successfully!");
+        }
+      }
+
       setOpen(false); setEditing(null);
       router.invalidate();
     } catch (err: any) {
@@ -115,10 +170,25 @@ function EmployeesPage() {
     }
   };
 
+  const isExact = matchRoute({ to: '/employees', fuzzy: false });
+  if (!isExact) {
+    return <Outlet />;
+  }
+
   return (
-    <>
+    <div className="flex flex-col h-full bg-slate-50/50">
       <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
-      <PageHeader title="Employees" description="Complete employee directory across all entities" actions={<Button onClick={() => fileInputRef.current?.click()} variant="outline"><UserPlus className="h-4 w-4 mr-1" />Bulk Import</Button>} />
+      <PageHeader 
+        title="Employees" 
+        description="Complete employee directory across all entities" 
+        actions={
+          <div className="flex gap-2 pointer-events-auto">
+            <Button onClick={downloadSampleTemplate} variant="outline" className="bg-white"><Download className="h-4 w-4 mr-1" />Download Template</Button>
+            <Button onClick={() => fileInputRef.current?.click()} variant="outline"><UserPlus className="h-4 w-4 mr-1" />Bulk Import</Button>
+            <Button onClick={() => { setEditing(null); setOpen(true); }}><UserPlus className="h-4 w-4 mr-1" />Onboard Employee</Button>
+          </div>
+        } 
+      />
       
       <div className="mb-4 flex space-x-2 border-b">
         <button className={`px-4 py-2 text-sm font-medium ${activeTab === "directory" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`} onClick={() => setActiveTab("directory")}>Directory</button>
@@ -126,15 +196,16 @@ function EmployeesPage() {
 
       {activeTab === "directory" && (
         <DataTable
+          key="emp-table" tableId="employees-directory"
           rows={rows} rowKey={r => r.id} searchKeys={["firstName","lastName","email","code","phone"]}
           filters={[
-            { label: "Entity", key: "entity", options: entities.map(e => ({ value: e.id, label: e.code })), predicate: (r, v) => String(r.entity) === String(v) },
-            { label: "Department", key: "department", options: departments.map(d => ({ value: d.id, label: d.name })), predicate: (r, v) => String(r.department) === String(v) },
-            { label: "Status", key: "status", options: ["Active","On Leave","Inactive","Draft"].map(s => ({ value: s, label: s })), predicate: (r, v) => r.status === v },
+            { label: "Entity", key: "entity", options: entities.map((e: any) => ({ value: e.id, label: e.code })), predicate: (r: any, v: any) => String(r.entity) === String(v) },
+            { label: "Department", key: "department", options: departments.map((d: any) => ({ value: d.id, label: d.name })), predicate: (r: any, v: any) => String(r.department) === String(v) },
+            { label: "Status", key: "status", options: ["Active","On Leave","Inactive","Draft"].map(s => ({ value: s, label: s })), predicate: (r: any, v: any) => r.status === v },
           ]}
           onCreate={() => { setEditing(null); setOpen(true); }} createLabel="Onboard Employee" filename="employees.csv"
           columns={[
-            { key: "emp", header: "Employee", accessor: (r: any) => `${r.firstName || r.first_name || ""} ${r.lastName || r.last_name || ""}`, sortable: true, render: (r: any) => {
+            { key: "emp", header: "Employee", noExport: true, accessor: (r: any) => `${r.firstName || r.first_name || ""} ${r.lastName || r.last_name || ""}`, sortable: true, render: (r: any) => {
               const fName = r.firstName || r.first_name || "";
               const lName = r.lastName || r.last_name || "";
               return (
@@ -143,13 +214,31 @@ function EmployeesPage() {
                 <div className="min-w-0"><div className="font-medium group-hover:text-primary truncate">{fName} {lName}</div><div className="text-xs text-muted-foreground truncate">{r.code} • {r.email}</div></div>
               </Link>
             )}},
-            { key: "desg", header: "Designation", render: r => designations.find(d => String(d.id) === String(r.designation))?.title ?? "—" },
-            { key: "dept", header: "Department", render: r => departments.find(d => String(d.id) === String(r.department))?.name ?? "—" },
-            { key: "branch", header: "Branch", render: r => branches.find(b => String(b.id) === String(r.branch))?.name ?? "—" },
-            { key: "doj", header: "Joined", accessor: r => r.doj, sortable: true },
-            { key: "status", header: "Status", render: r => <Badge className={r.status === "Active" ? "bg-success text-success-foreground" : r.status === "On Leave" ? "bg-warning text-warning-foreground" : r.status === "Draft" ? "bg-secondary text-secondary-foreground" : ""}>{r.status}</Badge> },
+            { key: "fn", header: "First Name", accessor: (r: any) => r.firstName || r.first_name || "—", defaultHidden: true },
+            { key: "ln", header: "Last Name", accessor: (r: any) => r.lastName || r.last_name || "—", defaultHidden: true },
+            { key: "email", header: "Email", accessor: (r: any) => r.email ?? "—", defaultHidden: true },
+            { key: "phone", header: "Phone", accessor: (r: any) => r.phone ?? "—", defaultHidden: true },
+            { key: "dob", header: "Date of Birth", accessor: (r: any) => r.dob ? r.dob.split('-').reverse().join('-') : "—", defaultHidden: true },
+            { key: "gender", header: "Gender", accessor: (r: any) => r.gender ?? "—", defaultHidden: true },
+            { key: "address", header: "Address", accessor: (r: any) => r.address ?? "—", defaultHidden: true },
+            { key: "code", header: "Employee Code", accessor: (r: any) => r.code ?? "—", defaultHidden: true },
+            { key: "doj", header: "Date of Joining", accessor: (r: any) => r.doj ? r.doj.split('-').reverse().join('-') : "—", sortable: true },
+            { key: "entity", header: "Entity", accessor: (r: any) => entities.find((e: any) => String(e.id) === String(r.entity))?.name ?? "—", defaultHidden: true },
+            { key: "branch", header: "Branch", accessor: (r: any) => branches.find((b: any) => String(b.id) === String(r.branch))?.name ?? "—", render: (r: any) => branches.find((b: any) => String(b.id) === String(r.branch))?.name ?? "—" },
+            { key: "site", header: "Site", accessor: (r: any) => sites.find((s: any) => String(s.id) === String(r.site))?.name ?? "—", defaultHidden: true },
+            { key: "dept", header: "Department", accessor: (r: any) => departments.find((d: any) => String(d.id) === String(r.department))?.name ?? "—", render: (r: any) => departments.find((d: any) => String(d.id) === String(r.department))?.name ?? "—" },
+            { key: "desg", header: "Designation", accessor: (r: any) => designations.find((d: any) => String(d.id) === String(r.designation))?.title ?? "—", render: (r: any) => designations.find((d: any) => String(d.id) === String(r.designation))?.title ?? "—" },
+            { key: "manager", header: "Reporting Manager", accessor: (r: any) => { const m = rows.find((e: any) => String(e.id) === String(r.manager)) as any; return m ? `${m.firstName || m.first_name || ""} ${m.lastName || m.last_name || ""}`.trim() : "—"; }, defaultHidden: true },
+            { key: "status", header: "Status", accessor: (r: any) => r.status ?? "—", render: (r: any) => <Badge className={r.status === "Active" ? "bg-success text-success-foreground" : r.status === "On Leave" ? "bg-warning text-warning-foreground" : r.status === "Draft" ? "bg-secondary text-secondary-foreground" : ""}>{r.status}</Badge> },
+            { key: "pan", header: "PAN", accessor: (r: any) => r.pan ?? "—", defaultHidden: true },
+            { key: "aadhaar", header: "Aadhaar", accessor: (r: any) => r.aadhaar ?? "—", defaultHidden: true },
+            { key: "uan", header: "UAN", accessor: (r: any) => r.uan ?? "—", defaultHidden: true },
+            { key: "esi", header: "ESI No.", accessor: (r: any) => r.esi ?? "—", defaultHidden: true },
+            { key: "bankName", header: "Bank Name", accessor: (r: any) => r.bankName ?? "—", defaultHidden: true },
+            { key: "ifscCode", header: "IFSC Code", accessor: (r: any) => r.ifscCode ?? "—", defaultHidden: true },
+            { key: "bankAccount", header: "Bank Account No.", accessor: (r: any) => r.bankAccount ?? "—", defaultHidden: true },
           ]}
-          actions={r => <div className="flex justify-end gap-1">
+          actions={(r: any) => <div className="flex justify-end gap-1">
             <Link 
               to="/employees/$id" 
               params={{ id: String(r.id) }} 
@@ -162,9 +251,8 @@ function EmployeesPage() {
           </div>}
         />
       )}
-      
       <EmployeeDialog open={open} onOpenChange={setOpen} employee={editing} onSave={save} departments={departments} designations={designations} branches={branches} entities={entities} sites={sites} employees={rows} structures={structures} />
-    </>
+    </div>
   );
 }
 
@@ -175,13 +263,34 @@ function EmployeeDialog({ open, onOpenChange, employee, onSave, departments, des
   const [form, setForm] = useState<Employee>(employee ?? defaultForm as any);
   const [tab, setTab] = useState("personal");
   const [showEstimator, setShowEstimator] = useState(false);
+  const [pendingDocs, setPendingDocs] = useState<{file: File, type: string}[]>([]);
+  const [uploadDocType, setUploadDocType] = useState("Offer Letter");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const { user } = useAuth();
+  const canAddCTC = user?.role === 'super_admin' || user?.permissions?.can_add_ctc === true;
+
+  const searchParams = Route.useSearch();
+
+  useEffect(() => {
+    const tabParam = searchParams.tab;
+    if (tabParam === 'compensation' && canAddCTC) {
+      setTab('compensation');
+    }
+  }, [searchParams.tab, canAddCTC]);
 
   useEffect(() => {
     if (open) {
       setForm(employee ?? defaultForm as any);
-      setTab("personal");
+      setPendingDocs([]);
+      if (searchParams.tab === 'compensation' && canAddCTC) {
+        setTab("compensation");
+      } else {
+        setTab("personal");
+      }
     }
-  }, [open, employee]);
+  }, [open, employee, canAddCTC, searchParams.tab]);
+
   return (
     <Dialog open={open} onOpenChange={(b) => { onOpenChange(b); if (b && employee) setForm(employee); }}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -190,30 +299,32 @@ function EmployeeDialog({ open, onOpenChange, employee, onSave, departments, des
           <div className="flex border-b mb-4">
             <button className={`px-4 py-2 text-sm font-medium ${tab === "personal" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`} onClick={() => setTab("personal")}>Personal</button>
             <button className={`px-4 py-2 text-sm font-medium ${tab === "employment" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`} onClick={() => setTab("employment")}>Employment</button>
+            {canAddCTC && <button className={`px-4 py-2 text-sm font-medium ${tab === "compensation" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`} onClick={() => setTab("compensation")}>Compensation</button>}
             <button className={`px-4 py-2 text-sm font-medium ${tab === "compliance" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`} onClick={() => setTab("compliance")}>Compliance & Bank</button>
+            <button className={`px-4 py-2 text-sm font-medium ${tab === "documents" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`} onClick={() => setTab("documents")}>Documents</button>
           </div>
 
           {tab === "personal" && <div className="space-y-4 pt-2">
             <div className="grid grid-cols-2 gap-4">
-              <Field label="First Name"><Input value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })} /></Field>
-              <Field label="Last Name"><Input value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })} /></Field>
-              <Field label="Email"><Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></Field>
-              <Field label="Phone"><Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></Field>
-              <Field label="Date of Birth"><Input type="date" value={form.dob} onChange={e => setForm({ ...form, dob: e.target.value })} /></Field>
+              <Field label="First Name"><Input value={form.firstName || ""} onChange={e => setForm({ ...form, firstName: e.target.value })} /></Field>
+              <Field label="Last Name"><Input value={form.lastName || ""} onChange={e => setForm({ ...form, lastName: e.target.value })} /></Field>
+              <Field label="Email"><Input type="email" value={form.email || ""} onChange={e => setForm({ ...form, email: e.target.value })} /></Field>
+              <Field label="Phone"><Input value={form.phone || ""} onChange={e => setForm({ ...form, phone: e.target.value })} /></Field>
+              <Field label="Date of Birth"><Input type="date" value={form.dob || ""} onChange={e => setForm({ ...form, dob: e.target.value })} /></Field>
               <Field label="Gender">
-                <Select value={form.gender} onValueChange={v => setForm({ ...form, gender: v as any })}>
+                <Select value={form.gender || "Male"} onValueChange={v => setForm({ ...form, gender: v as any })}>
                   <SelectTrigger><SelectValue placeholder="Gender" /></SelectTrigger>
                   <SelectContent><SelectItem value="Male">Male</SelectItem><SelectItem value="Female">Female</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent>
                 </Select>
               </Field>
-              <div className="col-span-2"><Field label="Address"><Input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} /></Field></div>
+              <div className="col-span-2"><Field label="Address"><Input value={form.address || ""} onChange={e => setForm({ ...form, address: e.target.value })} /></Field></div>
             </div>
           </div>}
 
           {tab === "employment" && <div className="space-y-4 pt-2">
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Employee Code"><Input value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} /></Field>
-              <Field label="Date of Joining"><Input type="date" value={form.doj} onChange={e => setForm({ ...form, doj: e.target.value })} /></Field>
+              <Field label="Employee Code"><Input value={form.code || ""} onChange={e => setForm({ ...form, code: e.target.value })} /></Field>
+              <Field label="Date of Joining"><Input type="date" value={form.doj || ""} onChange={e => setForm({ ...form, doj: e.target.value })} /></Field>
               <Field label="Entity">
                 <Select value={String(form.entity || ' ')} onValueChange={v => setForm({ ...form, entity: v === ' ' ? null : v } as any)}>
                   <SelectTrigger><SelectValue placeholder="Select Entity" /></SelectTrigger>
@@ -271,6 +382,11 @@ function EmployeeDialog({ open, onOpenChange, employee, onSave, departments, des
                   <SelectContent><SelectItem value="Active">Active</SelectItem><SelectItem value="On Leave">On Leave</SelectItem><SelectItem value="Inactive">Inactive</SelectItem><SelectItem value="Draft">Draft</SelectItem></SelectContent>
                 </Select>
               </Field>
+            </div>
+          </div>}
+
+          {tab === "compensation" && <div className="space-y-4 pt-2">
+            <div className="grid grid-cols-2 gap-4">
               <Field label="CTC (Annual)">
                 <div className="flex gap-2">
                   <Input type="number" value={form.ctc || ''} onChange={e => setForm({ ...form, ctc: +e.target.value })} />
@@ -319,12 +435,20 @@ function EmployeeDialog({ open, onOpenChange, employee, onSave, departments, des
                 </Field>
               )}
               <div className="col-span-2 grid grid-cols-2 gap-4 border-t pt-4 mt-2">
-                <Field label="Bonus Applicable">
-                  <div className="flex items-center h-10">
-                    <Checkbox id="bonusApplicable" checked={form.bonusApplicable || false} onCheckedChange={(c: boolean) => setForm({ ...form, bonusApplicable: c === true, bonusType: c ? 'Fixed Amount' : undefined, bonusValue: c ? 0 : undefined })} />
-                    <label htmlFor="bonusApplicable" className="ml-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Yes, this employee receives variable bonus</label>
-                  </div>
-                </Field>
+                <div className="col-span-2 flex gap-8 mb-2">
+                  <Field label="PF Applicable">
+                    <div className="flex items-center h-10">
+                      <Checkbox id="pfApplicable" checked={form.pfApplicable || false} onCheckedChange={(c: boolean) => setForm({ ...form, pfApplicable: c === true })} />
+                      <label htmlFor="pfApplicable" className="ml-2 text-sm font-medium leading-none">Deduct Provident Fund</label>
+                    </div>
+                  </Field>
+                  <Field label="Bonus Applicable">
+                    <div className="flex items-center h-10">
+                      <Checkbox id="bonusApplicable" checked={form.bonusApplicable || false} onCheckedChange={(c: boolean) => setForm({ ...form, bonusApplicable: c === true, bonusType: c ? 'Fixed Amount' : undefined, bonusValue: c ? 0 : undefined })} />
+                      <label htmlFor="bonusApplicable" className="ml-2 text-sm font-medium leading-none">Employee receives variable bonus</label>
+                    </div>
+                  </Field>
+                </div>
                 {form.bonusApplicable && (
                   <Field label="Bonus Type">
                     <Select value={form.bonusType || 'Fixed Amount'} onValueChange={v => setForm({ ...form, bonusType: v })}>
@@ -362,30 +486,70 @@ function EmployeeDialog({ open, onOpenChange, employee, onSave, departments, des
 
           {tab === "compliance" && <div className="space-y-4 pt-2">
             <div className="grid grid-cols-2 gap-4">
-              <Field label="PAN"><Input value={form.pan} onChange={e => setForm({ ...form, pan: e.target.value })} /></Field>
-              <Field label="Aadhaar"><Input value={form.aadhaar} onChange={e => setForm({ ...form, aadhaar: e.target.value })} /></Field>
-              <Field label="UAN"><Input value={form.uan} onChange={e => setForm({ ...form, uan: e.target.value })} /></Field>
-              <Field label="ESI No."><Input value={form.esi} onChange={e => setForm({ ...form, esi: e.target.value })} /></Field>
-              <div className="col-span-2 border-t pt-4 font-medium text-sm text-muted-foreground">Statutory Preferences</div>
-              <div className="col-span-2">
-                <div className="flex items-center h-10 mb-2">
-                  <Checkbox id="pfApplicable" checked={form.pfApplicable || false} onCheckedChange={(c: boolean) => setForm({ ...form, pfApplicable: c === true })} />
-                  <label htmlFor="pfApplicable" className="ml-2 text-sm font-medium leading-none">PF Applicable (Deduct Provident Fund)</label>
+              <Field label="PAN"><Input value={form.pan || ""} onChange={e => setForm({ ...form, pan: e.target.value })} /></Field>
+              <Field label="Aadhaar"><Input value={form.aadhaar || ""} onChange={e => setForm({ ...form, aadhaar: e.target.value })} /></Field>
+              <Field label="UAN"><Input value={form.uan || ""} onChange={e => setForm({ ...form, uan: e.target.value })} /></Field>
+              <Field label="ESI No."><Input value={form.esi || ""} onChange={e => setForm({ ...form, esi: e.target.value })} /></Field>
+              <div className="col-span-2 border-t pt-4 font-medium text-sm text-muted-foreground">Bank Details</div>
+              <Field label="Bank Name"><Input value={form.bankName || ""} onChange={e => setForm({ ...form, bankName: e.target.value })} /></Field>
+              <Field label="IFSC Code"><Input value={form.ifsc || ""} onChange={e => setForm({ ...form, ifsc: e.target.value })} /></Field>
+              <div className="col-span-2"><Field label="Bank Account No."><Input value={form.bankAccount || ""} onChange={e => setForm({ ...form, bankAccount: e.target.value })} /></Field></div>
+            </div>
+          </div>}
+
+          {tab === "documents" && <div className="space-y-4 pt-2">
+            <div className="grid sm:grid-cols-2 gap-4 items-end">
+              <div className="space-y-1.5">
+                <Label>Document Type</Label>
+                <Select value={uploadDocType} onValueChange={setUploadDocType}>
+                  <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                  <SelectContent>
+                    {["Offer Letter","Aadhaar Card","PAN Card","Bank Passbook","Previous Form 16","Address Proof", "Other"].map(t => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setPendingDocs(prev => [...prev, { file, type: uploadDocType }]);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }
+                }} />
+                <Button onClick={() => fileInputRef.current?.click()} className="w-full" variant="outline">
+                  <Upload className="h-4 w-4 mr-2" /> Select File
+                </Button>
+              </div>
+            </div>
+            
+            {pendingDocs.length > 0 && (
+              <div className="mt-6">
+                <Label className="mb-2 block">Files to Upload</Label>
+                <div className="space-y-2">
+                  {pendingDocs.map((doc, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 border rounded-md">
+                      <div>
+                        <div className="text-sm font-medium">{doc.type}</div>
+                        <div className="text-xs text-muted-foreground">{doc.file.name}</div>
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => setPendingDocs(prev => prev.filter((_, i) => i !== idx))}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div className="col-span-2 border-t pt-4 font-medium text-sm text-muted-foreground">Bank Details</div>
-              <Field label="Bank Name"><Input value={form.bankName} onChange={e => setForm({ ...form, bankName: e.target.value })} /></Field>
-              <Field label="IFSC Code"><Input value={form.ifsc} onChange={e => setForm({ ...form, ifsc: e.target.value })} /></Field>
-              <div className="col-span-2"><Field label="Bank Account No."><Input value={form.bankAccount} onChange={e => setForm({ ...form, bankAccount: e.target.value })} /></Field></div>
-            </div>
+            )}
           </div>}
         </div>
         <DialogFooter className="mt-6 border-t pt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          {tab === "compliance" ? (
-            <Button onClick={() => onSave(form)}>Save Employee</Button>
+          {tab === "compliance" || tab === "documents" ? (
+            <Button onClick={() => onSave(form, pendingDocs)}>Save Employee</Button>
           ) : (
-            <Button onClick={() => onSave({ ...form, status: "Draft" })}>Save Draft</Button>
+            <Button onClick={() => onSave({ ...form, status: "Draft" }, pendingDocs)}>Save Draft</Button>
           )}
         </DialogFooter>
       </DialogContent>
@@ -494,101 +658,80 @@ function SalaryEstimatorModal({ isOpen, onClose, ctc }: { isOpen: boolean, onClo
         </DialogHeader>
 
         <div className="grid grid-cols-12 gap-6 mt-4">
-          <div className="col-span-4 space-y-4">
-            <div className="bg-muted/50 p-4 rounded-lg space-y-3">
-              <h3 className="font-semibold text-sm border-b pb-2">Configuration</h3>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">CTC</Label>
-                <div className="font-mono text-lg font-bold">₹{ctc.toLocaleString()}</div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox id="epf" checked={includeEmployerPF} onCheckedChange={(c: boolean) => setIncludeEmployerPF(c)} />
-                <Label htmlFor="epf" className="text-sm">Include Employer PF (12%)</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox id="emp_pf" checked={includeEmployeePF} onCheckedChange={(c: boolean) => setIncludeEmployeePF(c)} />
-                <Label htmlFor="emp_pf" className="text-sm">Deduct Employee PF (12%)</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox id="grat" checked={includeGratuity} onCheckedChange={(c: boolean) => setIncludeGratuity(c)} />
-                <Label htmlFor="grat" className="text-sm">Include Gratuity (4.81%)</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox id="pt" checked={includePT} onCheckedChange={(c: boolean) => setIncludePT(c)} />
-                <Label htmlFor="pt" className="text-sm">Deduct Professional Tax</Label>
-              </div>
+          <div className="col-span-4 space-y-4 border-r pr-6">
+            <div className="space-y-2">
+              <h3 className="font-semibold text-sm">Components Included in CTC</h3>
+              <div className="flex items-center gap-2"><Checkbox id="epf" checked={includeEmployerPF} onCheckedChange={(c) => setIncludeEmployerPF(!!c)} /><label htmlFor="epf" className="text-sm">Employer PF (12% of Basic)</label></div>
+              <div className="flex items-center gap-2"><Checkbox id="egrat" checked={includeGratuity} onCheckedChange={(c) => setIncludeGratuity(!!c)} /><label htmlFor="egrat" className="text-sm">Gratuity (4.81% of Basic)</label></div>
             </div>
 
-            <div className="bg-blue-50 p-4 rounded-lg space-y-3 border border-blue-100">
-              <h3 className="font-semibold text-sm text-blue-800 border-b border-blue-200 pb-2">Old Regime Declarations</h3>
+            <div className="space-y-2 pt-4 border-t">
+              <h3 className="font-semibold text-sm">Deductions & Tax (Old Regime)</h3>
+              <div className="flex items-center gap-2"><Checkbox id="mpf" checked={includeEmployeePF} onCheckedChange={(c) => setIncludeEmployeePF(!!c)} /><label htmlFor="mpf" className="text-sm">Employee PF (12% of Basic)</label></div>
+              <div className="flex items-center gap-2"><Checkbox id="pt" checked={includePT} onCheckedChange={(c) => setIncludePT(!!c)} /><label htmlFor="pt" className="text-sm">Professional Tax</label></div>
               <div className="space-y-1">
-                <Label className="text-xs">Sec 80C (Max 1.5L)</Label>
-                <Input type="number" className="h-8 text-sm" value={deduction80C} onChange={e => setDeduction80C(+e.target.value)} />
+                <label className="text-xs text-muted-foreground">80C Investments (Max 1.5L)</label>
+                <Input type="number" className="h-8" value={deduction80C || ''} onChange={e => setDeduction80C(+e.target.value)} />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Sec 80D (Health Ins)</Label>
-                <Input type="number" className="h-8 text-sm" value={deduction80D} onChange={e => setDeduction80D(+e.target.value)} />
+                <label className="text-xs text-muted-foreground">80D Health Insurance (Max 25k-50k)</label>
+                <Input type="number" className="h-8" value={deduction80D || ''} onChange={e => setDeduction80D(+e.target.value)} />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">HRA Exemption</Label>
-                <Input type="number" className="h-8 text-sm" value={hraExemption} onChange={e => setHraExemption(+e.target.value)} />
+                <label className="text-xs text-muted-foreground">HRA Exemption</label>
+                <Input type="number" className="h-8" value={hraExemption || ''} onChange={e => setHraExemption(+e.target.value)} />
               </div>
             </div>
           </div>
 
-          <div className="col-span-8 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="border rounded-lg p-4 bg-white shadow-sm">
-                <h3 className="text-sm font-semibold mb-3">Salary Breakup (Annual)</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span>Basic</span><span>₹{basic.toLocaleString()}</span></div>
-                  <div className="flex justify-between"><span>HRA</span><span>₹{hra.toLocaleString()}</span></div>
-                  <div className="flex justify-between border-b pb-2"><span>Allowances</span><span>₹{allowances.toLocaleString()}</span></div>
-                  <div className="flex justify-between font-semibold"><span>Gross</span><span>₹{gross.toLocaleString()}</span></div>
-                  <div className="flex justify-between text-muted-foreground mt-2"><span>Employer PF</span><span>₹{employerPF.toLocaleString()}</span></div>
-                  <div className="flex justify-between text-muted-foreground"><span>Gratuity</span><span>₹{gratuity.toLocaleString()}</span></div>
-                </div>
+          <div className="col-span-8">
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="p-4 bg-muted rounded-lg">
+                <div className="text-sm text-muted-foreground mb-1">Old Regime (Monthly In-Hand)</div>
+                <div className={`text-2xl font-bold ${recRegime === 'Old Regime' ? 'text-success' : ''}`}>₹{monthlyInHandOld.toLocaleString('en-IN')}</div>
+                <div className="text-xs text-muted-foreground mt-1">Tax: ₹{oldTax.toLocaleString('en-IN')}/yr</div>
               </div>
-
-              <div className="border rounded-lg p-4 bg-white shadow-sm">
-                <h3 className="text-sm font-semibold mb-3">Tax Comparison</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between font-medium"><span>Standard Deduction</span></div>
-                  <div className="flex justify-between text-muted-foreground"><span>Old: ₹{standardDeductionOld.toLocaleString()}</span><span>New: ₹{standardDeductionNew.toLocaleString()}</span></div>
-                  
-                  <div className="flex justify-between font-medium mt-3 border-t pt-2"><span>Annual Tax</span></div>
-                  <div className="flex justify-between"><span>Old Regime</span><span className="font-semibold text-red-600">₹{oldTax.toLocaleString()}</span></div>
-                  <div className="flex justify-between"><span>New Regime</span><span className="font-semibold text-red-600">₹{newTax.toLocaleString()}</span></div>
-                  
-                  <div className="mt-4 p-2 bg-green-50 text-green-800 rounded border border-green-200 text-xs text-center font-semibold">
-                    Recommended: {recRegime} (Saves ₹{taxSavings.toLocaleString()}/yr)
-                  </div>
-                </div>
+              <div className="p-4 bg-muted rounded-lg">
+                <div className="text-sm text-muted-foreground mb-1">New Regime (Monthly In-Hand)</div>
+                <div className={`text-2xl font-bold ${recRegime === 'New Regime' ? 'text-success' : ''}`}>₹{monthlyInHandNew.toLocaleString('en-IN')}</div>
+                <div className="text-xs text-muted-foreground mt-1">Tax: ₹{newTax.toLocaleString('en-IN')}/yr</div>
               </div>
             </div>
 
-            <div className="border rounded-lg p-4 bg-white shadow-sm">
-              <h3 className="text-sm font-semibold mb-4">Monthly In-Hand Salary</h3>
-              
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="p-3 bg-gray-50 rounded">
-                  <div className="text-xs text-muted-foreground uppercase font-bold mb-1">Gross</div>
-                  <div className="text-xl font-bold">₹{monthlyGross.toLocaleString()}</div>
-                </div>
-                <div className={`p-3 rounded border-2 ${recRegime === 'Old Regime' ? 'border-green-500 bg-green-50' : 'border-transparent bg-gray-50'}`}>
-                  <div className="text-xs text-muted-foreground uppercase font-bold mb-1">Old Regime</div>
-                  <div className="text-2xl font-bold text-green-700">₹{monthlyInHandOld.toLocaleString()}</div>
-                  <div className="text-[10px] text-muted-foreground mt-1">Tax: ₹{monthlyOldTax.toLocaleString()} | PF/PT: ₹{(monthlyEmpPF + monthlyPT).toLocaleString()}</div>
-                </div>
-                <div className={`p-3 rounded border-2 ${recRegime === 'New Regime' ? 'border-green-500 bg-green-50' : 'border-transparent bg-gray-50'}`}>
-                  <div className="text-xs text-muted-foreground uppercase font-bold mb-1">New Regime</div>
-                  <div className="text-2xl font-bold text-green-700">₹{monthlyInHandNew.toLocaleString()}</div>
-                  <div className="text-[10px] text-muted-foreground mt-1">Tax: ₹{monthlyNewTax.toLocaleString()} | PF/PT: ₹{(monthlyEmpPF + monthlyPT).toLocaleString()}</div>
+            {taxSavings > 0 && (
+              <div className="mb-6 p-3 bg-primary/10 text-primary rounded-md flex items-start gap-2">
+                <CheckCircle className="h-5 w-5 mt-0.5 shrink-0" />
+                <div className="text-sm">
+                  We recommend the <strong>{recRegime}</strong> for this employee, which saves <strong>₹{taxSavings.toLocaleString('en-IN')}</strong> in taxes annually compared to the alternative.
                 </div>
               </div>
-              <p className="text-[10px] text-muted-foreground text-center mt-4">
-                * Note: This is an estimated calculation. The Old Regime estimate will improve significantly if eligible deductions (80C, 80D, HRA) are provided.
-              </p>
+            )}
+
+            <div className="space-y-4">
+              <h3 className="font-semibold border-b pb-2">Monthly Breakdown (Based on {recRegime})</h3>
+              
+              <div className="grid grid-cols-2 gap-8 text-sm">
+                <div>
+                  <div className="font-medium text-muted-foreground mb-2">Earnings</div>
+                  <div className="flex justify-between py-1"><span>Basic Salary</span><span>₹{Math.round(basic/12).toLocaleString('en-IN')}</span></div>
+                  <div className="flex justify-between py-1"><span>HRA</span><span>₹{Math.round(hra/12).toLocaleString('en-IN')}</span></div>
+                  <div className="flex justify-between py-1"><span>Special Allowance</span><span>₹{Math.round(allowances/12).toLocaleString('en-IN')}</span></div>
+                  <div className="flex justify-between py-1 font-semibold border-t mt-1 pt-1"><span>Gross Salary</span><span>₹{monthlyGross.toLocaleString('en-IN')}</span></div>
+                </div>
+                
+                <div>
+                  <div className="font-medium text-muted-foreground mb-2">Deductions</div>
+                  {includeEmployeePF && <div className="flex justify-between py-1"><span>Employee PF</span><span>₹{monthlyEmpPF.toLocaleString('en-IN')}</span></div>}
+                  {includePT && <div className="flex justify-between py-1"><span>Professional Tax</span><span>₹{monthlyPT.toLocaleString('en-IN')}</span></div>}
+                  <div className="flex justify-between py-1"><span>Income Tax (TDS)</span><span>₹{(recRegime === 'New Regime' ? monthlyNewTax : monthlyOldTax).toLocaleString('en-IN')}</span></div>
+                  <div className="flex justify-between py-1 font-semibold border-t mt-1 pt-1"><span>Total Deductions</span><span>₹{(monthlyEmpPF + monthlyPT + (recRegime === 'New Regime' ? monthlyNewTax : monthlyOldTax)).toLocaleString('en-IN')}</span></div>
+                </div>
+              </div>
+              
+              <div className="flex justify-between p-3 bg-muted rounded-md font-bold mt-2">
+                <span>Net Take-Home Pay</span>
+                <span>₹{(recRegime === 'New Regime' ? monthlyInHandNew : monthlyInHandOld).toLocaleString('en-IN')}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -597,4 +740,11 @@ function SalaryEstimatorModal({ isOpen, onClose, ctc }: { isOpen: boolean, onClo
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-1.5"><Label className="text-xs text-muted-foreground uppercase font-semibold">{label}</Label>{children}</div>; }
+function Field({ label, children }: { label: string, children: React.ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      {children}
+    </div>
+  );
+}

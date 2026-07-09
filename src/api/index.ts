@@ -4,7 +4,19 @@ import { redirect } from "@tanstack/react-router";
 // Simulated network delay
 const delay = (ms: number = 300) => new Promise(resolve => setTimeout(resolve, ms));
 
-const API_BASE_URL = import.meta.env.PROD ? 'https://hrms.vibecopilot.ai' : 'http://127.0.0.1:8000';
+export const API_BASE_URL = import.meta.env.PROD ? 'https://hrms.vibecopilot.ai' : 'http://127.0.0.1:8000';
+
+let isRefreshing = false;
+let refreshSubscribers: ((token: string) => void)[] = [];
+
+const subscribeTokenRefresh = (cb: (token: string) => void) => {
+    refreshSubscribers.push(cb);
+};
+
+const onRefreshed = (token: string) => {
+    refreshSubscribers.forEach(cb => cb(token));
+    refreshSubscribers = [];
+};
 
 // Example API services that currently use the mock-data DB but return Promises.
 // You can replace the internal implementation with actual fetch/axios calls using apiClient.
@@ -16,11 +28,13 @@ const apiCall = async (url: string, method: string = 'GET', body?: any) => {
   if (url.startsWith('/payroll')) base = '/api';
   if (url.startsWith('/auth')) base = '/api';
   if (url.startsWith('/notifications')) base = '/api';
+  if (url.startsWith('/search')) base = '/api';
   if (url.startsWith('/dashboard')) base = '/api';
   if (url.startsWith('/roles')) base = '/api/organisation';
   if (url.startsWith('/org-engine')) base = '/api';
   if (url.startsWith('/offer-letters')) base = '/api';
   if (url.startsWith('/offer-templates')) base = '/api';
+  if (url.startsWith('/documents')) base = '/api';
   if (url.startsWith('/leaves/config')) base = '/api'; // Config is under leaves/config
   if (url.startsWith('/organizations')) base = '/api/admin_org';
   if (url.startsWith('/invoices')) base = '/api/admin_org';
@@ -41,29 +55,47 @@ const apiCall = async (url: string, method: string = 'GET', body?: any) => {
   if (res.status === 401 && !url.includes('/token')) {
       const refresh = typeof localStorage !== "undefined" ? localStorage.getItem('refresh_token') : null;
       if (refresh) {
-          const refreshRes = await fetch(`${API_BASE_URL}/api/auth/token/refresh/`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ refresh })
-          });
-          if (refreshRes.ok) {
-              const data = await refreshRes.json();
-              if (typeof localStorage !== "undefined") localStorage.setItem('access_token', data.access);
-              if (data.refresh) {
-                  if (typeof localStorage !== "undefined") localStorage.setItem('refresh_token', data.refresh);
+          if (!isRefreshing) {
+              isRefreshing = true;
+              try {
+                  const refreshRes = await fetch(`${API_BASE_URL}/api/auth/token/refresh/`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ refresh })
+                  });
+                  if (refreshRes.ok) {
+                      const data = await refreshRes.json();
+                      if (typeof localStorage !== "undefined") localStorage.setItem('access_token', data.access);
+                      if (data.refresh) {
+                          if (typeof localStorage !== "undefined") localStorage.setItem('refresh_token', data.refresh);
+                      }
+                      onRefreshed(data.access);
+                  } else {
+                      onRefreshed(''); // Empty token means failed
+                      if (typeof window !== "undefined") {
+                          localStorage.removeItem('hrms-auth');
+                          localStorage.removeItem('access_token');
+                          localStorage.removeItem('refresh_token');
+                          window.location.href = '/auth';
+                      }
+                  }
+              } catch (err) {
+                  onRefreshed('');
+              } finally {
+                  isRefreshing = false;
               }
-              headers['Authorization'] = `Bearer ${data.access}`;
-              // Retry original request
+          }
+          
+          // Wait for refresh to complete
+          const newToken = await new Promise<string>(resolve => {
+              subscribeTokenRefresh(resolve);
+          });
+          
+          if (newToken) {
+              headers['Authorization'] = `Bearer ${newToken}`;
               res = await fetch(`${API_BASE_URL}${base}${url}`, { method, headers, cache: 'no-store', body: body ? JSON.stringify(body) : undefined });
           } else {
-              if (typeof window !== "undefined") {
-                  localStorage.removeItem('hrms-auth');
-                  localStorage.removeItem('access_token');
-                  localStorage.removeItem('refresh_token');
-                  window.location.href = '/auth';
-                  return new Promise(() => {});
-              }
-              throw redirect({ to: '/auth' });
+              return new Promise(() => {}); // Stop execution
           }
       } else {
           if (typeof window !== "undefined") {
@@ -103,6 +135,10 @@ export const authApi = {
     confirmPasswordReset: async (data: any) => apiCall('/auth/password-reset/confirm/', 'POST', data),
 };
 
+export const searchApi = {
+    query: async (q: string) => apiCall(`/search/?q=${encodeURIComponent(q)}`),
+};
+
 export const employeesApi = {
   getAll: async (): Promise<Employee[]> => apiCall('/employees/'),
   getById: async (id: string | number): Promise<Employee> => apiCall(`/employees/${id}/`),
@@ -125,8 +161,25 @@ export const employeesApi = {
   },
   
   // Documents
-  getDocuments: async () => apiCall('/documents/'),
-  createDocument: async (data: any) => apiCall('/documents/', 'POST', data),
+  getDocuments: async (employeeId: string | number) => apiCall(`/documents/?employee=${employeeId}`),
+  uploadDocument: async (employeeId: string | number, file: File, documentType: string): Promise<any> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('employee', String(employeeId));
+    formData.append('document_type', documentType);
+    formData.append('name', file.name);
+    const token = typeof localStorage !== "undefined" ? localStorage.getItem('access_token') : null;
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/api/documents/`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+  deleteDocument: async (documentId: string | number) => apiCall(`/documents/${documentId}/`, 'DELETE'),
   
   // Transfers
   getTransfers: async () => apiCall('/transfers/'),
@@ -272,11 +325,11 @@ export const designationsApi = {
 
 
 export const leavesApi = {
-  getAll: async (): Promise<any[]> => apiCall('/leaves/'),
+  getAll: async (mode?: string): Promise<any[]> => apiCall(`/leaves/${mode ? `?mode=${mode}` : ''}`),
   getTypes: async (): Promise<any[]> => apiCall('/leaves/types/'),
   createLeave: async (data: any): Promise<any> => apiCall('/leaves/', 'POST', data),
   getLeaveBalances: async (): Promise<any[]> => apiCall('/leaves/balances/'),
-  getDashboard: async (): Promise<any> => apiCall('/leaves/dashboard/'),
+  getDashboard: async (mode?: string): Promise<any> => apiCall(`/leaves/dashboard/${mode ? `?mode=${mode}` : ''}`),
   approveLeave: async (id: string | number, data: any): Promise<any> => apiCall(`/leaves/${id}/approve/`, 'PATCH', data),
   rejectLeave: async (id: string | number, data: any): Promise<any> => apiCall(`/leaves/${id}/reject/`, 'PATCH', data),
 };
@@ -398,4 +451,21 @@ export const form16Api = {
     return res.json();
   },
   delete: async (id: number): Promise<any> => apiCall(`/payroll/form16/${id}/`, 'DELETE'),
+};
+
+export const ctcImportApi = {
+  getHistory: async (): Promise<any[]> => apiCall('/payroll/import-ctc/history/'),
+  upload: async (formData: FormData): Promise<any> => {
+    const token = typeof localStorage !== "undefined" ? localStorage.getItem('access_token') : null;
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/api/payroll/import-ctc/upload/`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+  downloadTemplate: `${API_BASE_URL}/api/payroll/import-ctc/template/`,
 };

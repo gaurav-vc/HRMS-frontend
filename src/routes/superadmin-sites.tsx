@@ -43,7 +43,7 @@ const MODULES = [
   { group: "Organisation", items: ["Entities", "Branches", "Sites", "Departments", "Designations"] },
   { group: "People", items: ["Employees", "My Calendar", "Offer Letters", "Offer Templates"] },
   { group: "Attendance", items: ["Attendance", "Shift Definitions", "Weekly Roster", "QR Check-in", "Face Verification", "GPS Capture", "Regularization"] },
-  { group: "Leave", items: ["Leave Requests"] },
+  { group: "Leave", items: ["Leave Requests", "Inbox"] },
   { group: "Holiday Planner", items: ["Holiday Planner", "Calendar"] },
   { group: "Payroll", items: ["Payroll Overview", "Salary Structure", "Run Payroll", "Salary Slips", "Compliance", "Loans & Advances", "Reimbursements"] },
   { group: "FORM 16", items: ["Form 16 Management", "My Form 16"] },

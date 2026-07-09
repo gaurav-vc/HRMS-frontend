@@ -282,7 +282,15 @@ function RecordDetailsModal({ record, onClose, leaveTypes }: any) {
                 </span>
                 <Badge variant={data.status === 'Approved' ? 'default' : data.status === 'Rejected' ? 'destructive' : 'secondary'}>{data.status}</Badge>
               </div>
-              <div className="text-xs text-muted-foreground mb-2">{data.start_date || data.startDate} to {data.end_date || data.endDate}</div>
+              <div className="text-xs text-muted-foreground mb-3">{data.start_date || data.startDate} to {data.end_date || data.endDate}</div>
+              
+              <div className="mb-3 p-3 bg-white rounded border shadow-sm text-xs grid grid-cols-2 gap-y-2 gap-x-4">
+                <div><span className="font-medium text-muted-foreground block mb-0.5">Employee</span> {data.employee_name || data.employeeName || 'N/A'}</div>
+                <div><span className="font-medium text-muted-foreground block mb-0.5">Designation</span> {data.employee_designation || data.employeeDesignation || 'N/A'}</div>
+                <div><span className="font-medium text-muted-foreground block mb-0.5">Entity</span> {data.employee_entity || data.employeeEntity || 'N/A'}</div>
+                <div><span className="font-medium text-muted-foreground block mb-0.5">Requested On</span> {(data.created_at || data.createdAt) ? new Date(data.created_at || data.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A'}</div>
+              </div>
+
               <div className="text-sm bg-white p-3 rounded border shadow-sm">
                 <div className="text-xs font-medium text-muted-foreground mb-1">Reason:</div>
                 {data.reason || 'No reason provided'}
@@ -300,12 +308,26 @@ function RecordDetailsModal({ record, onClose, leaveTypes }: any) {
                 <span className="font-semibold text-sm">Regularization Request</span>
                 <Badge variant={data.status === 'Approved' ? 'default' : data.status === 'Rejected' ? 'destructive' : 'secondary'}>{data.status}</Badge>
               </div>
-              <div className="text-xs text-muted-foreground mb-2">Date: {data.attendance_date || data.attendanceDate || data.date}</div>
-              <div className="text-xs text-muted-foreground mb-2">Requested Times: {data.requested_clock_in || data.requestedClockIn} to {data.requested_clock_out || data.requestedClockOut}</div>
+              <div className="text-xs text-muted-foreground mb-1">Date: {data.attendance_date || data.attendanceDate || data.date}</div>
+              <div className="text-xs text-muted-foreground mb-3">Requested Times: {(data.requested_check_in || data.requestedCheckIn) ? new Date(data.requested_check_in || data.requestedCheckIn).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '—'} to {(data.requested_check_out || data.requestedCheckOut) ? new Date(data.requested_check_out || data.requestedCheckOut).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '—'}</div>
+              
+              <div className="mb-3 p-3 bg-white rounded border shadow-sm text-xs grid grid-cols-2 gap-y-2 gap-x-4">
+                <div><span className="font-medium text-muted-foreground block mb-0.5">Employee</span> {data.employee_name || data.employeeName || 'N/A'}</div>
+                <div><span className="font-medium text-muted-foreground block mb-0.5">Designation</span> {data.employee_designation || data.employeeDesignation || 'N/A'}</div>
+                <div><span className="font-medium text-muted-foreground block mb-0.5">Entity</span> {data.employee_entity || data.employeeEntity || 'N/A'}</div>
+                <div><span className="font-medium text-muted-foreground block mb-0.5">Requested On</span> {(data.created_at || data.createdAt) ? new Date(data.created_at || data.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A'}</div>
+              </div>
+
               <div className="text-sm bg-white p-3 rounded border shadow-sm">
                 <div className="text-xs font-medium text-muted-foreground mb-1">Reason:</div>
                 {data.reason || 'No reason provided'}
               </div>
+              {(data.manager_comments || data.managerComments) && (
+                <div className="text-xs mt-3 p-3 bg-orange-50 text-orange-800 rounded border border-orange-100">
+                  <div className="font-semibold mb-1">Manager Comments:</div>
+                  {data.manager_comments || data.managerComments}
+                </div>
+              )}
             </div>
           )}
         </div>

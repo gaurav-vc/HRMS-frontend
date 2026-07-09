@@ -15,6 +15,8 @@ export interface Column<T> {
   accessor?: (row: T) => string | number;
   className?: string;
   sortable?: boolean;
+  defaultHidden?: boolean;
+  noExport?: boolean;
 }
 
 interface Props<T> {
@@ -42,7 +44,11 @@ export function DataTable<T>({ rows, columns, searchPlaceholder = "Search…", s
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const [hidden, setHidden] = useState<string[]>(() => {
-    try { return typeof localStorage !== "undefined" ? JSON.parse(localStorage.getItem(`${storageKey}:hidden`) || "[]") : []; } catch { return []; }
+    try { 
+      const saved = typeof localStorage !== "undefined" ? JSON.parse(localStorage.getItem(`${storageKey}:hidden`) || "null") : null; 
+      if (saved) return saved;
+    } catch {}
+    return columns.filter(c => c.defaultHidden).map(c => c.key);
   });
   const [views, setViews] = useState<SavedView[]>(() => {
     try { return typeof localStorage !== "undefined" ? JSON.parse(localStorage.getItem(`${storageKey}:views`) || "[]") : []; } catch { return []; }
@@ -87,15 +93,18 @@ export function DataTable<T>({ rows, columns, searchPlaceholder = "Search…", s
   const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const exportCsv = () => {
-    const cols = visibleCols;
-    const header = cols.map(c => c.header).join(",");
+    const cols = columns.filter(c => !c.noExport); // Export ALL columns except noExport
+    const header = cols.map(c => typeof c.header === 'string' ? c.header : c.key).join(",");
     const lines = filtered.map(row =>
       cols.map(c => {
-        const v = c.accessor ? c.accessor(row) : String((row as Record<string, unknown>)[c.key] ?? "");
-        return `"${String(v).replace(/"/g, '""')}"`;
+        let v = c.accessor ? c.accessor(row) : String((row as Record<string, unknown>)[c.key] ?? "");
+        if (v === "—" || v === "-") v = "";
+        let strV = String(v).replace(/"/g, '""');
+        if (/^\d{8,}$/.test(strV)) strV = `\t${strV}`;
+        return `"${strV}"`;
       }).join(",")
     );
-    const blob = new Blob([header + "\n" + lines.join("\n")], { type: "text/csv" });
+    const blob = new Blob(["\uFEFF" + header + "\n" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);

@@ -21,6 +21,7 @@ import { Route as OfferTemplatesRouteImport } from './routes/offer-templates'
 import { Route as OfferLettersRouteImport } from './routes/offer-letters'
 import { Route as MyCalendarRouteImport } from './routes/my-calendar'
 import { Route as LoansRouteImport } from './routes/loans'
+import { Route as LeaveInboxRouteImport } from './routes/leave-inbox'
 import { Route as LeaveRouteImport } from './routes/leave'
 import { Route as EntitiesRouteImport } from './routes/entities'
 import { Route as EmployeesRouteImport } from './routes/employees'
@@ -38,6 +39,7 @@ import { Route as AttendanceIndexRouteImport } from './routes/attendance.index'
 import { Route as PayrollStructureRouteImport } from './routes/payroll.structure'
 import { Route as PayrollSlipsRouteImport } from './routes/payroll.slips'
 import { Route as PayrollRunRouteImport } from './routes/payroll.run'
+import { Route as PayrollImportCtcRouteImport } from './routes/payroll.import-ctc'
 import { Route as PayrollComplianceRouteImport } from './routes/payroll.compliance'
 import { Route as OrganizationsOrgIdRouteImport } from './routes/organizations.$orgId'
 import { Route as InsightsOrgTreeRouteImport } from './routes/insights.org-tree'
@@ -112,6 +114,11 @@ const MyCalendarRoute = MyCalendarRouteImport.update({
 const LoansRoute = LoansRouteImport.update({
   id: '/loans',
   path: '/loans',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeaveInboxRoute = LeaveInboxRouteImport.update({
+  id: '/leave-inbox',
+  path: '/leave-inbox',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeaveRoute = LeaveRouteImport.update({
@@ -197,6 +204,11 @@ const PayrollSlipsRoute = PayrollSlipsRouteImport.update({
 const PayrollRunRoute = PayrollRunRouteImport.update({
   id: '/run',
   path: '/run',
+  getParentRoute: () => PayrollRoute,
+} as any)
+const PayrollImportCtcRoute = PayrollImportCtcRouteImport.update({
+  id: '/import-ctc',
+  path: '/import-ctc',
   getParentRoute: () => PayrollRoute,
 } as any)
 const PayrollComplianceRoute = PayrollComplianceRouteImport.update({
@@ -287,6 +299,7 @@ export interface FileRoutesByFullPath {
   '/employees': typeof EmployeesRouteWithChildren
   '/entities': typeof EntitiesRoute
   '/leave': typeof LeaveRoute
+  '/leave-inbox': typeof LeaveInboxRoute
   '/loans': typeof LoansRoute
   '/my-calendar': typeof MyCalendarRoute
   '/offer-letters': typeof OfferLettersRoute
@@ -314,6 +327,7 @@ export interface FileRoutesByFullPath {
   '/insights/org-tree': typeof InsightsOrgTreeRoute
   '/organizations/$orgId': typeof OrganizationsOrgIdRoute
   '/payroll/compliance': typeof PayrollComplianceRoute
+  '/payroll/import-ctc': typeof PayrollImportCtcRoute
   '/payroll/run': typeof PayrollRunRoute
   '/payroll/slips': typeof PayrollSlipsRoute
   '/payroll/structure': typeof PayrollStructureRoute
@@ -332,6 +346,7 @@ export interface FileRoutesByTo {
   '/employees': typeof EmployeesRouteWithChildren
   '/entities': typeof EntitiesRoute
   '/leave': typeof LeaveRoute
+  '/leave-inbox': typeof LeaveInboxRoute
   '/loans': typeof LoansRoute
   '/my-calendar': typeof MyCalendarRoute
   '/offer-letters': typeof OfferLettersRoute
@@ -358,6 +373,7 @@ export interface FileRoutesByTo {
   '/insights/org-tree': typeof InsightsOrgTreeRoute
   '/organizations/$orgId': typeof OrganizationsOrgIdRoute
   '/payroll/compliance': typeof PayrollComplianceRoute
+  '/payroll/import-ctc': typeof PayrollImportCtcRoute
   '/payroll/run': typeof PayrollRunRoute
   '/payroll/slips': typeof PayrollSlipsRoute
   '/payroll/structure': typeof PayrollStructureRoute
@@ -378,6 +394,7 @@ export interface FileRoutesById {
   '/employees': typeof EmployeesRouteWithChildren
   '/entities': typeof EntitiesRoute
   '/leave': typeof LeaveRoute
+  '/leave-inbox': typeof LeaveInboxRoute
   '/loans': typeof LoansRoute
   '/my-calendar': typeof MyCalendarRoute
   '/offer-letters': typeof OfferLettersRoute
@@ -405,6 +422,7 @@ export interface FileRoutesById {
   '/insights/org-tree': typeof InsightsOrgTreeRoute
   '/organizations/$orgId': typeof OrganizationsOrgIdRoute
   '/payroll/compliance': typeof PayrollComplianceRoute
+  '/payroll/import-ctc': typeof PayrollImportCtcRoute
   '/payroll/run': typeof PayrollRunRoute
   '/payroll/slips': typeof PayrollSlipsRoute
   '/payroll/structure': typeof PayrollStructureRoute
@@ -426,6 +444,7 @@ export interface FileRouteTypes {
     | '/employees'
     | '/entities'
     | '/leave'
+    | '/leave-inbox'
     | '/loans'
     | '/my-calendar'
     | '/offer-letters'
@@ -453,6 +472,7 @@ export interface FileRouteTypes {
     | '/insights/org-tree'
     | '/organizations/$orgId'
     | '/payroll/compliance'
+    | '/payroll/import-ctc'
     | '/payroll/run'
     | '/payroll/slips'
     | '/payroll/structure'
@@ -471,6 +491,7 @@ export interface FileRouteTypes {
     | '/employees'
     | '/entities'
     | '/leave'
+    | '/leave-inbox'
     | '/loans'
     | '/my-calendar'
     | '/offer-letters'
@@ -497,6 +518,7 @@ export interface FileRouteTypes {
     | '/insights/org-tree'
     | '/organizations/$orgId'
     | '/payroll/compliance'
+    | '/payroll/import-ctc'
     | '/payroll/run'
     | '/payroll/slips'
     | '/payroll/structure'
@@ -516,6 +538,7 @@ export interface FileRouteTypes {
     | '/employees'
     | '/entities'
     | '/leave'
+    | '/leave-inbox'
     | '/loans'
     | '/my-calendar'
     | '/offer-letters'
@@ -543,6 +566,7 @@ export interface FileRouteTypes {
     | '/insights/org-tree'
     | '/organizations/$orgId'
     | '/payroll/compliance'
+    | '/payroll/import-ctc'
     | '/payroll/run'
     | '/payroll/slips'
     | '/payroll/structure'
@@ -563,6 +587,7 @@ export interface RootRouteChildren {
   EmployeesRoute: typeof EmployeesRouteWithChildren
   EntitiesRoute: typeof EntitiesRoute
   LeaveRoute: typeof LeaveRoute
+  LeaveInboxRoute: typeof LeaveInboxRoute
   LoansRoute: typeof LoansRoute
   MyCalendarRoute: typeof MyCalendarRoute
   OfferLettersRoute: typeof OfferLettersRoute
@@ -667,6 +692,13 @@ declare module '@tanstack/react-router' {
       path: '/loans'
       fullPath: '/loans'
       preLoaderRoute: typeof LoansRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leave-inbox': {
+      id: '/leave-inbox'
+      path: '/leave-inbox'
+      fullPath: '/leave-inbox'
+      preLoaderRoute: typeof LeaveInboxRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/leave': {
@@ -786,6 +818,13 @@ declare module '@tanstack/react-router' {
       path: '/run'
       fullPath: '/payroll/run'
       preLoaderRoute: typeof PayrollRunRouteImport
+      parentRoute: typeof PayrollRoute
+    }
+    '/payroll/import-ctc': {
+      id: '/payroll/import-ctc'
+      path: '/import-ctc'
+      fullPath: '/payroll/import-ctc'
+      preLoaderRoute: typeof PayrollImportCtcRouteImport
       parentRoute: typeof PayrollRoute
     }
     '/payroll/compliance': {
@@ -958,6 +997,7 @@ const OrganizationsRouteWithChildren = OrganizationsRoute._addFileChildren(
 
 interface PayrollRouteChildren {
   PayrollComplianceRoute: typeof PayrollComplianceRoute
+  PayrollImportCtcRoute: typeof PayrollImportCtcRoute
   PayrollRunRoute: typeof PayrollRunRoute
   PayrollSlipsRoute: typeof PayrollSlipsRoute
   PayrollStructureRoute: typeof PayrollStructureRoute
@@ -966,6 +1006,7 @@ interface PayrollRouteChildren {
 
 const PayrollRouteChildren: PayrollRouteChildren = {
   PayrollComplianceRoute: PayrollComplianceRoute,
+  PayrollImportCtcRoute: PayrollImportCtcRoute,
   PayrollRunRoute: PayrollRunRoute,
   PayrollSlipsRoute: PayrollSlipsRoute,
   PayrollStructureRoute: PayrollStructureRoute,
@@ -987,6 +1028,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmployeesRoute: EmployeesRouteWithChildren,
   EntitiesRoute: EntitiesRoute,
   LeaveRoute: LeaveRoute,
+  LeaveInboxRoute: LeaveInboxRoute,
   LoansRoute: LoansRoute,
   MyCalendarRoute: MyCalendarRoute,
   OfferLettersRoute: OfferLettersRoute,

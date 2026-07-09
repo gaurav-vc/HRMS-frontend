@@ -35,6 +35,9 @@ function Form16ManagementPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [fyFilter, setFyFilter] = useState("2025-26");
+  const [deptFilter, setDeptFilter] = useState("all");
+  const [entityFilter, setEntityFilter] = useState("all");
+  const [branchFilter, setBranchFilter] = useState("all");
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedUploadEmp, setSelectedUploadEmp] = useState<number | null>(null);
@@ -64,13 +67,18 @@ function Form16ManagementPage() {
 
   const rows = employees.map((emp: any) => {
     const doc = documents.find(d => String(d.employee) === String(emp.id) && (d.financial_year === fyFilter || d.financialYear === fyFilter));
+    const branch = branches.find(b => String(b.id) === String(emp.branch));
+    const site = sites.find(s => String(s.id) === String(emp.site));
     return {
       id: emp.id,
       employee_name: `${emp.first_name || emp.firstName} ${emp.last_name || emp.lastName}`.trim(),
       employee_code: emp.employee_id || emp.code,
+      department_id: String(emp.department || "all"),
       department_name: departments.find(d => String(d.id) === String(emp.department))?.name || "—",
       designation_title: designations.find(d => String(d.id) === String(emp.designation))?.title || "—",
-      branch_name: branches.find(b => String(b.id) === String(emp.branch))?.name || sites.find(s => String(s.id) === String(emp.site))?.name || "—",
+      branch_id: String(emp.branch || "all"),
+      branch_name: branch?.name || site?.name || "—",
+      entity_id: String(branch?.entity || emp.entity || "all"),
       status: doc?.status || "Pending",
       version: doc?.version || 0,
       file: doc?.file,
@@ -83,13 +91,17 @@ function Form16ManagementPage() {
     const matchesSearch = row.employee_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           row.employee_code?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || row.status?.toLowerCase() === statusFilter.toLowerCase();
-    return matchesSearch && matchesStatus;
+    const matchesDept = deptFilter === "all" || row.department_id === deptFilter;
+    const matchesEntity = entityFilter === "all" || row.entity_id === entityFilter;
+    const matchesBranch = branchFilter === "all" || row.branch_id === branchFilter;
+    return matchesSearch && matchesStatus && matchesDept && matchesEntity && matchesBranch;
   });
 
   const columns = [
     {
       key: "employee",
       header: "Employee",
+      accessor: (doc: any) => `${doc.employee_name} (${doc.employee_code})`,
       render: (row: any) => {
         return (
           <div className="flex items-center gap-3">
@@ -122,6 +134,7 @@ function Form16ManagementPage() {
     {
       key: "status",
       header: "Status",
+      accessor: (doc: any) => doc.status,
       render: (doc: any) => {
         const status = doc.status;
         return (
@@ -134,16 +147,19 @@ function Form16ManagementPage() {
     {
       key: "version",
       header: "Version",
+      accessor: (doc: any) => doc.version,
       render: (doc: any) => `v${doc.version}`
     },
     {
       key: "uploaded_by_name",
       header: "Uploaded by",
+      accessor: (doc: any) => doc.uploaded_by_name || "—",
       render: (doc: any) => doc.uploaded_by_name || "—"
     },
     {
       key: "uploaded_at",
       header: "Uploaded on",
+      accessor: (doc: any) => doc.uploaded_at ? format(new Date(doc.uploaded_at), 'MMM dd, yyyy') : "—",
       render: (doc: any) => doc.uploaded_at ? format(new Date(doc.uploaded_at), 'MMM dd, yyyy') : "—"
     }
   ];
@@ -187,21 +203,24 @@ function Form16ManagementPage() {
             <SelectItem value="2024-25">2024-25</SelectItem>
           </SelectContent>
         </Select>
-        <Select>
+        <Select value={deptFilter} onValueChange={setDeptFilter}>
           <SelectTrigger className="w-[150px] bg-background/50"><SelectValue placeholder="Departments" /></SelectTrigger>
           <SelectContent>
+            <SelectItem value="all">All Departments</SelectItem>
             {departments.map((d: any) => <SelectItem key={d.id} value={d.id.toString()}>{d.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select>
+        <Select value={entityFilter} onValueChange={setEntityFilter}>
           <SelectTrigger className="w-[130px] bg-background/50"><SelectValue placeholder="Entities" /></SelectTrigger>
           <SelectContent>
+            <SelectItem value="all">All Entities</SelectItem>
             {entities.map((e: any) => <SelectItem key={e.id} value={e.id.toString()}>{e.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select>
+        <Select value={branchFilter} onValueChange={setBranchFilter}>
           <SelectTrigger className="w-[130px] bg-background/50"><SelectValue placeholder="Branches" /></SelectTrigger>
           <SelectContent>
+            <SelectItem value="all">All Branches</SelectItem>
             {branches.map((b: any) => <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>)}
           </SelectContent>
         </Select>

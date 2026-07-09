@@ -745,9 +745,10 @@ const MODULES = [
   { group: "Organisation", items: ["Entities", "Branches", "Sites", "Departments", "Designations"] },
   { group: "People", items: ["Employees", "My Calendar", "Offer Letters", "Offer Templates"] },
   { group: "Attendance", items: ["Attendance", "Shift Definitions", "Weekly Roster", "QR Check-in", "Face Verification", "GPS Capture", "Regularization"] },
-  { group: "Leave", items: ["Leave Requests"] },
+  { group: "Leave", items: ["Leave Requests", "Inbox"] },
   { group: "Holiday Planner", items: ["Holiday Planner", "Calendar"] },
-  { group: "Payroll", items: ["Payroll Overview", "Salary Structure", "Run Payroll", "Salary Slips", "Compliance", "Loans & Advances", "Reimbursements"] },
+  { group: "Payroll", items: ["Payroll Overview", "Salary Structure", "Import CTC", "Run Payroll", "Salary Slips", "Compliance", "Loans & Advances", "Reimbursements"] },
+  { group: "FORM 16", items: ["Form 16 Management", "My Form 16"] },
   { group: "Insights", items: ["Organization Tree", "Reports", "Settings"] },
 ];
 
@@ -938,6 +939,14 @@ function RolePermissionsTab() {
               <div className="text-xs text-muted-foreground">Get notified to disburse funds once approved.</div>
             </div>
             <Switch checked={!!permissions.can_release_salary} onCheckedChange={v => handleSpecialToggle('can_release_salary', v)} />
+          </div>
+
+          <div className="flex items-center justify-between p-3 border rounded-md bg-background">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium">Add Compensation (CEO/Admin)</Label>
+              <div className="text-xs text-muted-foreground">Exclusive permission to add CTC, Bonus, and PF for new employees.</div>
+            </div>
+            <Switch checked={!!permissions.can_add_ctc} onCheckedChange={v => handleSpecialToggle('can_add_ctc', v)} />
           </div>
         </div>
       </div>

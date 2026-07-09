@@ -12,7 +12,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import { toast } from "sonner";
 
+type AllOffersSearch = {
+  filter?: string;
+}
+
 export const Route = createFileRoute("/all-offers")({
+  validateSearch: (search: Record<string, unknown>): AllOffersSearch => {
+    return {
+      filter: search.filter as string | undefined,
+    }
+  },
   component: AllOffersPage,
 });
 
@@ -21,15 +30,19 @@ function AllOffersPage() {
   const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const searchParams = Route.useSearch();
+  const initialFilter = searchParams.filter;
+  
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("Pending Approval");
+  const [statusFilter, setStatusFilter] = useState<string>(initialFilter || "All");
+  const [activeTab, setActiveTab] = useState(initialFilter ? "All" : "Pending Approval");
 
   const [open, setOpen] = useState(false);
   const [selectedEmp, setSelectedEmp] = useState<any>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [isSending, setIsSending] = useState(false);
 
-  const tabs = ["All", "Pending Approval", "Completed"];
+  const tabs = ["All", "No Offer", "Pending Approval", "Awaiting Acceptance", "Completed"];
 
   useEffect(() => {
     fetchData();
@@ -107,8 +120,16 @@ function AllOffersPage() {
 
   const filteredData = data.filter(offer => {
     if (search && !(offer.candidateName || '').toLowerCase().includes(search.toLowerCase()) && !(offer.offerNumber || '').toLowerCase().includes(search.toLowerCase())) return false;
-    if (activeTab === "Pending Approval" && !["Pending Approval", "No Offer", "Awaiting Acceptance"].includes(offer.status)) return false;
-    if (activeTab === "Completed" && !['Accepted', 'Joined'].includes(offer.status)) return false;
+    
+    if (statusFilter !== "All") {
+      if (offer.status !== statusFilter) return false;
+    } else {
+      if (activeTab === "No Offer" && offer.status !== "No Offer") return false;
+      if (activeTab === "Pending Approval" && offer.status !== "Pending Approval") return false;
+      if (activeTab === "Awaiting Acceptance" && offer.status !== "Awaiting Acceptance") return false;
+      if (activeTab === "Completed" && !['Accepted', 'Joined'].includes(offer.status)) return false;
+    }
+    
     return true;
   });
 
@@ -124,7 +145,7 @@ function AllOffersPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="All Offers" description="Filter the pipeline across every stage." />
+      <PageHeader title="All Offers" description="Filter the pipeline across every stage." showBack={true} />
       
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="relative w-full max-w-sm">
@@ -133,14 +154,38 @@ function AllOffersPage() {
             placeholder="Search by employee, offer number..." 
             className="pl-9 bg-background"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex gap-2 bg-muted/30 p-1 rounded-lg overflow-x-auto">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <Select value={statusFilter} onValueChange={(val) => {
+            setStatusFilter(val);
+            if (val !== "All") setActiveTab("All");
+          }}>
+            <SelectTrigger className="w-[180px] bg-background">
+              <SelectValue placeholder="Filter by Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All Statuses</SelectItem>
+              <SelectItem value="Draft">Draft</SelectItem>
+              <SelectItem value="Pending Approval">Pending Approval</SelectItem>
+              <SelectItem value="Awaiting Acceptance">Awaiting Acceptance</SelectItem>
+              <SelectItem value="Accepted">Accepted</SelectItem>
+              <SelectItem value="Rejected">Rejected</SelectItem>
+              <SelectItem value="Joined">Joined</SelectItem>
+              <SelectItem value="Declined">Declined</SelectItem>
+              <SelectItem value="Expired">Expired</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <div className="flex bg-muted/50 p-1 rounded-lg overflow-x-auto">
           {tabs.map(tab => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => {
+                setActiveTab(tab);
+                setStatusFilter("All");
+              }}
               className={`px-4 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${activeTab === tab ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}
             >
               {tab}
@@ -148,6 +193,7 @@ function AllOffersPage() {
           ))}
         </div>
       </div>
+    </div>
 
       <Card className="border shadow-sm rounded-lg overflow-hidden">
         {error && (

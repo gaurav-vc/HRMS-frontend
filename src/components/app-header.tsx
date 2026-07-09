@@ -1,6 +1,6 @@
-import { Link, useRouterState } from "@tanstack/react-router";
-import { Bell, ChevronRight, LogOut, Search, CheckCircle2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Link, useRouterState, useRouter, useNavigate } from "@tanstack/react-router";
+import { Bell, ChevronRight, LogOut, Search, CheckCircle2, User, Building, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef, useTransition } from "react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth, roleLabel } from "@/lib/auth-context";
 import { ROLES, type Role } from "@/lib/mock-data";
-import { notificationsApi } from "@/api";
+import { notificationsApi, searchApi } from "@/api";
 
 const LABELS: Record<string, string> = {
   "": "Dashboard", entities: "Entities", branches: "Branches", sites: "Sites", departments: "Departments",
@@ -22,9 +22,98 @@ const LABELS: Record<string, string> = {
   reports: "Reports", settings: "Settings",
 };
 
+function GlobalSearch() {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<any[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const navigate = useNavigate();
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (query.trim().length < 2) {
+      setResults([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      startTransition(async () => {
+        try {
+          const res = await searchApi.query(query);
+          if (Array.isArray(res)) setResults(res);
+        } catch (err) {
+          console.error("Search error", err);
+        }
+      });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  return (
+    <div className="relative hidden lg:block w-64" ref={containerRef}>
+      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      <Input 
+        placeholder="Search employees, sites…" 
+        className="pl-8 h-9 bg-muted/50 border-muted focus-visible:bg-background" 
+        value={query}
+        onChange={(e) => { setQuery(e.target.value); setIsOpen(true); }}
+        onFocus={() => { if (query.trim().length >= 2) setIsOpen(true); }}
+      />
+      {isPending && <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground animate-spin" />}
+      
+      {isOpen && query.trim().length >= 2 && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-md shadow-lg z-50 max-h-96 overflow-y-auto">
+          {results.length === 0 && !isPending ? (
+            <div className="p-3 text-sm text-center text-muted-foreground">No results found</div>
+          ) : (
+            <div className="py-1">
+              {results.map((r) => (
+                <div 
+                  key={`${r.type}-${r.id}`}
+                  className="flex items-center gap-3 px-3 py-2 hover:bg-muted cursor-pointer transition-colors"
+                  onClick={() => {
+                    setIsOpen(false);
+                    setQuery("");
+                    // TanStack router navigation
+                    if (r.url.includes("?")) {
+                      const [path, searchStr] = r.url.split("?");
+                      const searchObj = Object.fromEntries(new URLSearchParams(searchStr));
+                      navigate({ to: path, search: searchObj as any });
+                    } else {
+                      navigate({ to: r.url });
+                    }
+                  }}
+                >
+                  <div className="bg-primary/10 p-1.5 rounded-full shrink-0">
+                    {r.type === 'employee' ? <User className="h-4 w-4 text-primary" /> : <Building className="h-4 w-4 text-primary" />}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium truncate">{r.title}</div>
+                    <div className="text-xs text-muted-foreground truncate">{r.subtitle}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NotificationBell() {
   const [notifs, setNotifs] = useState<any[]>([]);
   const { user } = useAuth();
+  const navigate = useNavigate();
   
   useEffect(() => {
     if (!user) return;
@@ -56,22 +145,78 @@ function NotificationBell() {
           <div className="p-4 text-center text-sm text-muted-foreground">No new notifications</div>
         ) : (
           <div className="max-h-80 overflow-y-auto">
-            {notifs.map(n => (
-              <div key={n.id} className="p-3 border-b last:border-0 hover:bg-muted/50 cursor-pointer">
-                <div className="flex justify-between items-start">
-                  <div className="font-medium text-sm">{n.title}</div>
-                  <Button variant="ghost" size="icon" className="h-5 w-5 -mt-1" onClick={() => markRead(n.id)}><CheckCircle2 className="h-3 w-3" /></Button>
-                </div>
-                <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{n.message}</div>
-                {n.related_run_id && (
-                  <Link to="/payroll/run" className="text-xs text-primary mt-2 block" onClick={() => markRead(n.id)}>View Payroll Run →</Link>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+            {notifs.map(n => {
+              // The backend uses CamelCaseJSONRenderer, so keys are camelCased!
+              const relatedEmployeeId = n.relatedEmployeeId || n.related_employee_id;
+              const relatedRunId = n.relatedRunId || n.related_run_id;
+              
+              const isEmp = !!relatedEmployeeId;
+              const isRun = !!relatedRunId;
+              
+              if (!isEmp && !isRun) {
+                return (
+                  <DropdownMenuItem key={n.id} className="p-3 border-b last:border-0 hover:bg-muted/50 cursor-pointer flex-col items-start" onSelect={() => markRead(n.id)}>
+                    <div className="flex justify-between items-start w-full">
+                      <div className="font-medium text-sm">{n.title}</div>
+                      <Button variant="ghost" size="icon" className="h-5 w-5 -mt-1" onClick={(e) => { e.stopPropagation(); markRead(n.id); }}><CheckCircle2 className="h-3 w-3" /></Button>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1 line-clamp-2 w-full">{n.message}</div>
+                  </DropdownMenuItem>
+                );
+              }
+
+              return (
+                <div key={n.id} className="p-3 border-b last:border-0 hover:bg-muted/50 flex flex-col items-start w-full relative group">
+                  <div className="flex justify-between items-start w-full">
+                    <div className="font-medium text-sm">{n.title}</div>
+                    <Button variant="ghost" size="icon" className="h-5 w-5 -mt-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.preventDefault(); e.stopPropagation(); markRead(n.id); }}><CheckCircle2 className="h-3 w-3" /></Button>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1 line-clamp-2 w-full">{n.message}</div>
+                  
+                  {isEmp ? (
+                      <div className="flex gap-4 mt-3 w-full">
+                        <span 
+                          className="text-xs text-primary font-medium cursor-pointer hover:underline" 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            navigate({ to: "/employees", search: { edit: relatedEmployeeId, tab: "personal" } as any });
+                            markRead(n.id);
+                          }}
+                        >
+                          View Employee Details →
+                        </span>
+                        {(user?.role === 'super_admin' || user?.permissions?.can_add_ctc === true) && (
+                          <span 
+                            className="text-xs text-blue-600 font-medium cursor-pointer hover:underline" 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              navigate({ to: "/employees", search: { edit: relatedEmployeeId, tab: "compensation" } as any });
+                              markRead(n.id);
+                            }}
+                          >
+                            Add CTC Details →
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span 
+                        className="text-xs text-primary font-medium mt-2 block w-full cursor-pointer hover:underline"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          navigate({ to: "/payroll/run" });
+                          markRead(n.id);
+                        }}
+                      >
+                        View Payroll Run →
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
   );
 }
 
@@ -93,10 +238,7 @@ export function AppHeader() {
         ))}
       </nav>
       <div className="flex-1" />
-      <div className="relative hidden lg:block w-64">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Search employees, sites…" className="pl-8 h-9" />
-      </div>
+      <GlobalSearch />
       <NotificationBell />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
