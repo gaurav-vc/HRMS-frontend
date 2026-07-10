@@ -47,7 +47,7 @@ function PayrollOverview() {
 
       <div className="grid gap-4 lg:grid-cols-3 mb-6">
         <Link to="/payroll/structure"><Card className="p-5 hover:border-primary/40 transition"><Sliders className="h-6 w-6 text-primary mb-2" /><div className="font-semibold">Salary Structure</div><div className="text-xs text-muted-foreground mt-1">Define earnings, deductions and components</div></Card></Link>
-        <Link to="/payroll/slips"><Card className="p-5 hover:border-primary/40 transition"><ReceiptText className="h-6 w-6 text-primary mb-2" /><div className="font-semibold">Salary Slips</div><div className="text-xs text-muted-foreground mt-1">View, download and email payslips</div></Card></Link>
+        <Link to="/payroll/slips" search={{ period: undefined }}><Card className="p-5 hover:border-primary/40 transition"><ReceiptText className="h-6 w-6 text-primary mb-2" /><div className="font-semibold">Salary Slips</div><div className="text-xs text-muted-foreground mt-1">View, download and email payslips</div></Card></Link>
         <Link to="/payroll/compliance"><Card className="p-5 hover:border-primary/40 transition"><FileSpreadsheet className="h-6 w-6 text-primary mb-2" /><div className="font-semibold">Compliance</div><div className="text-xs text-muted-foreground mt-1">PF, ESI, PT and TDS filings</div></Card></Link>
       </div>
 

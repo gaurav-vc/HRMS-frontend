@@ -127,6 +127,8 @@ function OneClickPanel({ onConfirmChange, canViewConfidential }: { onConfirmChan
     { id: "presentDays", label: "Total Days present" },
     { id: "leaves", label: "Annual Leaves" },
     { id: "lopDays", label: "LOP" },
+    { id: "halfDays", label: "Half Days" },
+    { id: "latePenalties", label: "Late Penalties" },
     { id: "ot", label: "OT Overtime" },
     { id: "daysPaid", label: "Payable Days" },
     { id: "totalAmount", label: "Total Amount" },
@@ -315,7 +317,7 @@ function OneClickPanel({ onConfirmChange, canViewConfidential }: { onConfirmChan
                             {ALL_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => {
                               const isFinancial = ['totalAmount', 'deduction', 'pf', 'pt', 'reimbursement', 'incentive', 'payableSalary', 'currentSalary'].includes(col.id);
                               return (
-                              <td key={col.id} className={`px-2.5 py-1.5 align-middle border-r border-border ${isFinancial ? 'text-right' : ['presentDays', 'leaves', 'lopDays', 'ot', 'daysPaid'].includes(col.id) ? 'text-center' : 'text-left'}`}>
+                              <td key={col.id} className={`px-2.5 py-1.5 align-middle border-r border-border ${isFinancial ? 'text-right' : ['presentDays', 'leaves', 'lopDays', 'halfDays', 'latePenalties', 'ot', 'daysPaid'].includes(col.id) ? 'text-center' : 'text-left'}`}>
                                 {isEditing && isFinancial ? (
                                     <Input type="number" className="h-7 w-24 px-2 text-xs font-mono border-primary/50 focus-visible:ring-primary/30" value={editForm[col.id]} onChange={e => setEditForm({...editForm, [col.id]: parseFloat(e.target.value) || 0})} />
                                   ) : col.id === 'attendance' ? (

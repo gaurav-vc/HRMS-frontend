@@ -373,7 +373,7 @@ function EmployeeDialog({ open, onOpenChange, employee, onSave, departments, des
               <Field label="Reporting Manager">
                 <Select value={String(form.manager || '')} onValueChange={v => setForm({ ...form, manager: v || undefined } as any)}>
                   <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
-                  <SelectContent><SelectItem value=" ">None</SelectItem>{(employees || []).map((e: Employee, idx: number) => <SelectItem key={e?.id || `emp-${idx}`} value={String(e?.id)}>{e?.firstName} {e?.lastName}</SelectItem>)}</SelectContent>
+                  <SelectContent><SelectItem value=" ">None</SelectItem>{(employees || []).filter((e: Employee) => !form.entity || String(e?.entity) === String(form.entity)).map((e: Employee, idx: number) => <SelectItem key={e?.id || `emp-${idx}`} value={String(e?.id)}>{e?.firstName} {e?.lastName}</SelectItem>)}</SelectContent>
                 </Select>
               </Field>
               <Field label="Status">
