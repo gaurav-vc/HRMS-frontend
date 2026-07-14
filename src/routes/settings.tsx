@@ -28,9 +28,8 @@ function SettingsPage() {
   return (
     <>
       <PageHeader title="Settings" description="Organisation, payroll, attendance, notifications, and user roles" />
-      <Tabs defaultValue="org">
+      <Tabs defaultValue="pay">
         <TabsList>
-          <TabsTrigger value="org">Organisation</TabsTrigger>
           <TabsTrigger value="pay">Payroll</TabsTrigger>
           <TabsTrigger value="att">Attendance</TabsTrigger>
           <TabsTrigger value="leaves">Leaves</TabsTrigger>
@@ -38,16 +37,6 @@ function SettingsPage() {
           <TabsTrigger value="roles">Roles & Users</TabsTrigger>
           <TabsTrigger value="permissions">Role Permissions</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="org">
-          <Card className="p-6 grid sm:grid-cols-2 gap-4">
-            <Field label="Legal Name" defaultValue="Acme Technologies Pvt Ltd" />
-            <Field label="Display Name" defaultValue="Acme" />
-            <Field label="Default Currency" defaultValue="INR" />
-            <Field label="Fiscal Year Start" defaultValue="April" />
-            <div className="sm:col-span-2"><Button onClick={() => toast.success("Saved")}>Save Changes</Button></div>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="pay">
           <Card className="p-6 space-y-4">
@@ -743,7 +732,7 @@ function UserForm({ departments, roles, nodeTypes, initialData, onClose }: { dep
 const MODULES = [
   { group: "Overview", items: ["Dashboard"] },
   { group: "Organisation", items: ["Entities", "Branches", "Sites", "Departments", "Designations"] },
-  { group: "People", items: ["Employees", "My Calendar", "Offer Letters", "Offer Templates"] },
+  { group: "People", items: ["Employees", "My Calendar", "Offer Letters", "Offer Templates", "Separation Request", "Manage Exits"] },
   { group: "Attendance", items: ["Attendance", "Shift Definitions", "Weekly Roster", "QR Check-in", "Face Verification", "GPS Capture", "Regularization"] },
   { group: "Leave", items: ["Leave Requests", "Inbox"] },
   { group: "Holiday Planner", items: ["Holiday Planner", "Calendar"] },

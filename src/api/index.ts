@@ -23,6 +23,7 @@ const onRefreshed = (token: string) => {
 const apiCall = async (url: string, method: string = 'GET', body?: any) => {
   let base = '/api/organisation';
   if (url.startsWith('/employees')) base = '/api';
+  if (url.startsWith('/exits')) base = '/api';
   if (url.startsWith('/attendance')) base = '/api';
   if (url.startsWith('/leaves')) base = '/api';
   if (url.startsWith('/payroll')) base = '/api';
@@ -95,7 +96,7 @@ const apiCall = async (url: string, method: string = 'GET', body?: any) => {
               headers['Authorization'] = `Bearer ${newToken}`;
               res = await fetch(`${API_BASE_URL}${base}${url}`, { method, headers, cache: 'no-store', body: body ? JSON.stringify(body) : undefined });
           } else {
-              return new Promise(() => {}); // Stop execution
+              throw new Error('Unauthorized');
           }
       } else {
           if (typeof window !== "undefined") {
@@ -103,7 +104,7 @@ const apiCall = async (url: string, method: string = 'GET', body?: any) => {
               localStorage.removeItem('access_token');
               localStorage.removeItem('refresh_token');
               window.location.href = '/auth';
-              return new Promise(() => {});
+              throw new Error('Unauthorized');
           }
           throw redirect({ to: '/auth' });
       }
@@ -304,7 +305,7 @@ export const attendanceApi = {
   // Roster
   getWeeklyRoster: async (startDate: string, endDate: string): Promise<any> => apiCall(`/attendance/roster/weekly/?start_date=${startDate}&end_date=${endDate}`),
   assignShift: async (data: { employee_id: number; date: string; shift_id: number | null }): Promise<any> => apiCall('/attendance/roster/assign/', 'POST', data),
-  bulkAssign: async (data: { department_id: number; shift_id: number; start_date: string; end_date: string }): Promise<any> => apiCall('/attendance/roster/bulk_assign/', 'POST', data),
+  bulkAssign: async (data: { department_ids: number[]; shift_id: number; start_date: string; end_date: string }): Promise<any> => apiCall('/attendance/roster/bulk_assign/', 'POST', data),
 };
 
 export const departmentsApi = {
@@ -364,6 +365,14 @@ export const payrollApi = {
   emailSlip: async (id: number) => apiCall(`/payroll/slips/${id}/email/`, 'POST'),
   emailSlipWithAttachment: async (id: number, pdfBase64: string) => apiCall(`/payroll/slips/${id}/email/`, 'POST', { pdf: pdfBase64 }),
   getComplianceReports: async () => apiCall('/payroll/compliance/'),
+  generateReturn: async (category: string) => {
+    const token = typeof localStorage !== "undefined" ? localStorage.getItem('access_token') : null;
+    const res = await fetch(`${API_BASE_URL}/api/payroll/compliance/generate_return/?category=${encodeURIComponent(category)}`, {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.blob();
+  },
   getPreview: async (params: { period: string, entity?: string }) => {
     let qs = `?period=${encodeURIComponent(params.period)}&_t=${Date.now()}`;
     if (params.entity) qs += `&entity=${encodeURIComponent(params.entity)}`;

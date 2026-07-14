@@ -4,7 +4,7 @@ import {
   CalendarCheck2, QrCode, ScanFace, Navigation, ClipboardList, CalendarDays,
   Wallet, Sliders, PlayCircle, ReceiptText, FileSpreadsheet, HandCoins, BadgeDollarSign,
   Settings, FileBarChart2, Clock, CalendarRange, Network, Palmtree, Calendar,
-  FileText, LayoutTemplate, CreditCard, Inbox
+  FileText, LayoutTemplate, CreditCard, Inbox, UserMinus
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -32,6 +32,8 @@ const NAV: Group[] = [
     { title: "My Calendar", url: "/my-calendar", icon: CalendarDays },
     { title: "Offer Letters", url: "/offer-letters", icon: FileText },
     { title: "Offer Templates", url: "/offer-templates", icon: LayoutTemplate },
+    { title: "Separation Request", url: "/employee-separation", icon: UserMinus },
+    { title: "Manage Exits", url: "/manage-requests", icon: ClipboardList },
   ]},
   { label: "Attendance", items: [
     { title: "Attendance", url: "/attendance", icon: CalendarCheck2 },

@@ -13,11 +13,16 @@ function OfferLettersDashboard() {
   const navigate = useNavigate();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     offersApi.getDashboardMetrics()
       .then((res: any) => {
         setData(res);
+      })
+      .catch((err: any) => {
+        console.error("Dashboard API Error:", err);
+        setError(err?.message || "An unexpected error occurred while fetching dashboard metrics.");
       })
       .finally(() => setLoading(false));
   }, []);
@@ -51,9 +56,19 @@ function OfferLettersDashboard() {
         </Link>
       </div>
 
+      {error && (
+        <div className="mb-6 p-4 bg-destructive/10 border border-destructive/30 rounded-md flex items-start gap-3 text-destructive">
+          <XCircle className="w-5 h-5 shrink-0 mt-0.5" />
+          <div>
+            <h4 className="font-semibold text-sm">Failed to load dashboard metrics</h4>
+            <p className="text-xs mt-1 opacity-90">{error}</p>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center h-64 text-muted-foreground">Loading dashboard...</div>
-      ) : (
+      ) : !error ? (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {stats.map((stat, i) => (
@@ -83,15 +98,19 @@ function OfferLettersDashboard() {
               </div>
               <div className="divide-y flex-1">
                 {data?.recent?.map((offer: any) => (
-                  <div key={offer.id} className="p-4 flex items-center justify-between hover:bg-muted/10 transition-colors">
+                  <div 
+                    key={offer.id} 
+                    className="p-4 flex items-center justify-between hover:bg-muted/10 transition-colors cursor-pointer"
+                    onClick={() => navigate({ to: '/employees/$id', params: { id: String(offer.employee) } })}
+                  >
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm">{offer.candidateName}</span>
+                        <span className="font-semibold text-sm">{offer.candidateName || offer.candidate_name}</span>
                         <span className="text-muted-foreground text-xs">·</span>
-                        <span className="text-muted-foreground text-xs">{offer.designationName}</span>
+                        <span className="text-muted-foreground text-xs">{offer.designationName || offer.designation_name}</span>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        {offer.offerNumber} · Joining {offer.joiningDate || 'TBD'}
+                        {offer.offerNumber || offer.offer_number} · Joining {offer.joiningDate || offer.joining_date || 'TBD'}
                       </div>
                     </div>
                     <div>
@@ -113,13 +132,17 @@ function OfferLettersDashboard() {
               </div>
               <div className="divide-y flex-1">
                 {data?.upcoming?.map((offer: any) => (
-                  <div key={offer.id} className="p-4 flex justify-between items-start hover:bg-muted/10 transition-colors">
+                  <div 
+                    key={offer.id} 
+                    className="p-4 flex justify-between items-start hover:bg-muted/10 transition-colors cursor-pointer"
+                    onClick={() => navigate({ to: '/employees/$id', params: { id: String(offer.employee) } })}
+                  >
                     <div>
-                      <div className="font-semibold text-sm">{offer.candidateName}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">{offer.departmentName || 'N/A'}</div>
+                      <div className="font-semibold text-sm">{offer.candidateName || offer.candidate_name}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{offer.departmentName || offer.department_name || 'N/A'}</div>
                     </div>
                     <div className="text-sm text-muted-foreground whitespace-nowrap">
-                      {offer.joiningDate}
+                      {offer.joiningDate || offer.joining_date}
                     </div>
                   </div>
                 ))}
@@ -130,7 +153,7 @@ function OfferLettersDashboard() {
             </Card>
           </div>
         </div>
-      )}
+      ) : null}
     </>
   );
 }

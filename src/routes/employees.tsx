@@ -1,7 +1,7 @@
 import { createFileRoute, useRouter, Link, Outlet, useMatchRoute } from "@tanstack/react-router";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { toast } from "sonner";
-import { Eye, Pencil, Trash2, UserPlus, Calculator, Send, CheckCircle, MailPlus, Upload, Download } from "lucide-react";
+import { Eye, Pencil, Trash2, UserPlus, Calculator, Send, CheckCircle, MailPlus, Upload, Download, Check, ChevronsUpDown, X } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { employeesApi, departmentsApi, designationsApi, branchesApi, entitiesApi, sitesApi, payrollApi, offersApi, offerTemplatesApi } from "@/api";
 import type { Employee, Department, Designation, Branch, Entity, Site } from "@/lib/mock-data";
 import { useAuth } from "@/lib/auth-context";
@@ -235,7 +237,7 @@ function EmployeesPage() {
             { key: "uan", header: "UAN", accessor: (r: any) => r.uan ?? "—", defaultHidden: true },
             { key: "esi", header: "ESI No.", accessor: (r: any) => r.esi ?? "—", defaultHidden: true },
             { key: "bankName", header: "Bank Name", accessor: (r: any) => r.bankName ?? "—", defaultHidden: true },
-            { key: "ifscCode", header: "IFSC Code", accessor: (r: any) => r.ifscCode ?? "—", defaultHidden: true },
+            { key: "ifscCode", header: "IFSC Code", accessor: (r: any) => (r.ifsc || r.ifscCode) ?? "—", defaultHidden: true },
             { key: "bankAccount", header: "Bank Account No.", accessor: (r: any) => r.bankAccount ?? "—", defaultHidden: true },
           ]}
           actions={(r: any) => <div className="flex justify-end gap-1">
@@ -260,7 +262,7 @@ function EmployeeDialog({ open, onOpenChange, employee, onSave, departments, des
   const defaultForm = { id: "", code: "", firstName: "", lastName: "", email: "", phone: "", entity: "",  employeeType: "Normal Employee",
   branch: null, site: null, department: null, designation: null, role: 'employee',
   manager: null, status: "Active", ctc: 0, salaryStructure: null, uan: "", esi: "", bankName: "", bankAccount: "", ifsc: "", address: "", dob: "", doj: "", gender: "Male", taxRegime: "New", taxSavingDeductions: 0 };
-  const [form, setForm] = useState<Employee>(employee ?? defaultForm as any);
+  const [form, setForm] = useState<any>(employee ?? defaultForm as any);
   const [tab, setTab] = useState("personal");
   const [showEstimator, setShowEstimator] = useState(false);
   const [pendingDocs, setPendingDocs] = useState<{file: File, type: string}[]>([]);
@@ -351,6 +353,54 @@ function EmployeeDialog({ open, onOpenChange, employee, onSave, departments, des
                     {(sites || []).filter((s: Site) => !form.branch || String(s?.branch) === String(form.branch)).map((s: Site, idx: number) => <SelectItem key={s?.id || `st-${idx}`} value={String(s?.id)}>{s?.name || 'Unknown'}</SelectItem>)}
                   </SelectContent>
                 </Select>
+              </Field>
+              <Field label="Enrolled Sites">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button role="combobox" className={`flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border-2 border-slate-300 dark:border-slate-600 bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring ${!form.enrolled_sites?.length ? "text-muted-foreground" : ""}`}>
+                      {form.enrolled_sites?.length > 0 
+                        ? <span className="text-foreground font-medium">{form.enrolled_sites.length} site(s) selected</span> 
+                        : "Select sites..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0 border-2 border-slate-200 dark:border-slate-700 shadow-md" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search sites..." />
+                      <CommandEmpty>No sites found for this entity.</CommandEmpty>
+                      <CommandGroup>
+                        <div className="max-h-[200px] overflow-y-auto">
+                          {(sites || [])
+                            .filter((s: Site) => {
+                              if (!form.entity) return true;
+                              const siteBranch = (branches || []).find((b: Branch) => String(b.id) === String(s.branch));
+                              return siteBranch && String(siteBranch.entity) === String(form.entity);
+                            })
+                            .map((s: Site) => (
+                              <CommandItem
+                                key={s.id}
+                                value={s.name}
+                                className="cursor-pointer font-medium hover:bg-slate-100 dark:hover:bg-slate-800"
+                                onSelect={() => {
+                                  const current = form.enrolled_sites || [];
+                                  if (current.includes(s.id)) {
+                                    setForm({ ...form, enrolled_sites: current.filter((id: any) => String(id) !== String(s.id)) });
+                                  } else {
+                                    setForm({ ...form, enrolled_sites: [...current, s.id] });
+                                  }
+                                }}
+                              >
+                                <div className={`mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary ${form.enrolled_sites?.includes(s.id) ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible"}`}>
+                                  <Check className="h-3 w-3 font-bold stroke-[3]" />
+                                </div>
+                                {s.name}
+                              </CommandItem>
+                            ))}
+                        </div>
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </Field>
               <Field label="Department">
                 <Select value={String(form.department || ' ')} onValueChange={v => setForm({ ...form, department: v === ' ' ? null : v } as any)}>

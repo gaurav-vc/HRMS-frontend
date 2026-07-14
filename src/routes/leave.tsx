@@ -128,13 +128,13 @@ function LeavePage() {
           
           <DataTable rows={balances} rowKey={(r: any) => r.id} searchKeys={[(r: any) => r.employeeName]} filename="balances.csv"
             columns={[
-              { key: "employeeName", header: "Employee" },
-              { key: "leaveTypeCode", header: "Leave Type" },
-              { key: "allocatedDays", header: "Allocated" },
-              { key: "usedDays", header: "Used" },
-              { key: "remainingDays", header: "Remaining" },
-              { key: "status", header: "Status", render: (r: any) => {
-                const rem = Number(r.remainingDays) || 0;
+              { key: "employeeName", header: "Employee", accessor: (r: any) => r.employeeName || r.employee_name || "—" },
+              { key: "leaveTypeCode", header: "Leave Type", accessor: (r: any) => r.leaveTypeCode || r.leave_type_code || "—" },
+              { key: "allocatedDays", header: "Allocated", accessor: (r: any) => r.allocatedDays || r.allocated_days || 0 },
+              { key: "usedDays", header: "Used", accessor: (r: any) => r.usedDays || r.used_days || 0 },
+              { key: "remainingDays", header: "Remaining", accessor: (r: any) => r.remainingDays || r.remaining_days || 0 },
+              { key: "status", header: "Status", accessor: (r: any) => (Number(r.remainingDays || r.remaining_days) || 0) < 2 ? "Low Balance" : "Healthy", render: (r: any) => {
+                const rem = Number(r.remainingDays || r.remaining_days) || 0;
                 return (
                   <Badge variant={rem < 2 ? "destructive" : "outline"}>
                     {rem < 2 ? "Low Balance" : "Healthy"}

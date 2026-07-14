@@ -1,7 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Pencil, Trash2, Plus } from "lucide-react";
+import { Pencil, Trash2, Plus, Check, ChevronsUpDown } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { attendanceApi, departmentsApi } from "@/api";
 
 export const Route = createFileRoute("/attendance/shifts")({
@@ -62,12 +64,12 @@ function ShiftsPage() {
   const handleBulkAssign = async (form: any) => {
     try {
       const res = await attendanceApi.bulkAssign({
-        department_id: parseInt(form.department_id),
+        department_ids: form.department_ids,
         shift_id: parseInt(form.shift_id),
         start_date: form.start_date,
         end_date: form.end_date
       });
-      toast.success(res.message || "Bulk assignment successful");
+      toast.success(res.message ? res.message + ". Shift timings and dates have been emailed to assigned employees." : "Bulk assignment successful. Shift timings and dates have been emailed to assigned employees.");
       setBulkAssignOpen(false);
     } catch (err: any) {
       toast.error(err.message || "Failed to bulk assign");
@@ -183,12 +185,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function BulkAssignDialog({ open, onOpenChange, departments, shifts, onSave }: { open: boolean, onOpenChange: (b: boolean) => void, departments: any[], shifts: any[], onSave: (form: any) => Promise<void> }) {
-  const [form, setForm] = useState({ department_id: "", shift_id: "", start_date: "", end_date: "" });
+  const [form, setForm] = useState<{department_ids: number[], shift_id: string, start_date: string, end_date: string}>({ department_ids: [], shift_id: "", start_date: "", end_date: "" });
   const [loading, setLoading] = useState(false);
 
   // Reset form when dialog opens
   useEffect(() => {
-    if (open) setForm({ department_id: "", shift_id: "", start_date: "", end_date: "" });
+    if (open) setForm({ department_ids: [], shift_id: "", start_date: "", end_date: "" });
   }, [open]);
 
   const handleSave = async () => {
@@ -202,13 +204,47 @@ function BulkAssignDialog({ open, onOpenChange, departments, shifts, onSave }: {
       <DialogContent>
         <DialogHeader><DialogTitle>Bulk Assign Shift to Department</DialogTitle></DialogHeader>
         <div className="grid gap-4 py-4">
-          <Field label="Department">
-            <Select value={form.department_id} onValueChange={v => setForm({ ...form, department_id: v })}>
-              <SelectTrigger><SelectValue placeholder="Select Department" /></SelectTrigger>
-              <SelectContent>
-                {departments.map((d: any) => <SelectItem key={d.id} value={d.id.toString()}>{d.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <Field label="Departments">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button role="combobox" className={`flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border-2 border-slate-300 dark:border-slate-600 bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring ${!form.department_ids.length ? "text-muted-foreground" : ""}`}>
+                  {form.department_ids.length > 0 
+                    ? <span className="text-foreground font-medium">{form.department_ids.length} department(s) selected</span> 
+                    : "Select departments..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] p-0 border-2 border-slate-200 dark:border-slate-700 shadow-md" align="start">
+                <Command>
+                  <CommandInput placeholder="Search departments..." />
+                  <CommandEmpty>No departments found.</CommandEmpty>
+                  <CommandGroup>
+                    <div className="max-h-[200px] overflow-y-auto">
+                      {departments.map((d: any) => (
+                        <CommandItem
+                          key={d.id}
+                          value={d.name}
+                          className="cursor-pointer font-medium hover:bg-slate-100 dark:hover:bg-slate-800"
+                          onSelect={() => {
+                            const current = form.department_ids;
+                            if (current.includes(d.id)) {
+                              setForm({ ...form, department_ids: current.filter((id) => id !== d.id) });
+                            } else {
+                              setForm({ ...form, department_ids: [...current, d.id] });
+                            }
+                          }}
+                        >
+                          <div className={`mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary ${form.department_ids.includes(d.id) ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible"}`}>
+                            <Check className="h-3 w-3 font-bold stroke-[3]" />
+                          </div>
+                          {d.name}
+                        </CommandItem>
+                      ))}
+                    </div>
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </Field>
           <Field label="Shift">
             <Select value={form.shift_id} onValueChange={v => setForm({ ...form, shift_id: v })}>
@@ -225,7 +261,7 @@ function BulkAssignDialog({ open, onOpenChange, departments, shifts, onSave }: {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={loading || !form.department_id || !form.shift_id || !form.start_date || !form.end_date}>
+          <Button onClick={handleSave} disabled={loading || form.department_ids.length === 0 || !form.shift_id || !form.start_date || !form.end_date}>
             {loading ? "Assigning..." : "Assign"}
           </Button>
         </DialogFooter>

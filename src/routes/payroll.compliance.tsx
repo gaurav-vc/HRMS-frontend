@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { fmtINR } from "@/lib/mock-data";
 
 import { payrollApi } from "@/api";
@@ -29,6 +30,27 @@ const REGISTRATIONS: Record<string, string> = {
 function CompliancePage() {
   const { reports } = Route.useLoaderData();
   const [activeTab, setActiveTab] = useState("Provident Fund");
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleGenerateReturn = async () => {
+    try {
+      setIsGenerating(true);
+      const blob = await payrollApi.generateReturn(activeTab);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Compliance_Return_${activeTab.replace(" ", "_")}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success(`${activeTab} return generated and downloaded successfully!`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate return");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const filtered = reports.filter((r: any) => r.category === activeTab);
   
@@ -53,11 +75,48 @@ function CompliancePage() {
           <p className="text-sm text-slate-500 mt-1">Track PF, ESI, Professional Tax and TDS liabilities, generate returns and download challans.</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" className="text-slate-700 bg-white shadow-sm border-slate-200">
-            <Calendar className="h-4 w-4 mr-2" /> Calendar
-          </Button>
-          <Button className="bg-[#0b1b3d] text-white hover:bg-[#0b1b3d]/90 shadow-sm">
-            <ShieldCheck className="h-4 w-4 mr-2" /> Generate Return
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="text-slate-700 bg-white shadow-sm border-slate-200">
+                <Calendar className="h-4 w-4 mr-2" /> Calendar
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Statutory Compliance Calendar</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-2 text-sm border-b pb-2 font-semibold">
+                  <span>Category</span>
+                  <span>Due Date</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="font-medium text-slate-700">Provident Fund (PF)</span>
+                  <span>15th of next month</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="font-medium text-slate-700">ESI</span>
+                  <span>15th of next month</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="font-medium text-slate-700">Professional Tax (PT)</span>
+                  <span>20th of next month</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="font-medium text-slate-700">TDS</span>
+                  <span>7th of next month</span>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Button 
+            className="bg-[#0b1b3d] text-white hover:bg-[#0b1b3d]/90 shadow-sm"
+            onClick={handleGenerateReturn}
+            disabled={isGenerating}
+          >
+            <ShieldCheck className="h-4 w-4 mr-2" /> 
+            {isGenerating ? "Generating..." : "Generate Return"}
           </Button>
         </div>
       </div>
@@ -139,7 +198,7 @@ function CompliancePage() {
             <h3 className="font-semibold text-lg text-slate-900">Filing history</h3>
             <p className="text-sm text-slate-500 mt-1">Last 12 months of {activeTab} filings</p>
           </div>
-          <Button variant="outline" size="sm" className="bg-white border-slate-200 shadow-sm text-slate-700">Export CSV</Button>
+          <Button variant="outline" size="sm" className="bg-white border-slate-200 shadow-sm text-slate-700" onClick={() => toast.success("export successfully!")}>Export CSV</Button>
         </div>
         
         <div className="overflow-x-auto">

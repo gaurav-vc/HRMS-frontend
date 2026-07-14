@@ -75,7 +75,7 @@ function LoansPage() {
           { label: "Status", key: "status", options: ["Active","Closed","Pending"].map(s => ({ value: s, label: s })), predicate: (r, v) => r.status === v },
         ]}
         columns={[
-          { key: "emp", header: "Employee", render: r => empName(r.employee || r.employeeId || r.employee_id) },
+          { key: "emp", header: "Employee", accessor: r => empName(r.employee || r.employeeId || r.employee_id), render: r => empName(r.employee || r.employeeId || r.employee_id) },
           { key: "type", header: "Type", render: r => <Badge variant="outline">{r.type}</Badge> },
           { key: "amount", header: "Principal", accessor: r => r.amount, render: r => fmtINR(r.amount) },
           { key: "emi", header: "EMI", render: r => fmtINR(r.emi) },

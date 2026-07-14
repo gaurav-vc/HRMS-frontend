@@ -33,11 +33,12 @@ interface Props<T> {
   filename?: string;
   rowKey: (row: T) => string;
   tableId?: string;
+  onRowClick?: (row: T) => void;
 }
 
 interface SavedView { name: string; q: string; filters: Record<string,string>; hidden: string[]; }
 
-export function DataTable<T>({ rows, columns, searchPlaceholder = "Search…", searchKeys, filters = [], onCreate, createLabel = "New", actions, emptyText = "No records found.", pageSize = 10, filename = "export.csv", rowKey, tableId }: Props<T>) {
+export function DataTable<T>({ rows, columns, searchPlaceholder = "Search…", searchKeys, filters = [], onCreate, createLabel = "New", actions, emptyText = "No records found.", pageSize = 10, filename = "export.csv", rowKey, tableId, onRowClick }: Props<T>) {
   const storageKey = tableId ? `dt:${tableId}` : null;
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
@@ -108,7 +109,7 @@ export function DataTable<T>({ rows, columns, searchPlaceholder = "Search…", s
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);
-    toast.success(`Exported ${filtered.length} rows`);
+    toast.success("export successfully!");
   };
 
   const saveView = () => {
@@ -199,7 +200,15 @@ export function DataTable<T>({ rows, columns, searchPlaceholder = "Search…", s
             {pageRows.length === 0 ? (
               <TableRow><TableCell colSpan={visibleCols.length + (actions ? 1 : 0)} className="text-center text-muted-foreground py-12">{emptyText}</TableCell></TableRow>
             ) : pageRows.map(row => (
-              <TableRow key={rowKey(row)} className="hover:bg-muted/30">
+              <TableRow 
+                key={rowKey(row)} 
+                className={`hover:bg-muted/30 ${onRowClick ? "cursor-pointer" : ""}`}
+                onClick={(e) => {
+                  // Prevent click if they clicked on an interactive element (like a button inside the row)
+                  if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('a')) return;
+                  onRowClick?.(row);
+                }}
+              >
                 {visibleCols.map(c => <TableCell key={c.key} className={c.className}>{c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key] ?? "—")}</TableCell>)}
                 {actions && <TableCell className="text-right">{actions(row)}</TableCell>}
               </TableRow>

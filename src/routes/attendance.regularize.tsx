@@ -69,6 +69,7 @@ function RegPage() {
   }));
 
   const [acting, setActing] = useState<{ row: Row; type: "Approved" | "Rejected" } | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [comment, setComment] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState({ employeeId: employees[0]?.id || "", date: new Date().toISOString().slice(0,10), requestedIn: "09:30", requestedOut: "18:30", reason: "" });
@@ -121,18 +122,26 @@ function RegPage() {
     }
   };
 
+  const filteredRows = statusFilter ? rows.filter(r => r.status === statusFilter) : rows;
+
   return (
     <>
       <PageHeader title="Attendance Regularization" description="Pending approvals queue with reviewer comments and audit trail"
         actions={<Button onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4 mr-1" />New Request</Button>} />
 
       <div className="grid sm:grid-cols-3 gap-4 mb-6">
-        <StatCard label="Pending Review" value={String(counts.pending)} tone="warning" icon={MessageSquare} />
-        <StatCard label="Approved" value={String(counts.approved)} tone="success" icon={Check} />
-        <StatCard label="Rejected" value={String(counts.rejected)} tone="info" icon={X} />
+        <div onClick={() => setStatusFilter(statusFilter === "Pending" ? null : "Pending")} className="cursor-pointer transition-transform hover:scale-[1.02]">
+          <StatCard label="Pending Review" value={String(counts.pending)} tone="warning" icon={MessageSquare} />
+        </div>
+        <div onClick={() => setStatusFilter(statusFilter === "Approved" ? null : "Approved")} className="cursor-pointer transition-transform hover:scale-[1.02]">
+          <StatCard label="Approved" value={String(counts.approved)} tone="success" icon={Check} />
+        </div>
+        <div onClick={() => setStatusFilter(statusFilter === "Rejected" ? null : "Rejected")} className="cursor-pointer transition-transform hover:scale-[1.02]">
+          <StatCard label="Rejected" value={String(counts.rejected)} tone="info" icon={X} />
+        </div>
       </div>
 
-      <DataTable rows={rows} rowKey={r => String(r.id)} tableId="regularize" searchKeys={[r => r.employeeName, "reason"]} filename="regularizations.csv"
+      <DataTable rows={filteredRows} rowKey={r => String(r.id)} tableId="regularize" searchKeys={[r => r.employeeName, "reason"]} filename="regularizations.csv"
         filters={[{ label: "Status", key: "status", options: ["Pending","Approved","Rejected"].map(s => ({ value: s, label: s })), predicate: (r, v) => r.status === v }]}
         columns={[
           { key: "emp", header: "Employee", render: r => r.employeeName, accessor: r => r.employeeName },

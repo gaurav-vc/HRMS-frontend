@@ -4,7 +4,7 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
+    "dev": "vite dev --open",
     "build": "vite build",
     "build:node": "cross-env NITRO_PRESET=node-server vite build",
     "build:dev": "vite build --mode development",

@@ -29,6 +29,15 @@ function MyForm16Page() {
 
   const [previewDoc, setPreviewDoc] = useState<any | null>(null);
 
+  const forceDownload = (url: string, filename: string) => {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   const columns = [
     {
       key: "financialYear",
@@ -98,7 +107,7 @@ function MyForm16Page() {
                   <Eye className="h-4 w-4" />
                   View
                 </Button>
-                <Button variant="outline" size="sm" className="gap-2" onClick={() => window.open(doc.file, '_blank')}>
+                <Button variant="outline" size="sm" className="gap-2" onClick={() => forceDownload(doc.file, `Form16_${doc.financialYear || doc.financial_year}.pdf`)}>
                   <Download className="h-4 w-4" />
                   Download
                 </Button>
@@ -123,7 +132,7 @@ function MyForm16Page() {
           <DialogHeader className="p-4 border-b border-border bg-muted/30">
             <DialogTitle className="flex items-center justify-between">
               <span>Form 16 ({previewDoc?.financialYear || previewDoc?.financial_year})</span>
-              <Button size="sm" variant="outline" className="gap-2 h-8 mr-6" onClick={() => window.open(previewDoc?.file, '_blank')}>
+              <Button size="sm" variant="outline" className="gap-2 h-8 mr-6" onClick={() => forceDownload(previewDoc?.file, `Form16_${previewDoc?.financialYear || previewDoc?.financial_year}.pdf`)}>
                 <Download className="h-3.5 w-3.5" /> Download PDF
               </Button>
             </DialogTitle>

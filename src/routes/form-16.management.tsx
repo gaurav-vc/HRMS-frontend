@@ -42,6 +42,8 @@ function Form16ManagementPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedUploadEmp, setSelectedUploadEmp] = useState<number | null>(null);
   const [previewDoc, setPreviewDoc] = useState<any | null>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
 
   const handleSingleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -63,6 +65,29 @@ function Form16ManagementPage() {
     
     if (fileInputRef.current) fileInputRef.current.value = "";
     setSelectedUploadEmp(null);
+  };
+
+  const handleModalUpload = async () => {
+    if (!uploadFile || !selectedUploadEmp) {
+      toast.error("Please select an employee and a file");
+      return;
+    }
+    toast.info("Uploading Form 16...");
+    try {
+      const formData = new FormData();
+      formData.append("employee", String(selectedUploadEmp));
+      formData.append("financial_year", fyFilter);
+      formData.append("file", uploadFile);
+      
+      await form16Api.upload(formData);
+      toast.success("Successfully uploaded Form 16!");
+      setUploadOpen(false);
+      setUploadFile(null);
+      setSelectedUploadEmp(null);
+      router.invalidate();
+    } catch (err: any) {
+      toast.error("Upload failed: " + err.message);
+    }
   };
 
   const rows = employees.map((emp: any) => {
@@ -178,7 +203,7 @@ function Form16ManagementPage() {
               Bulk upload
             </Button>
           </Link>
-          <Button className="gap-2 bg-blue-600 hover:bg-blue-700 text-white">
+          <Button className="gap-2 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setUploadOpen(true)}>
             <Upload className="h-4 w-4" />
             Upload Form 16
           </Button>
@@ -290,6 +315,47 @@ function Form16ManagementPage() {
                 title="Form 16 Preview"
               />
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Upload Form 16</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Employee</label>
+              <Select value={selectedUploadEmp ? String(selectedUploadEmp) : undefined} onValueChange={v => setSelectedUploadEmp(Number(v))}>
+                <SelectTrigger><SelectValue placeholder="Select Employee" /></SelectTrigger>
+                <SelectContent>
+                  {employees.map((e: any) => (
+                    <SelectItem key={e.id} value={String(e.id)}>{e.firstName || e.first_name} {e.lastName || e.last_name} ({e.code || e.employee_id})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Financial Year</label>
+              <Select value={fyFilter} onValueChange={setFyFilter}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2025-26">2025-26</SelectItem>
+                  <SelectItem value="2024-25">2024-25</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Form 16 PDF</label>
+              <Input type="file" accept=".pdf" onChange={(e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                  setUploadFile(e.target.files[0]);
+                }
+              }} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => { setUploadOpen(false); setUploadFile(null); setSelectedUploadEmp(null); }}>Cancel</Button>
+            <Button onClick={handleModalUpload} disabled={!uploadFile || !selectedUploadEmp}>Upload</Button>
           </div>
         </DialogContent>
       </Dialog>

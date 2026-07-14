@@ -1,8 +1,11 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
+import { StatCard } from "@/components/stat-card";
+import { MessageSquare, Check, X } from "lucide-react";
 import { leavesApi } from "@/api";
 
 export const Route = createFileRoute("/leave-inbox")({ 
@@ -21,6 +24,13 @@ export const Route = createFileRoute("/leave-inbox")({
 function LeaveInboxPage() {
   const { inboxLeaves, types } = Route.useLoaderData();
   const router = useRouter();
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+
+  const counts = {
+    pending: inboxLeaves.filter((r: any) => r.status === "Pending").length,
+    approved: inboxLeaves.filter((r: any) => r.status === "Approved").length,
+    rejected: inboxLeaves.filter((r: any) => r.status === "Rejected").length,
+  };
 
   const act = async (id: string | number, s: "Approved" | "Rejected") => { 
     try {
@@ -33,14 +43,16 @@ function LeaveInboxPage() {
     }
   };
 
-  const inboxMapped = inboxLeaves.map((r: any) => ({
-    ...r,
-    from: r.startDate || r.start_date,
-    to: r.endDate || r.end_date,
-    days: r.totalDays || r.total_days,
-    type: r.leaveTypeCode || r.leave_type_code,
-    empName: r.employeeName || r.employee_name
-  }));
+  const inboxMapped = inboxLeaves
+    .filter((r: any) => !statusFilter || r.status === statusFilter)
+    .map((r: any) => ({
+      ...r,
+      from: r.startDate || r.start_date,
+      to: r.endDate || r.end_date,
+      days: r.totalDays || r.total_days,
+      type: r.leaveTypeCode || r.leave_type_code,
+      empName: r.employeeName || r.employee_name
+    }));
 
   const columns = [
     { key: "empName", header: "Employee", accessor: (r: any) => r.empName },
@@ -58,6 +70,18 @@ function LeaveInboxPage() {
         title="Leave Inbox" 
         description="Review and manage leave approvals for your team." 
       />
+
+      <div className="grid sm:grid-cols-3 gap-4 mt-6">
+        <div onClick={() => setStatusFilter(statusFilter === "Pending" ? null : "Pending")} className="cursor-pointer transition-transform hover:scale-[1.02]">
+          <StatCard label="Pending Review" value={String(counts.pending)} tone="warning" icon={MessageSquare} />
+        </div>
+        <div onClick={() => setStatusFilter(statusFilter === "Approved" ? null : "Approved")} className="cursor-pointer transition-transform hover:scale-[1.02]">
+          <StatCard label="Approved" value={String(counts.approved)} tone="success" icon={Check} />
+        </div>
+        <div onClick={() => setStatusFilter(statusFilter === "Rejected" ? null : "Rejected")} className="cursor-pointer transition-transform hover:scale-[1.02]">
+          <StatCard label="Rejected" value={String(counts.rejected)} tone="info" icon={X} />
+        </div>
+      </div>
       
       <div className="bg-white border rounded-lg shadow-sm mt-6">
         <DataTable rows={inboxMapped} rowKey={(r: any) => r.id} searchKeys={[(r: any) => r.empName, "reason"]} filename="leave_inbox.csv"
@@ -69,7 +93,7 @@ function LeaveInboxPage() {
           actions={(r: any) => r.status === "Pending" ? <div className="flex justify-end gap-3 font-medium">
             <button className="text-emerald-600 hover:text-emerald-700" onClick={() => act(r.id, "Approved")}>Approve</button>
             <button className="text-red-600 hover:text-red-700" onClick={() => act(r.id, "Rejected")}>Reject</button>
-          </div> : <span className="text-xs text-muted-foreground">—</span>}
+          </div> : null}
         />
       </div>
     </>

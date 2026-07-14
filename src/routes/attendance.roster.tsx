@@ -93,6 +93,7 @@ function RosterPage() {
         date: dateStr,
         shift_id: parseInt(selectedShiftId)
       });
+      toast.success("Shift timings and date have been emailed to the assigned employee");
     } catch (err) {
       toast.error("Failed to assign shift");
       setRoster(prevRoster); // Revert

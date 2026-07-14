@@ -12,7 +12,7 @@ export const Route = createFileRoute('/holidays/calendar')({
 });
 
 function HolidayCalendar() {
-  const [currentDate, setCurrentDate] = useState(new Date(2026, 0, 1)); // January 2026 as per screenshot
+  const [currentDate, setCurrentDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [holidays, setHolidays] = useState<any[]>([]);
 
   useEffect(() => {

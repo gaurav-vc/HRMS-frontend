@@ -35,18 +35,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ({ error, info }) => {
     const router = useRouter();
     const isSSR = typeof window === "undefined";
-    
+
     useEffect(() => {
-        if (!isSSR && error.message === "Unauthorized" && localStorage.getItem("access_token")) {
-            // Server threw Unauthorized due to lack of localStorage. Force client to re-fetch with token!
-            router.invalidate();
-        } else if (!isSSR && error.message === "Unauthorized") {
-            window.location.href = "/auth";
-        }
+      if (!isSSR && error.message === "Unauthorized" && localStorage.getItem("access_token")) {
+        // Server threw Unauthorized due to lack of localStorage. Force client to re-fetch with token!
+        router.invalidate();
+      } else if (!isSSR && error.message === "Unauthorized") {
+        window.location.href = "/auth";
+      }
     }, [isSSR, error, router]);
 
     if (error.message === "Unauthorized") {
-        return <div className="min-h-screen grid place-items-center p-6 text-muted-foreground bg-background">Authenticating...</div>;
+      return <div className="min-h-screen grid place-items-center p-6 text-muted-foreground bg-background">Authenticating...</div>;
     }
 
     return (
@@ -70,8 +70,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
             </div>
           )}
           <div className="mt-6">
-            <button 
-              onClick={() => window.location.reload()} 
+            <button
+              onClick={() => window.location.reload()}
               className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-6 rounded-md transition-colors"
             >
               Reload Application
@@ -130,8 +130,8 @@ class GlobalErrorBoundary extends Component<{ children: ReactNode }, { hasError:
               </div>
             )}
             <div className="mt-6">
-              <button 
-                onClick={() => window.location.reload()} 
+              <button
+                onClick={() => window.location.reload()}
                 className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-6 rounded-md transition-colors"
               >
                 Reload Application
@@ -163,13 +163,20 @@ function RootComponent() {
 function Shell() {
   const pathname = useRouterState({ select: s => s.location.pathname });
   const { user, init } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (init && !user && pathname !== "/auth") {
+      router.navigate({ to: '/auth' });
+    }
+  }, [init, user, pathname, router]);
+
   if (!init) return null; // Wait for hydration!
-  
+
   if (pathname === "/auth") return <Outlet />;
-  
+
   if (!user) {
-      if (typeof window !== 'undefined') window.location.href = '/auth';
-      return null;
+    return null;
   }
   return (
     <SidebarProvider>

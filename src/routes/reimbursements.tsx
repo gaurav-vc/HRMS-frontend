@@ -73,7 +73,7 @@ function ReimbPage() {
           { label: "Status", key: "status", options: ["Pending","Approved","Rejected","Paid"].map(s => ({ value: s, label: s })), predicate: (r, v) => r.status === v },
         ]}
         columns={[
-          { key: "emp", header: "Employee", render: r => empName(r.employee || r.employeeId || r.employee_id) },
+          { key: "emp", header: "Employee", accessor: r => empName(r.employee || r.employeeId || r.employee_id), render: r => empName(r.employee || r.employeeId || r.employee_id) },
           { key: "category", header: "Category", render: r => <Badge variant="outline">{r.category}</Badge> },
           { key: "amount", header: "Amount", accessor: r => r.amount, render: r => fmtINR(r.amount) },
           { key: "date", header: "Date", accessor: r => r.date, sortable: true },

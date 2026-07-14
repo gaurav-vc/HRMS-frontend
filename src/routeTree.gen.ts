@@ -20,11 +20,13 @@ import { Route as OrganizationsRouteImport } from './routes/organizations'
 import { Route as OfferTemplatesRouteImport } from './routes/offer-templates'
 import { Route as OfferLettersRouteImport } from './routes/offer-letters'
 import { Route as MyCalendarRouteImport } from './routes/my-calendar'
+import { Route as ManageRequestsRouteImport } from './routes/manage-requests'
 import { Route as LoansRouteImport } from './routes/loans'
 import { Route as LeaveInboxRouteImport } from './routes/leave-inbox'
 import { Route as LeaveRouteImport } from './routes/leave'
 import { Route as EntitiesRouteImport } from './routes/entities'
 import { Route as EmployeesRouteImport } from './routes/employees'
+import { Route as EmployeeSeparationRouteImport } from './routes/employee-separation'
 import { Route as DesignationsRouteImport } from './routes/designations'
 import { Route as DepartmentsRouteImport } from './routes/departments'
 import { Route as BranchesRouteImport } from './routes/branches'
@@ -111,6 +113,11 @@ const MyCalendarRoute = MyCalendarRouteImport.update({
   path: '/my-calendar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ManageRequestsRoute = ManageRequestsRouteImport.update({
+  id: '/manage-requests',
+  path: '/manage-requests',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoansRoute = LoansRouteImport.update({
   id: '/loans',
   path: '/loans',
@@ -134,6 +141,11 @@ const EntitiesRoute = EntitiesRouteImport.update({
 const EmployeesRoute = EmployeesRouteImport.update({
   id: '/employees',
   path: '/employees',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmployeeSeparationRoute = EmployeeSeparationRouteImport.update({
+  id: '/employee-separation',
+  path: '/employee-separation',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DesignationsRoute = DesignationsRouteImport.update({
@@ -296,11 +308,13 @@ export interface FileRoutesByFullPath {
   '/branches': typeof BranchesRoute
   '/departments': typeof DepartmentsRoute
   '/designations': typeof DesignationsRoute
+  '/employee-separation': typeof EmployeeSeparationRoute
   '/employees': typeof EmployeesRouteWithChildren
   '/entities': typeof EntitiesRoute
   '/leave': typeof LeaveRoute
   '/leave-inbox': typeof LeaveInboxRoute
   '/loans': typeof LoansRoute
+  '/manage-requests': typeof ManageRequestsRoute
   '/my-calendar': typeof MyCalendarRoute
   '/offer-letters': typeof OfferLettersRoute
   '/offer-templates': typeof OfferTemplatesRoute
@@ -343,11 +357,13 @@ export interface FileRoutesByTo {
   '/branches': typeof BranchesRoute
   '/departments': typeof DepartmentsRoute
   '/designations': typeof DesignationsRoute
+  '/employee-separation': typeof EmployeeSeparationRoute
   '/employees': typeof EmployeesRouteWithChildren
   '/entities': typeof EntitiesRoute
   '/leave': typeof LeaveRoute
   '/leave-inbox': typeof LeaveInboxRoute
   '/loans': typeof LoansRoute
+  '/manage-requests': typeof ManageRequestsRoute
   '/my-calendar': typeof MyCalendarRoute
   '/offer-letters': typeof OfferLettersRoute
   '/offer-templates': typeof OfferTemplatesRoute
@@ -391,11 +407,13 @@ export interface FileRoutesById {
   '/branches': typeof BranchesRoute
   '/departments': typeof DepartmentsRoute
   '/designations': typeof DesignationsRoute
+  '/employee-separation': typeof EmployeeSeparationRoute
   '/employees': typeof EmployeesRouteWithChildren
   '/entities': typeof EntitiesRoute
   '/leave': typeof LeaveRoute
   '/leave-inbox': typeof LeaveInboxRoute
   '/loans': typeof LoansRoute
+  '/manage-requests': typeof ManageRequestsRoute
   '/my-calendar': typeof MyCalendarRoute
   '/offer-letters': typeof OfferLettersRoute
   '/offer-templates': typeof OfferTemplatesRoute
@@ -441,11 +459,13 @@ export interface FileRouteTypes {
     | '/branches'
     | '/departments'
     | '/designations'
+    | '/employee-separation'
     | '/employees'
     | '/entities'
     | '/leave'
     | '/leave-inbox'
     | '/loans'
+    | '/manage-requests'
     | '/my-calendar'
     | '/offer-letters'
     | '/offer-templates'
@@ -488,11 +508,13 @@ export interface FileRouteTypes {
     | '/branches'
     | '/departments'
     | '/designations'
+    | '/employee-separation'
     | '/employees'
     | '/entities'
     | '/leave'
     | '/leave-inbox'
     | '/loans'
+    | '/manage-requests'
     | '/my-calendar'
     | '/offer-letters'
     | '/offer-templates'
@@ -535,11 +557,13 @@ export interface FileRouteTypes {
     | '/branches'
     | '/departments'
     | '/designations'
+    | '/employee-separation'
     | '/employees'
     | '/entities'
     | '/leave'
     | '/leave-inbox'
     | '/loans'
+    | '/manage-requests'
     | '/my-calendar'
     | '/offer-letters'
     | '/offer-templates'
@@ -584,11 +608,13 @@ export interface RootRouteChildren {
   BranchesRoute: typeof BranchesRoute
   DepartmentsRoute: typeof DepartmentsRoute
   DesignationsRoute: typeof DesignationsRoute
+  EmployeeSeparationRoute: typeof EmployeeSeparationRoute
   EmployeesRoute: typeof EmployeesRouteWithChildren
   EntitiesRoute: typeof EntitiesRoute
   LeaveRoute: typeof LeaveRoute
   LeaveInboxRoute: typeof LeaveInboxRoute
   LoansRoute: typeof LoansRoute
+  ManageRequestsRoute: typeof ManageRequestsRoute
   MyCalendarRoute: typeof MyCalendarRoute
   OfferLettersRoute: typeof OfferLettersRoute
   OfferTemplatesRoute: typeof OfferTemplatesRoute
@@ -687,6 +713,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MyCalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/manage-requests': {
+      id: '/manage-requests'
+      path: '/manage-requests'
+      fullPath: '/manage-requests'
+      preLoaderRoute: typeof ManageRequestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/loans': {
       id: '/loans'
       path: '/loans'
@@ -720,6 +753,13 @@ declare module '@tanstack/react-router' {
       path: '/employees'
       fullPath: '/employees'
       preLoaderRoute: typeof EmployeesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/employee-separation': {
+      id: '/employee-separation'
+      path: '/employee-separation'
+      fullPath: '/employee-separation'
+      preLoaderRoute: typeof EmployeeSeparationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/designations': {
@@ -1025,11 +1065,13 @@ const rootRouteChildren: RootRouteChildren = {
   BranchesRoute: BranchesRoute,
   DepartmentsRoute: DepartmentsRoute,
   DesignationsRoute: DesignationsRoute,
+  EmployeeSeparationRoute: EmployeeSeparationRoute,
   EmployeesRoute: EmployeesRouteWithChildren,
   EntitiesRoute: EntitiesRoute,
   LeaveRoute: LeaveRoute,
   LeaveInboxRoute: LeaveInboxRoute,
   LoansRoute: LoansRoute,
+  ManageRequestsRoute: ManageRequestsRoute,
   MyCalendarRoute: MyCalendarRoute,
   OfferLettersRoute: OfferLettersRoute,
   OfferTemplatesRoute: OfferTemplatesRoute,

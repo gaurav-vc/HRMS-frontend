@@ -166,6 +166,7 @@ function OneClickPanel({ onConfirmChange, canViewConfidential }: { onConfirmChan
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    toast.success("export successfully!");
   };
 
   const handleReviewAndRun = async () => {

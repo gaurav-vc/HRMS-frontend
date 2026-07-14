@@ -25,6 +25,7 @@ function HolidayPlanner() {
     regional_festival: 0,
   });
   const [holidays, setHolidays] = useState<any[]>([]);
+  const [filterType, setFilterType] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -133,11 +134,21 @@ function HolidayPlanner() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <StatCard label="TOTAL HOLIDAYS" value={(stats?.total_holidays || 0).toString()} icon={Calendar} />
-        <StatCard label="UPCOMING" value={(stats?.upcoming || 0).toString()} icon={CalendarCheck2} tone="info" />
-        <StatCard label="OPTIONAL" value={(stats?.optional || 0).toString()} icon={CalendarOff} tone="warning" />
-        <StatCard label="RESTRICTED" value={(stats?.restricted || 0).toString()} icon={Users} tone="warning" />
-        <StatCard label="REGIONAL / FESTIVAL" value={(stats?.regional_festival || 0).toString()} icon={Map} />
+        <div onClick={() => setFilterType(filterType === 'TOTAL' ? null : 'TOTAL')} className="cursor-pointer transition-transform hover:scale-[1.02]">
+          <StatCard label="TOTAL HOLIDAYS" value={(stats?.total_holidays || 0).toString()} icon={Calendar} />
+        </div>
+        <div onClick={() => setFilterType(filterType === 'UPCOMING' ? null : 'UPCOMING')} className="cursor-pointer transition-transform hover:scale-[1.02]">
+          <StatCard label="UPCOMING" value={(stats?.upcoming || 0).toString()} icon={CalendarCheck2} tone="info" />
+        </div>
+        <div onClick={() => setFilterType(filterType === 'OPTIONAL' ? null : 'OPTIONAL')} className="cursor-pointer transition-transform hover:scale-[1.02]">
+          <StatCard label="OPTIONAL" value={(stats?.optional || 0).toString()} icon={CalendarOff} tone="warning" />
+        </div>
+        <div onClick={() => setFilterType(filterType === 'RESTRICTED' ? null : 'RESTRICTED')} className="cursor-pointer transition-transform hover:scale-[1.02]">
+          <StatCard label="RESTRICTED" value={(stats?.restricted || 0).toString()} icon={Users} tone="warning" />
+        </div>
+        <div onClick={() => setFilterType(filterType === 'REGIONAL' ? null : 'REGIONAL')} className="cursor-pointer transition-transform hover:scale-[1.02]">
+          <StatCard label="REGIONAL / FESTIVAL" value={(stats?.regional_festival || 0).toString()} icon={Map} />
+        </div>
       </div>
 
       <Card>
@@ -149,10 +160,22 @@ function HolidayPlanner() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4 mt-4">
-            {holidays.length === 0 ? (
-              <div className="text-sm text-muted-foreground py-4">No upcoming holidays found.</div>
+            {holidays.filter(h => {
+              if (!filterType || filterType === 'TOTAL' || filterType === 'UPCOMING') return true;
+              if (filterType === 'OPTIONAL') return h.holiday_type === 'Optional';
+              if (filterType === 'RESTRICTED') return h.holiday_type === 'Restricted';
+              if (filterType === 'REGIONAL') return h.holiday_type === 'Regional' || h.holiday_type === 'Festival';
+              return true;
+            }).length === 0 ? (
+              <div className="text-sm text-muted-foreground py-4">No holidays found for this filter.</div>
             ) : (
-              holidays.map((holiday) => (
+              holidays.filter(h => {
+                if (!filterType || filterType === 'TOTAL' || filterType === 'UPCOMING') return true;
+                if (filterType === 'OPTIONAL') return h.holiday_type === 'Optional';
+                if (filterType === 'RESTRICTED') return h.holiday_type === 'Restricted';
+                if (filterType === 'REGIONAL') return h.holiday_type === 'Regional' || h.holiday_type === 'Festival';
+                return true;
+              }).map((holiday) => (
                 <div key={holiday.id} className="flex justify-between items-center border-b pb-4 last:border-0 last:pb-0">
                   <div>
                     <div className="flex items-center gap-2">
