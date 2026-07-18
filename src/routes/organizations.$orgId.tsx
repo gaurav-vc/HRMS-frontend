@@ -9,6 +9,7 @@ import { organizationsApi, sitesApi } from "@/api";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useAuth } from "@/lib/auth-context";
+import { OrgDialog } from "./organizations";
 
 export const Route = createFileRoute("/organizations/$orgId")({
   component: OrganizationDetailPage,
@@ -21,8 +22,10 @@ function OrganizationDetailPage() {
   const { user } = useAuth();
   const { orgId } = Route.useLoaderData();
   const [emailError, setEmailError] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const router = useRouter();
 
-  const { data: organization, isLoading: isLoadingOrg } = useQuery({
+  const { data: organization, isLoading: isLoadingOrg, refetch } = useQuery({
     queryKey: ["organization", orgId],
     queryFn: () => organizationsApi.getById(orgId),
   });
@@ -71,47 +74,43 @@ function OrganizationDetailPage() {
           </div>
         </div>
         <div className="flex gap-3">
-          <Button 
-            variant="outline" 
-            className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700" 
-            onClick={async () => {
-              setEmailError("");
-              try {
-                await organizationsApi.resendEmail(orgId);
-                toast.success("Welcome email triggered successfully with Sub-Domain, Login ID, and Password!");
-              } catch (err: any) {
-                const errMsg = err.response?.data?.error || err.message || "Failed to trigger welcome email.";
-                setEmailError(errMsg);
-                toast.error("Failed to trigger email. See error box for details.");
-              }
-            }}
-          >
-            <Mail className="w-4 h-4 mr-2" />
-            Resend Welcome Email
-          </Button>
-          <Button variant="outline" className="text-slate-700">
+          <Button variant="outline" className="text-slate-700" onClick={() => setIsEditing(true)}>
             <Pencil className="w-4 h-4 mr-2" />
             Edit Details
           </Button>
-          <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700">
+          <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700" onClick={async () => {
+            if (window.confirm("Are you sure you want to delete this organization?")) {
+              try {
+                await organizationsApi.delete(orgId);
+                toast.success("Organization deleted");
+                router.navigate({ to: "/organizations" });
+              } catch (e) {
+                toast.error("Failed to delete organization");
+              }
+            }
+          }}>
             <Trash2 className="w-4 h-4 mr-2" />
             Delete
           </Button>
         </div>
       </div>
 
-      {emailError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 shadow-sm flex items-start" role="alert">
-          <div className="bg-red-100 p-1 rounded-md mr-3 mt-0.5">
-            <Mail className="w-4 h-4 text-red-600" />
-          </div>
-          <div>
-            <strong className="font-bold block mb-1">Email Delivery Failed</strong>
-            <span className="block text-sm">{emailError}</span>
-            <p className="text-xs text-red-500 mt-2 font-medium">Please check your SMTP credentials in settings.py</p>
-          </div>
-        </div>
-      )}
+      <OrgDialog 
+        open={isEditing} 
+        onOpenChange={setIsEditing} 
+        data={organization} 
+        mode="edit" 
+        onSave={async (e: any) => {
+          try {
+            await organizationsApi.update(e.id, e);
+            toast.success("Organization updated");
+            setIsEditing(false);
+            refetch();
+          } catch (err) {
+            toast.error("Failed to update organization");
+          }
+        }} 
+      />
 
       <div className="grid grid-cols-3 gap-6">
         {/* Left Column (Main Info) */}
@@ -231,21 +230,25 @@ function OrganizationDetailPage() {
                   { 
                     key: "name", 
                     header: "Site name", 
+                    accessor: (r: any) => r.name,
                     render: (r: any) => <span className="font-medium text-slate-800">{r.name}</span> 
                   },
                   { 
                     key: "product_type", 
                     header: "Product types", 
+                    accessor: (r: any) => r.productType || "—",
                     render: (r: any) => <span className="text-slate-600">{r.productType || "—"}</span> 
                   },
                   { 
                     key: "users", 
                     header: "Users", 
+                    accessor: (r: any) => String(r.usersCount || "0"),
                     render: (r: any) => <span className="text-slate-600">{r.usersCount || "0"}</span> 
                   },
                   { 
                     key: "status", 
                     header: "Status", 
+                    accessor: (r: any) => r.status || "Active",
                     render: (r: any) => (
                       <Badge variant="outline" className={r.status === 'Active' ? 'text-emerald-600 border-emerald-200 bg-emerald-50 text-[10px]' : 'text-slate-600 border-slate-200 bg-slate-50 text-[10px]'}>
                         {r.status?.toUpperCase() || 'ACTIVE'}

@@ -19,7 +19,8 @@ export const Route = createFileRoute("/organizations")({
   loader: async () => {
     try {
       const orgs = await organizationsApi.getAll();
-      return { organizations: orgs };
+      const sorted = orgs.sort((a: any, b: any) => new Date(b.created_at || b.createdAt || 0).getTime() - new Date(a.created_at || a.createdAt || 0).getTime());
+      return { organizations: sorted };
     } catch {
       return { organizations: [] };
     }
@@ -48,7 +49,8 @@ function OrganizationsPage() {
   const loadOrgs = async () => {
     try {
       const data = await organizationsApi.getAll();
-      setRows(data);
+      const sorted = data.sort((a: any, b: any) => new Date(b.created_at || b.createdAt || 0).getTime() - new Date(a.created_at || a.createdAt || 0).getTime());
+      setRows(sorted);
     } catch (err) {
       console.error(err);
     }
@@ -120,6 +122,20 @@ function OrganizationsPage() {
                 {r.status || 'Active'}
               </Badge>
             )
+          },
+          {
+            key: "created_at",
+            header: "Created Date & Time",
+            accessor: (r: any) => {
+              const d = r.created_at || r.createdAt;
+              if (!d) return "—";
+              return new Date(d).toLocaleString();
+            },
+            render: (r: any) => {
+              const d = r.created_at || r.createdAt;
+              if (!d) return <span className="text-sm text-slate-400">—</span>;
+              return <span className="text-sm text-slate-600 whitespace-nowrap">{new Date(d).toLocaleString()}</span>;
+            }
           }
         ]}
         actions={(r: any) => (
@@ -142,7 +158,7 @@ function OrganizationsPage() {
   );
 }
 
-function OrgDialog({ open, onOpenChange, data, mode, onSave }: any) {
+export function OrgDialog({ open, onOpenChange, data, mode, onSave }: any) {
   const [form, setForm] = useState<any>({});
 
   useEffect(() => {

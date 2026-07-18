@@ -74,7 +74,13 @@ export function DataTable<T>({ rows, columns, searchPlaceholder = "Search…", s
     }
     for (const f of filters) {
       const v = activeFilters[f.key];
-      if (v && v !== "__all__") r = r.filter(row => f.predicate(row, v));
+      if (v && v !== "__all__") r = r.filter(row => {
+        try {
+          return f.predicate(row, v);
+        } catch {
+          return false;
+        }
+      });
     }
     if (sort) {
       const col = columns.find(c => c.key === sort.key);

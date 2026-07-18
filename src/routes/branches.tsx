@@ -64,7 +64,8 @@ function BranchesPage() {
     <>
       <PageHeader title="Branches" description="Office locations under each legal entity" />
       <DataTable
-        rows={rows} rowKey={r => r.id} searchKeys={["name","city","state","code"]}
+        rows={[...rows].sort((a, b) => new Date((b as any).createdAt || (b as any).created_at || 0).getTime() - new Date((a as any).createdAt || (a as any).created_at || 0).getTime())}
+        rowKey={r => r.id} searchKeys={["name","city","state","code"]}
         filters={[{ label: "Entity", key: "entityId", options: entities.map(e => ({ value: e.id, label: e.code })), predicate: (r, v) => String(r.entity) === String(v) }]}
         onCreate={() => { setEditing(null); setMode("create"); setOpen(true); }} createLabel="New Branch" filename="branches.csv"
         columns={[
@@ -73,6 +74,7 @@ function BranchesPage() {
           { key: "city", header: "City", accessor: r => r.city },
           { key: "state", header: "State" },
           { key: "head", header: "Branch Head" },
+          { key: "created_at", header: "Created Date & Time", render: r => ((r as any).createdAt || (r as any).created_at) ? new Date((r as any).createdAt || (r as any).created_at).toLocaleString() : "-" },
         ]}
         actions={r => <div className="flex justify-end gap-1">
           <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setMode("view"); setOpen(true); }}><Eye className="h-4 w-4" /></Button>

@@ -110,10 +110,10 @@ function ExecutiveDashboard({ role }: { role: string }) {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total Headcount" value={String(stat.totalHeadcount || 0)} delta="+3.2%" icon={Users} />
-        <StatCard label="Present Today" value={`${stat.presentToday || 0}/${stat.totalHeadcount || 0}`} delta="+1.4%" icon={CalendarCheck2} tone="success" />
-        <StatCard label="June Net Payroll" value={fmtINR(stat.lastRunNet || 0)} delta="+0.8%" icon={Wallet} tone="info" />
-        <StatCard label="Pending Approvals" value={String(stat.pendingLeaves || 0)} delta="-12%" icon={AlertTriangle} tone="warning" />
+        <Link to="/employees" className="block hover:opacity-80 transition-opacity"><StatCard label="Total Headcount" value={String(stat.totalHeadcount || 0)} delta="+3.2%" icon={Users} /></Link>
+        <Link to="/attendance" className="block hover:opacity-80 transition-opacity"><StatCard label="Present Today" value={`${stat.presentToday || 0}/${stat.totalHeadcount || 0}`} delta="+1.4%" icon={CalendarCheck2} tone="success" /></Link>
+        <Link to="/payroll/run" className="block hover:opacity-80 transition-opacity"><StatCard label="June Net Payroll" value={fmtINR(stat.lastRunNet || 0)} delta="+0.8%" icon={Wallet} tone="info" /></Link>
+        <Link to="/leave" className="block hover:opacity-80 transition-opacity"><StatCard label="Pending Approvals" value={String(stat.pendingLeaves || 0)} delta="-12%" icon={AlertTriangle} tone="warning" /></Link>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">

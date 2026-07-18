@@ -27,6 +27,7 @@ function SitesPage() {
   const [rows, setRows] = useState<any[]>(initial || []);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
+  const [viewing, setViewing] = useState(false);
 
   useEffect(() => { setRows(initial || []); }, [initial]);
 
@@ -60,7 +61,7 @@ function SitesPage() {
   if (open) {
     return (
       <div className="p-6">
-        <SiteDialog open={open} onOpenChange={setOpen} site={editing} onSave={save} />
+        <SiteDialog open={open} onOpenChange={setOpen} site={editing} onSave={save} readOnly={viewing} />
       </div>
     );
   }
@@ -75,10 +76,10 @@ function SitesPage() {
       </div>
 
       <DataTable
-        rows={rows}
+        rows={[...rows].sort((a: any, b: any) => new Date(b.createdAt || b.created_at || 0).getTime() - new Date(a.createdAt || a.created_at || 0).getTime())}
         rowKey={(r: any) => r.id}
         searchKeys={["name", "address", "city"]}
-        onCreate={() => { setEditing(null); setOpen(true); }}
+        onCreate={() => { setEditing(null); setViewing(false); setOpen(true); }}
         createLabel="New Site"
         filters={[
           {
@@ -91,54 +92,66 @@ function SitesPage() {
         columns={[
           { 
             key: "name", 
-              header: "Site", 
-              render: (r: any) => (
-                <div className="flex flex-col py-1">
-                   <span className="font-semibold text-slate-900 text-sm">{r.name}</span>
-                   <span className="text-xs text-slate-500 mt-0.5">{r.address || r.city || "—"}</span>
-                </div>
-              )
-            },
-            { 
-              key: "branch", 
-              header: "Branch", 
-              render: (r: any) => <span className="text-sm text-slate-700 font-medium">{r.branch_name || r.branch || "Headquarters"}</span> 
-            },
-            { 
-              key: "lat_lng", 
-              header: "Lat / Lng", 
-              render: (r: any) => <span className="text-sm text-slate-600 font-mono tracking-tight">{Number(r.latitude || 0).toFixed(4)}, {Number(r.longitude || 0).toFixed(4)}</span> 
-            },
-            { 
-              key: "radius", 
-              header: "Radius", 
-              render: (r: any) => <span className="text-sm text-slate-700 font-medium">{r.radius || 150} m</span>
-            },
-            { 
-              key: "qr", 
-              header: "QR", 
-              render: (r: any) => (
-                <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-semibold ${r.qr_enabled !== false ? "bg-[#06b6d4] text-white shadow-sm" : "bg-slate-100 text-slate-500"}`}>
-                  {r.qr_enabled !== false ? "On" : "Off"}
-                </span>
-              )
-            },
-            { 
-              key: "face", 
-              header: "Face", 
-              render: (r: any) => (
-                <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-semibold ${r.face_enabled !== false ? "bg-[#06b6d4] text-white shadow-sm" : "bg-slate-100 text-slate-500"}`}>
-                  {r.face_enabled !== false ? "On" : "Off"}
-                </span>
-              )
-            },
+            header: "Site", 
+            accessor: (r: any) => `${r.name} - ${r.address || r.city || ""}`,
+            render: (r: any) => (
+              <div className="flex flex-col py-1">
+                 <span className="font-semibold text-slate-900 text-sm">{r.name}</span>
+                 <span className="text-xs text-slate-500 mt-0.5">{r.address || r.city || "—"}</span>
+              </div>
+            )
+          },
+          { 
+            key: "branch", 
+            header: "Branch", 
+            accessor: (r: any) => r.branch_name || r.branch || "Headquarters",
+            render: (r: any) => <span className="text-sm text-slate-700 font-medium">{r.branch_name || r.branch || "Headquarters"}</span> 
+          },
+          { 
+            key: "lat_lng", 
+            header: "Lat / Lng",
+            accessor: (r: any) => `${Number(r.latitude || 0).toFixed(4)}, ${Number(r.longitude || 0).toFixed(4)}`,
+            render: (r: any) => <span className="text-sm text-slate-600 font-mono tracking-tight">{Number(r.latitude || 0).toFixed(4)}, {Number(r.longitude || 0).toFixed(4)}</span> 
+          },
+          { 
+            key: "radius", 
+            header: "Radius",
+            accessor: (r: any) => `${r.radius || 150} m`,
+            render: (r: any) => <span className="text-sm text-slate-700 font-medium">{r.radius || 150} m</span>
+          },
+          { 
+            key: "qr", 
+            header: "QR",
+            accessor: (r: any) => r.qr_enabled !== false ? "On" : "Off",
+            render: (r: any) => (
+              <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-semibold ${r.qr_enabled !== false ? "bg-[#06b6d4] text-white shadow-sm" : "bg-slate-100 text-slate-500"}`}>
+                {r.qr_enabled !== false ? "On" : "Off"}
+              </span>
+            )
+          },
+          { 
+            key: "face", 
+            header: "Face",
+            accessor: (r: any) => r.face_enabled !== false ? "On" : "Off",
+            render: (r: any) => (
+              <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-semibold ${r.face_enabled !== false ? "bg-[#06b6d4] text-white shadow-sm" : "bg-slate-100 text-slate-500"}`}>
+                {r.face_enabled !== false ? "On" : "Off"}
+              </span>
+            )
+          },
+          {
+            key: "created_at",
+            header: "Created Date & Time",
+            accessor: (r: any) => (r.createdAt || r.created_at),
+            render: (r: any) => ((r as any).createdAt || (r as any).created_at) ? new Date((r as any).createdAt || (r as any).created_at).toLocaleString() : "—"
+          },
           ]}
           actions={(r: any) => (
             <div className="flex gap-3 justify-end items-center pr-2">
-              <button className="text-slate-500 hover:text-slate-900 transition-colors" title="View">
+              <button className="text-slate-500 hover:text-slate-900 transition-colors" title="View" onClick={() => { setEditing(r); setViewing(true); setOpen(true); }}>
                 <Eye className="h-[18px] w-[18px]" />
               </button>
-              <button className="text-slate-500 hover:text-slate-900 transition-colors" title="Edit" onClick={() => { setEditing(r); setOpen(true); }}>
+              <button className="text-slate-500 hover:text-slate-900 transition-colors" title="Edit" onClick={() => { setEditing(r); setViewing(false); setOpen(true); }}>
                 <Pencil className="h-[18px] w-[18px]" />
               </button>
               <button className="text-[#ef4444] hover:text-[#dc2626] transition-colors" title="Delete" onClick={() => handleDelete(r.id)}>
@@ -151,7 +164,7 @@ function SitesPage() {
   );
 }
 
-function SiteDialog({ open, onOpenChange, site, onSave }: any) {
+function SiteDialog({ open, onOpenChange, site, onSave, readOnly }: any) {
   const defaultForm = { 
     name: "", site_code: "", country: "", address: "", 
     latitude: "", longitude: "", radius: 150, 
@@ -177,7 +190,7 @@ function SiteDialog({ open, onOpenChange, site, onSave }: any) {
           &larr; Back
         </Button>
         <h2 className="text-xl font-bold text-slate-800">
-          {site ? 'Edit Site' : 'Add New Site'}
+          {site ? (readOnly ? 'View Site' : 'Edit Site') : 'Add New Site'}
         </h2>
       </div>
       
@@ -189,11 +202,11 @@ function SiteDialog({ open, onOpenChange, site, onSave }: any) {
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label>Site Name *</Label>
-                <Input name="name" value={form.name || ""} onChange={handleChange} placeholder="e.g. Corporate HQ" />
+                <Input name="name" value={form.name || ""} onChange={handleChange} placeholder="e.g. Corporate HQ" disabled={readOnly} />
               </div>
               <div className="space-y-2">
                 <Label>Site Code *</Label>
-                <Input name="site_code" value={form.site_code || ""} onChange={handleChange} placeholder="e.g. CHQ-001" />
+                <Input name="site_code" value={form.site_code || ""} onChange={handleChange} placeholder="e.g. CHQ-001" disabled={readOnly} />
               </div>
               <div className="space-y-2 col-span-2">
                 <Label>Location Address</Label>
@@ -201,7 +214,8 @@ function SiteDialog({ open, onOpenChange, site, onSave }: any) {
                   name="address" 
                   value={form.address || ""} 
                   onChange={handleChange} 
-                  className="w-full min-h-[100px] flex rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  disabled={readOnly}
+                  className="w-full min-h-[100px] flex rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                   placeholder="Enter full address..."
                 />
               </div>
@@ -210,6 +224,7 @@ function SiteDialog({ open, onOpenChange, site, onSave }: any) {
                   <Label>Status</Label>
                   <Switch 
                     checked={form.status === 'Active'} 
+                    disabled={readOnly}
                     onCheckedChange={(c) => setForm({...form, status: c ? 'Active' : 'Inactive'})}
                   />
                   <span className="text-sm text-slate-500">{form.status}</span>
@@ -224,15 +239,15 @@ function SiteDialog({ open, onOpenChange, site, onSave }: any) {
             <div className="grid grid-cols-3 gap-6">
               <div className="space-y-2">
                 <Label>Latitude</Label>
-                <Input type="number" step="any" name="latitude" value={form.latitude || ""} onChange={handleChange} placeholder="e.g. 19.0760" />
+                <Input type="number" step="any" name="latitude" value={form.latitude || ""} onChange={handleChange} placeholder="e.g. 19.0760" disabled={readOnly} />
               </div>
               <div className="space-y-2">
                 <Label>Longitude</Label>
-                <Input type="number" step="any" name="longitude" value={form.longitude || ""} onChange={handleChange} placeholder="e.g. 72.8777" />
+                <Input type="number" step="any" name="longitude" value={form.longitude || ""} onChange={handleChange} placeholder="e.g. 72.8777" disabled={readOnly} />
               </div>
               <div className="space-y-2">
                 <Label>Radius (meters)</Label>
-                <Input type="number" name="radius" value={form.radius || 150} onChange={handleChange} placeholder="e.g. 150" />
+                <Input type="number" name="radius" value={form.radius || 150} onChange={handleChange} placeholder="e.g. 150" disabled={readOnly} />
               </div>
             </div>
             <p className="text-xs text-slate-500 mt-2">Setting coordinates and radius enables geofenced attendance tracking for this site.</p>
@@ -246,6 +261,7 @@ function SiteDialog({ open, onOpenChange, site, onSave }: any) {
                 <Switch 
                   id="qr-mode"
                   checked={form.qr_enabled ?? true} 
+                  disabled={readOnly}
                   onCheckedChange={(c) => setForm({...form, qr_enabled: c})}
                 />
                 <Label htmlFor="qr-mode" className="cursor-pointer">QR Check-in</Label>
@@ -254,6 +270,7 @@ function SiteDialog({ open, onOpenChange, site, onSave }: any) {
                 <Switch 
                   id="face-mode"
                   checked={form.face_enabled ?? true} 
+                  disabled={readOnly}
                   onCheckedChange={(c) => setForm({...form, face_enabled: c})}
                 />
                 <Label htmlFor="face-mode" className="cursor-pointer">Face Verification</Label>
@@ -264,8 +281,14 @@ function SiteDialog({ open, onOpenChange, site, onSave }: any) {
         </div>
         
         <div className="p-6 pt-4 border-t flex justify-end gap-2 bg-slate-50/50 rounded-b-xl">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button className="bg-[#1a4cd2] hover:bg-[#1641b4] text-white" onClick={() => onSave(form)}>Save Site</Button>
+          {readOnly ? (
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button className="bg-[#1a4cd2] hover:bg-[#1641b4] text-white" onClick={() => onSave(form)}>Save Site</Button>
+            </>
+          )}
         </div>
     </div>
   );

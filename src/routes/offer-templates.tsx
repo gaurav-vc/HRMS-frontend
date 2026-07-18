@@ -48,7 +48,12 @@ function OfferTemplatesPage() {
       toast.success("Template created successfully");
       setOpenCreate(false);
       fetchData();
-      setNewTemplate({ ...newTemplate, name: "", category: "" });
+      setNewTemplate({
+        name: "",
+        category: "",
+        body_html: "<h2>Offer of Employment</h2><p>Dear {{candidate_name}},</p><p>We are pleased to offer you the position of {{designation}} at {{entity_name}}.</p>",
+        placeholders: ["candidate_name", "designation", "entity_name"]
+      });
     } catch (err: any) {
       toast.error(`Error: ${err.message || "Failed to create"}`);
     } finally {

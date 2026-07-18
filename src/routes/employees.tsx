@@ -32,7 +32,7 @@ export const Route = createFileRoute("/employees")({
       designationsApi.getAll(),
       branchesApi.getAll(),
       entitiesApi.getAll(),
-      sitesApi.getAll(),
+      sitesApi.getAll().then((res: any) => res?.results || res),
       payrollApi.getStructures().catch(() => []),
       offersApi.getAll().catch((err: any) => {
         setTimeout(() => toast.error(`Error fetching offers: ${err.message || String(err)}`, { duration: 10000 }), 1000);
@@ -199,7 +199,7 @@ function EmployeesPage() {
       {activeTab === "directory" && (
         <DataTable
           key="emp-table" tableId="employees-directory"
-          rows={rows} rowKey={r => r.id} searchKeys={["firstName","lastName","email","code","phone"]}
+          rows={[...rows].sort((a: any, b: any) => new Date((b as any).createdAt || (b as any).created_at || 0).getTime() - new Date((a as any).createdAt || (a as any).created_at || 0).getTime())} rowKey={r => r.id} searchKeys={["firstName","lastName","email","code","phone"]}
           filters={[
             { label: "Entity", key: "entity", options: entities.map((e: any) => ({ value: e.id, label: e.code })), predicate: (r: any, v: any) => String(r.entity) === String(v) },
             { label: "Department", key: "department", options: departments.map((d: any) => ({ value: d.id, label: d.name })), predicate: (r: any, v: any) => String(r.department) === String(v) },
@@ -239,6 +239,7 @@ function EmployeesPage() {
             { key: "bankName", header: "Bank Name", accessor: (r: any) => r.bankName ?? "—", defaultHidden: true },
             { key: "ifscCode", header: "IFSC Code", accessor: (r: any) => (r.ifsc || r.ifscCode) ?? "—", defaultHidden: true },
             { key: "bankAccount", header: "Bank Account No.", accessor: (r: any) => r.bankAccount ?? "—", defaultHidden: true },
+            { key: "created_at", header: "Created Date & Time", accessor: (r: any) => (r.createdAt || r.created_at), render: (r: any) => ((r as any).createdAt || (r as any).created_at) ? new Date((r as any).createdAt || (r as any).created_at).toLocaleString() : "-" },
           ]}
           actions={(r: any) => <div className="flex justify-end gap-1">
             <Link 
@@ -421,10 +422,47 @@ function EmployeeDialog({ open, onOpenChange, employee, onSave, departments, des
                 </Select>
               </Field>
               <Field label="Reporting Manager">
-                <Select value={String(form.manager || '')} onValueChange={v => setForm({ ...form, manager: v || undefined } as any)}>
-                  <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
-                  <SelectContent><SelectItem value=" ">None</SelectItem>{(employees || []).filter((e: Employee) => !form.entity || String(e?.entity) === String(form.entity)).map((e: Employee, idx: number) => <SelectItem key={e?.id || `emp-${idx}`} value={String(e?.id)}>{e?.firstName} {e?.lastName}</SelectItem>)}</SelectContent>
-                </Select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button role="combobox" className={`flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-slate-200 bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring ${!form.manager ? "text-muted-foreground" : ""}`}>
+                      {form.manager
+                        ? `${(employees || []).find((e: any) => String(e.id) === String(form.manager))?.firstName || ''} ${(employees || []).find((e: any) => String(e.id) === String(form.manager))?.lastName || ''}`
+                        : "Search Manager..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0 shadow-md" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search managers..." />
+                      <CommandEmpty>No manager found.</CommandEmpty>
+                      <CommandGroup>
+                        <div className="max-h-[200px] overflow-y-auto">
+                          <CommandItem
+                            value="none"
+                            onSelect={() => setForm({ ...form, manager: null })}
+                            className="cursor-pointer font-medium"
+                          >
+                            <Check className={`mr-2 h-4 w-4 ${!form.manager ? "opacity-100" : "opacity-0"}`} />
+                            None
+                          </CommandItem>
+                          {(employees || [])
+                            .filter((e: Employee) => !form.entity || String(e?.entity) === String(form.entity))
+                            .map((e: Employee) => (
+                              <CommandItem
+                                key={e.id}
+                                value={`${e.firstName} ${e.lastName}`}
+                                onSelect={() => setForm({ ...form, manager: e.id })}
+                                className="cursor-pointer font-medium"
+                              >
+                                <Check className={`mr-2 h-4 w-4 ${String(form.manager) === String(e.id) ? "opacity-100" : "opacity-0"}`} />
+                                {e.firstName} {e.lastName}
+                              </CommandItem>
+                            ))}
+                        </div>
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </Field>
               <Field label="Status">
                 <Select value={form.status} onValueChange={v => setForm({ ...form, status: v as any })}>

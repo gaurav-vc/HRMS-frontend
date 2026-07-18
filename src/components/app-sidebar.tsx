@@ -13,10 +13,10 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import type { Role } from "@/lib/mock-data";
 
-interface Item { title: string; url: string; icon: React.ComponentType<{ className?: string }>; }
-interface Group { label: string; items: Item[]; }
+export interface Item { title: string; url: string; icon: React.ComponentType<{ className?: string }>; }
+export interface Group { label: string; items: Item[]; }
 
-const NAV: Group[] = [
+export const NAV: Group[] = [
   { label: "Overview", items: [
     { title: "Dashboard", url: "/", icon: LayoutDashboard },
   ]},
@@ -73,7 +73,7 @@ const NAV: Group[] = [
   ]}
 ];
 
-const SUPER_ADMIN_NAV: Group[] = [
+export const SUPER_ADMIN_NAV: Group[] = [
   { label: "Super Admin", items: [
     { title: "Dashboard", url: "/superadmin-dashboard", icon: LayoutDashboard },
     { title: "Organizations", url: "/organizations", icon: Network },
@@ -82,6 +82,16 @@ const SUPER_ADMIN_NAV: Group[] = [
   ]},
 ];
 
+export const canAccessRoute = (it: Item, user: any) => {
+  if (user?.username === "Vibe_admin") return true;
+  if (user?.role === "super_admin") return true;
+  if (user?.permissions && user.permissions[it.title]) {
+    const v = user.permissions[it.title].view;
+    return v === true || v === 'self' || v === 'selected_entities';
+  }
+  return false;
+};
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -89,19 +99,7 @@ export function AppSidebar() {
   const { user } = useAuth();
   const role = user?.role ?? "employee";
 
-  const can = (it: Item) => {
-    // 1. If the user is Vibe_admin, they see everything
-    if (user?.username === "Vibe_admin") return true;
-    
-    // 2. Strict check: only show if explicitly granted view permission
-    if (user?.permissions && user.permissions[it.title]) {
-      const v = user.permissions[it.title].view;
-      return v === true || v === 'self' || v === 'selected_entities';
-    }
-    
-    // Default to hide if no explicit permission is found
-    return false;
-  };
+  const can = (it: Item) => canAccessRoute(it, user);
   const isActive = (url: string) => url === "/" ? pathname === "/" : pathname === url || pathname.startsWith(url + "/");
 
   const nav = user?.username === "Vibe_admin" ? SUPER_ADMIN_NAV : NAV;

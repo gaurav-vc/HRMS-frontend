@@ -28,8 +28,11 @@ export const Route = createFileRoute("/superadmin-sites")({
         sitesApi.getAll(),
         organizationsApi.getAll(),
       ]);
+      const sitesList = (sites as any)?.results || sites || [];
+      const sortedSites = sitesList.sort((a: any, b: any) => new Date(b.created_at || b.createdAt || 0).getTime() - new Date(a.created_at || a.createdAt || 0).getTime());
+      
       return { 
-        sites: (sites as any)?.results || sites || [], 
+        sites: sortedSites, 
         organizations: (orgs as any)?.results || orgs || [] 
       };
     } catch {
@@ -67,7 +70,8 @@ function SitesPage() {
   const loadSites = async () => {
     try {
       const data = await sitesApi.getAll();
-      setRows(data);
+      const sorted = data.sort((a: any, b: any) => new Date(b.created_at || b.createdAt || 0).getTime() - new Date(a.created_at || a.createdAt || 0).getTime());
+      setRows(sorted);
     } catch (err) {
       console.error(err);
     }
@@ -198,16 +202,19 @@ function SitesPage() {
             { 
               key: "name", 
               header: "Site Name", 
+              accessor: (r: any) => r.name,
               render: (r: any) => <span className="font-medium">{r.name}</span> 
             },
             { 
               key: "location", 
               header: "Location", 
+              accessor: (r: any) => r.address || r.city || "—",
               render: (r: any) => <span className="text-muted-foreground">{r.address || r.city || "—"}</span> 
             },
             { 
               key: "productType", 
               header: "Product Type", 
+              accessor: (r: any) => r.productType || "—",
               render: (r: any) => (
                 r.productType ? <Badge variant="secondary" className="bg-slate-100 text-slate-700">{r.productType}</Badge> : <span>—</span>
               )
@@ -215,17 +222,31 @@ function SitesPage() {
             { 
               key: "contact", 
               header: "Contact", 
+              accessor: (r: any) => r.contactName || "—",
               render: (r: any) => <span>{r.contactName || "—"}</span> 
             },
             { 
               key: "status", 
               header: "Status", 
+              accessor: (r: any) => r.status,
               render: (r: any) => (
-                <Badge variant="outline" className={r.status === 'Active' ? 'text-green-600 border-green-200 bg-green-50' : 'text-slate-600 border-slate-200 bg-slate-50'}>
-                  {r.status?.toUpperCase() || 'ACTIVE'}
-                </Badge>
+                <Badge variant={r.status === "Active" ? "default" : "secondary"} className={r.status === "Active" ? "bg-emerald-100 text-emerald-800" : ""}>{r.status || "Active"}</Badge>
               )
             },
+            {
+              key: "created_at",
+              header: "Created Date & Time",
+              accessor: (r: any) => {
+                const d = r.created_at || r.createdAt;
+                if (!d) return "—";
+                return new Date(d).toLocaleString();
+              },
+              render: (r: any) => {
+                const d = r.created_at || r.createdAt;
+                if (!d) return <span className="text-sm text-slate-400">—</span>;
+                return <span className="text-sm text-slate-600 whitespace-nowrap">{new Date(d).toLocaleString()}</span>;
+              }
+            }
           ]}
           actions={(r: any) => (
             <div className="flex gap-2 justify-end">
@@ -422,7 +443,7 @@ function SiteDialog({ open, onOpenChange, site, onSave, organizations, mode, loc
               <Checkbox 
                 id="select-all" 
                 checked={form.modules?.length === MODULES.flatMap(g => g.items).length}
-                onCheckedChange={handleSelectAll}
+                onCheckedChange={(c) => handleSelectAll(c as boolean)}
                 disabled={mode === 'view'}
               />
               <label htmlFor="select-all" className="text-sm font-medium text-slate-700">Select All Modules</label>
@@ -459,8 +480,14 @@ function SiteDialog({ open, onOpenChange, site, onSave, organizations, mode, loc
         </div>
         
         <div className="p-6 pt-4 border-t flex justify-end gap-2 bg-slate-50/50 rounded-b-xl">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button className="bg-[#1a4cd2] hover:bg-[#1641b4] text-white shadow-sm" onClick={() => onSave(form)}>Save</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            {mode === 'view' ? 'Close' : 'Cancel'}
+          </Button>
+          {mode !== 'view' && (
+            <Button className="bg-[#1a4cd2] hover:bg-[#1641b4] text-white shadow-sm" onClick={() => onSave(form)}>
+              Save
+            </Button>
+          )}
         </div>
     </div>
   );

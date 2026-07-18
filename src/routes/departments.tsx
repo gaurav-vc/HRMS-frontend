@@ -1,7 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { departmentsApi, entitiesApi, employeesApi } from "@/api";
 import type { Department, Entity, Employee } from "@/lib/mock-data";
 
@@ -64,17 +66,21 @@ function DepartmentsPage() {
   return (
     <>
       <PageHeader title="Departments" description="Functional units across the organisation" />
-      <DataTable rows={rows} rowKey={r => String(r.id)} searchKeys={["name","head","code"]}
+      <DataTable rows={[...rows].sort((a, b) => new Date((b as any).createdAt || (b as any).created_at || 0).getTime() - new Date((a as any).createdAt || (a as any).created_at || 0).getTime())} rowKey={r => String(r.id)} searchKeys={["name","head","code"]}
         filters={[{ label: "Entity", key: "entityId", options: entities.map(e => ({ value: String(e.id), label: e.code })), predicate: (r, v) => String(r.entity) === String(v) }]}
         onCreate={() => { setEditing(null); setMode("create"); setOpen(true); }} createLabel="New Department" filename="departments.csv"
         columns={[
           { key: "name", header: "Department", accessor: r => r.name, sortable: true, render: r => <div><div className="font-medium">{r.name}</div><div className="text-xs text-muted-foreground">{r.code}</div></div> },
-          { key: "entity", header: "Entity", render: r => entities.find(e => String(e.id) === String(r.entity))?.code ?? "—" },
-          { key: "head", header: "HOD", render: r => {
+          { key: "entity", header: "Entity", accessor: r => entities.find(e => String(e.id) === String(r.entity))?.code ?? "—", render: r => entities.find(e => String(e.id) === String(r.entity))?.code ?? "—" },
+          { key: "head", header: "HOD", accessor: r => {
+              const headEmp: any = employees.find((e: any) => String(e.id) === String(r.head) || String(e.code) === String(r.head));
+              return headEmp ? `${headEmp.firstName || headEmp.first_name} ${headEmp.lastName || headEmp.last_name}` : (r.head || '—');
+          }, render: r => {
               const headEmp: any = employees.find((e: any) => String(e.id) === String(r.head) || String(e.code) === String(r.head));
               return headEmp ? `${headEmp.firstName || headEmp.first_name} ${headEmp.lastName || headEmp.last_name}` : (r.head || '—');
           }},
-          { key: "size", header: "Headcount", render: r => employees.filter((e: any) => String(e.department) === String(r.id)).length },
+          { key: "size", header: "Headcount", accessor: r => employees.filter((e: any) => String(e.department) === String(r.id)).length, render: r => employees.filter((e: any) => String(e.department) === String(r.id)).length },
+          { key: "created_at", header: "Created Date & Time", render: r => ((r as any).createdAt || (r as any).created_at) ? new Date((r as any).createdAt || (r as any).created_at).toLocaleString() : "-" },
         ]}
         actions={r => <div className="flex justify-end gap-1">
           <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setMode("view"); setOpen(true); }}><Eye className="h-4 w-4" /></Button>
@@ -115,13 +121,50 @@ function DepartmentDialog({ open, onOpenChange, department, onSave, entities, em
           <Field label="Name"><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} disabled={mode === "view"} /></Field>
           <Field label="Code"><Input value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} disabled={mode === "view"} /></Field>
           <Field label="Head">
-            <Select value={String(form.head)} onValueChange={v => setForm({ ...form, head: v } as any)} disabled={mode === "view"}>
-              <SelectTrigger><SelectValue placeholder="Select Head of Department" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">None</SelectItem>
-                {employees.map((e: any) => <SelectItem key={e.id} value={String(e.id)}>{e.firstName || e.first_name} {e.lastName || e.last_name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button 
+                  disabled={mode === "view"}
+                  role="combobox" 
+                  className={`flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-slate-200 bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring ${!form.head ? "text-muted-foreground" : ""} disabled:cursor-not-allowed disabled:opacity-50`}
+                >
+                  {form.head
+                    ? `${(employees || []).find((e: any) => String(e.id) === String(form.head))?.firstName || (employees || []).find((e: any) => String(e.id) === String(form.head))?.first_name || ''} ${(employees || []).find((e: any) => String(e.id) === String(form.head))?.lastName || (employees || []).find((e: any) => String(e.id) === String(form.head))?.last_name || ''}`
+                    : "Search Head..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] p-0 shadow-md" align="start">
+                <Command>
+                  <CommandInput placeholder="Search head of department..." />
+                  <CommandEmpty>No employees found.</CommandEmpty>
+                  <CommandGroup>
+                    <div className="max-h-[200px] overflow-y-auto">
+                      <CommandItem
+                        value="none"
+                        onSelect={() => setForm({ ...form, head: "" })}
+                        className="cursor-pointer font-medium"
+                      >
+                        <Check className={`mr-2 h-4 w-4 ${!form.head ? "opacity-100" : "opacity-0"}`} />
+                        None
+                      </CommandItem>
+                      {(employees || [])
+                        .map((e: any) => (
+                          <CommandItem
+                            key={e.id}
+                            value={`${e.firstName || e.first_name} ${e.lastName || e.last_name}`}
+                            onSelect={() => setForm({ ...form, head: e.id })}
+                            className="cursor-pointer font-medium"
+                          >
+                            <Check className={`mr-2 h-4 w-4 ${String(form.head) === String(e.id) ? "opacity-100" : "opacity-0"}`} />
+                            {e.firstName || e.first_name} {e.lastName || e.last_name}
+                          </CommandItem>
+                        ))}
+                    </div>
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </Field>
         </div>
         <DialogFooter><Button variant="outline" onClick={() => onOpenChange(false)}>{mode === "view" ? "Close" : "Cancel"}</Button>{mode !== "view" && <Button onClick={() => onSave(form)}>Save</Button>}</DialogFooter>

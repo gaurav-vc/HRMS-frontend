@@ -5,7 +5,7 @@ import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { form16Api, departmentsApi, entitiesApi, branchesApi, employeesApi, designationsApi, sitesApi } from "@/api";
+import { form16Api, departmentsApi, entitiesApi, branchesApi, employeesApi, designationsApi, sitesApi, API_BASE_URL } from "@/api";
 import { Upload, UploadCloud, Search, Download, Eye } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +44,25 @@ function Form16ManagementPage() {
   const [previewDoc, setPreviewDoc] = useState<any | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+
+  const forceDownload = async (url: string, filename: string) => {
+    const fullUrl = url.startsWith('/') ? `${API_BASE_URL}${url}` : url;
+    try {
+      const res = await fetch(fullUrl);
+      if (!res.ok) throw new Error("Failed to download file");
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      window.open(fullUrl, '_blank');
+    }
+  };
 
   const handleSingleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -279,7 +298,7 @@ function Form16ManagementPage() {
                   <Button variant="ghost" size="icon" onClick={() => setPreviewDoc(row)} title="View Document">
                     <Eye className="h-4 w-4 text-blue-600" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => window.open(row.file, '_blank')} title="Download">
+                  <Button variant="ghost" size="icon" onClick={() => forceDownload(row.file, `Form16_${fyFilter}_${row.employee_code}.pdf`)} title="Download">
                     <Download className="h-4 w-4 text-muted-foreground" />
                   </Button>
                 </>
@@ -302,7 +321,7 @@ function Form16ManagementPage() {
           <DialogHeader className="p-4 border-b border-border bg-muted/30">
             <DialogTitle className="flex items-center justify-between">
               <span>{previewDoc?.employee_name} - Form 16 ({fyFilter})</span>
-              <Button size="sm" variant="outline" className="gap-2 h-8 mr-6" onClick={() => window.open(previewDoc?.file, '_blank')}>
+              <Button size="sm" variant="outline" className="gap-2 h-8 mr-6" onClick={() => forceDownload(previewDoc?.file, `Form16_${fyFilter}_${previewDoc?.employee_code}.pdf`)}>
                 <Download className="h-3.5 w-3.5" /> Download PDF
               </Button>
             </DialogTitle>

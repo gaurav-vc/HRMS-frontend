@@ -35,14 +35,18 @@ function HolidayPlanner() {
   });
 
   const fetchData = () => {
-    holidaysApi.getStats().then((res: any) => {
-      if (res) setStats(res);
-    }).catch(console.error);
-
     holidaysApi.getAll().then((res: any) => {
+      const allHolidays = Array.isArray(res) ? res : [];
+      setHolidays(allHolidays);
+      
       const today = new Date().toISOString().split('T')[0];
-      const upcoming = Array.isArray(res) ? res.filter((h: any) => h.date >= today) : [];
-      setHolidays(upcoming);
+      setStats({
+        total_holidays: allHolidays.length,
+        upcoming: allHolidays.filter((h: any) => h.date >= today).length,
+        optional: allHolidays.filter((h: any) => h.holiday_type === 'Optional').length,
+        restricted: allHolidays.filter((h: any) => h.holiday_type === 'Restricted').length,
+        regional_festival: allHolidays.filter((h: any) => h.holiday_type === 'Regional' || h.holiday_type === 'Festival').length
+      });
     }).catch(console.error);
   };
 
@@ -153,7 +157,9 @@ function HolidayPlanner() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-base font-semibold">Upcoming Holidays</CardTitle>
+          <CardTitle className="text-base font-semibold">
+            {!filterType || filterType === 'UPCOMING' ? "Upcoming Holidays" : filterType === 'TOTAL' ? "All Holidays" : filterType + " Holidays"}
+          </CardTitle>
           <Link to="/holidays/calendar" className="text-sm text-muted-foreground hover:text-foreground flex items-center">
             Open calendar &rarr;
           </Link>
@@ -161,7 +167,9 @@ function HolidayPlanner() {
         <CardContent>
           <div className="space-y-4 mt-4">
             {holidays.filter(h => {
-              if (!filterType || filterType === 'TOTAL' || filterType === 'UPCOMING') return true;
+              const today = new Date().toISOString().split('T')[0];
+              if (!filterType || filterType === 'UPCOMING') return h.date >= today;
+              if (filterType === 'TOTAL') return true;
               if (filterType === 'OPTIONAL') return h.holiday_type === 'Optional';
               if (filterType === 'RESTRICTED') return h.holiday_type === 'Restricted';
               if (filterType === 'REGIONAL') return h.holiday_type === 'Regional' || h.holiday_type === 'Festival';
@@ -170,7 +178,9 @@ function HolidayPlanner() {
               <div className="text-sm text-muted-foreground py-4">No holidays found for this filter.</div>
             ) : (
               holidays.filter(h => {
-                if (!filterType || filterType === 'TOTAL' || filterType === 'UPCOMING') return true;
+                const today = new Date().toISOString().split('T')[0];
+                if (!filterType || filterType === 'UPCOMING') return h.date >= today;
+                if (filterType === 'TOTAL') return true;
                 if (filterType === 'OPTIONAL') return h.holiday_type === 'Optional';
                 if (filterType === 'RESTRICTED') return h.holiday_type === 'Restricted';
                 if (filterType === 'REGIONAL') return h.holiday_type === 'Regional' || h.holiday_type === 'Festival';

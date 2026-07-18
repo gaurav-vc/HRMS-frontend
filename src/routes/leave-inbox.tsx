@@ -86,14 +86,14 @@ function LeaveInboxPage() {
       <div className="bg-white border rounded-lg shadow-sm mt-6">
         <DataTable rows={inboxMapped} rowKey={(r: any) => r.id} searchKeys={[(r: any) => r.empName, "reason"]} filename="leave_inbox.csv"
           filters={[
-            { label: "Status", key: "status", options: ["Pending","Approved","Rejected"].map(s => ({ value: s, label: s })), predicate: (r: any, v: any) => r.status === v },
-            { label: "Type", key: "type", options: types.map((t: any) => ({ value: t.code, label: t.name })), predicate: (r: any, v: any) => r.type === v },
+            { label: "Status", key: "status", options: ["Pending","Approved","Rejected"].map(s => ({ value: s, label: s })), predicate: (r: any, v: any) => String(r.status).toLowerCase() === String(v).toLowerCase() },
+            { label: "Type", key: "type", options: types.map((t: any) => ({ value: t.code, label: t.name })), predicate: (r: any, v: any) => String(r.type).toLowerCase() === String(v).toLowerCase() },
           ]}
           columns={columns}
-          actions={(r: any) => r.status === "Pending" ? <div className="flex justify-end gap-3 font-medium">
+          actions={(r: any) => String(r.status).toLowerCase() === "pending" ? <div className="flex justify-end gap-3 font-medium">
             <button className="text-emerald-600 hover:text-emerald-700" onClick={() => act(r.id, "Approved")}>Approve</button>
             <button className="text-red-600 hover:text-red-700" onClick={() => act(r.id, "Rejected")}>Reject</button>
-          </div> : null}
+          </div> : <div className="flex justify-end text-sm text-muted-foreground italic">No action</div>}
         />
       </div>
     </>

@@ -141,6 +141,32 @@ function StructurePage() {
     }
   };
 
+  const handleDuplicate = async () => {
+    if (!activeStruct) return;
+    try {
+      toast.info("Duplicating structure...");
+      const newStruct = await payrollApi.createStructure({ name: `${activeStruct.name} (Copy)`, status: 'Draft' });
+      setStructures([...structures, newStruct]);
+      
+      // Duplicate all components
+      for (const comp of comps) {
+        await payrollApi.createSalaryComponent({
+          structure: newStruct.id,
+          name: comp.name,
+          type: comp.type,
+          calc: comp.calc,
+          value: comp.value,
+          prorate: comp.prorate
+        });
+      }
+      
+      setActiveId(newStruct.id);
+      toast.success("Structure duplicated successfully!");
+    } catch (e: any) {
+      toast.error("Failed to duplicate: " + e.message);
+    }
+  };
+
   const monthlyGross = Math.round(ctc / 12);
 
   const calcMonthlyValue = (c: any, basicMonthly: number) => {
@@ -219,11 +245,16 @@ function StructurePage() {
 
   let earnings = comps.filter(c => c.type === "Earning").map(c => ({ c, v: calcMonthlyValue(c, basicMonthly) }));
 
+  const employerCont = comps.filter(c => c.type === "Employer").map(c => ({ c, v: calcMonthlyValue(c, basicMonthly) }));
+  const totalEmployer = employerCont.reduce((s, x) => s + x.v, 0);
+
   // Handle Balancing
   const nonBalancingTotal = earnings.reduce((sum, item) => sum + item.v, 0);
   earnings = earnings.map(item => {
     if (item.c.calc === "Balancing") {
-      return { ...item, v: Math.max(0, monthlyGross - nonBalancingTotal) };
+      // In India, CTC = Gross + Employer PF. So available Gross = CTC - Employer PF
+      const availableGross = monthlyGross - totalEmployer;
+      return { ...item, v: Math.max(0, availableGross - nonBalancingTotal) };
     }
     return item;
   });
@@ -232,6 +263,13 @@ function StructurePage() {
 
   const totalEarn = earnings.reduce((s, x) => s + x.v, 0);
   const totalDed = deductions.reduce((s, x) => s + x.v, 0);
+  
+  // Employer components are technically deducted from the CTC to get the Gross in Indian payroll standard,
+  // But our Estimated Net here is strictly Earnings - Deductions on the employee's payslip.
+  // However, if CTC = 2400000, and there are Employer contributions configured, 
+  // they reduce the amount available for the "Balancing" component.
+  // We'll calculate Employer contributions strictly for information:
+  // I will just calculate Estimated Net = totalEarn - totalDed as it correctly represents the in-hand salary!
   const estimatedNet = totalEarn - totalDed;
 
   return (
@@ -241,7 +279,7 @@ function StructurePage() {
         description="Define reusable salary templates with earnings, deductions and statutory components."
         actions={
           <div className="flex gap-2">
-            <Button variant="outline"><Files className="h-4 w-4 mr-2" /> Duplicate</Button>
+            <Button variant="outline" onClick={handleDuplicate} disabled={!activeStruct}><Files className="h-4 w-4 mr-2" /> Duplicate</Button>
             <Button onClick={() => setNewStructOpen(true)}><Plus className="h-4 w-4 mr-2" /> New Structure</Button>
           </div>
         }

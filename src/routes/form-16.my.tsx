@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/page-header";
 import { useAuth } from "@/lib/auth-context";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Shield, FileText, Download, Eye } from "lucide-react";
-import { form16Api } from "@/api";
+import { form16Api, API_BASE_URL } from "@/api";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -29,13 +29,23 @@ function MyForm16Page() {
 
   const [previewDoc, setPreviewDoc] = useState<any | null>(null);
 
-  const forceDownload = (url: string, filename: string) => {
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const forceDownload = async (url: string, filename: string) => {
+    const fullUrl = url.startsWith('/') ? `${API_BASE_URL}${url}` : url;
+    try {
+      const res = await fetch(fullUrl);
+      if (!res.ok) throw new Error("Failed to download file");
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      window.open(fullUrl, '_blank');
+    }
   };
 
   const columns = [

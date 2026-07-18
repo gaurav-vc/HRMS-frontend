@@ -61,7 +61,7 @@ function EntitiesPage() {
     <>
       <PageHeader title="Entities" description="Manage legal entities across geographies" />
       <DataTable
-        rows={rows}
+        rows={[...rows].sort((a, b) => new Date((b as any).createdAt || (b as any).created_at || 0).getTime() - new Date((a as any).createdAt || (a as any).created_at || 0).getTime())}
         rowKey={r => r.id}
         searchKeys={["name", "code", "country"]}
         filters={[{ label: "Status", key: "status", options: [{ value: "Active", label: "Active" }, { value: "Inactive", label: "Inactive" }], predicate: (r, v) => r.status === v }]}
@@ -74,6 +74,7 @@ function EntitiesPage() {
           { key: "currency", header: "Currency", accessor: r => r.currency },
           { key: "gstin", header: "GSTIN" },
           { key: "status", header: "Status", render: r => <Badge variant={r.status === "Active" ? "default" : "secondary"} className={r.status === "Active" ? "bg-success text-success-foreground" : ""}>{r.status}</Badge> },
+          { key: "created_at", header: "Created Date & Time", render: r => ((r as any).createdAt || (r as any).created_at) ? new Date((r as any).createdAt || (r as any).created_at).toLocaleString() : "-" },
         ]}
         actions={r => (
           <div className="flex justify-end gap-1">

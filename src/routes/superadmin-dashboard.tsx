@@ -4,6 +4,7 @@ import { api } from "@/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, Building2, Users, Briefcase, Activity } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, Legend } from "recharts";
+import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/superadmin-dashboard")({
@@ -21,10 +22,9 @@ function SuperAdminDashboard() {
     queryFn: () => api.getDashboardStats(),
   });
 
-  const stats = rawData?.super_admin || {
+  const stats = rawData?.superAdmin || rawData?.super_admin || {
     totalRevenue: 0,
     activeSites: 0,
-    totalUsers: 0,
     totalCompany: 0,
     moduleWiseRevenue: [],
     companyWiseSite: [],
@@ -43,54 +43,48 @@ function SuperAdminDashboard() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="shadow-sm border-blue-100 bg-gradient-to-br from-blue-50 to-white">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Total Revenue</CardTitle>
-            <div className="p-2 bg-blue-100 rounded-full">
-              <DollarSign className="w-4 h-4 text-blue-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">Rs. {stats.totalRevenue.toLocaleString()}</div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Link to="/billing-payments" className="block outline-none">
+          <Card className="shadow-sm border-slate-200 bg-white hover:shadow-md hover:border-slate-300 transition-all cursor-pointer h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-slate-500">Total Revenue</CardTitle>
+              <div className="p-2 bg-blue-50 rounded-md">
+                <DollarSign className="w-4 h-4 text-blue-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-semibold text-slate-800">Rs. {stats.totalRevenue.toLocaleString()}</div>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card className="shadow-sm border-orange-100 bg-gradient-to-br from-orange-50 to-white">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Active Sites</CardTitle>
-            <div className="p-2 bg-orange-100 rounded-full">
-              <Building2 className="w-4 h-4 text-orange-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">{stats.activeSites}</div>
-          </CardContent>
-        </Card>
+        <Link to="/superadmin-sites" className="block outline-none">
+          <Card className="shadow-sm border-slate-200 bg-white hover:shadow-md hover:border-slate-300 transition-all cursor-pointer h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-slate-500">Active Sites</CardTitle>
+              <div className="p-2 bg-emerald-50 rounded-md">
+                <Building2 className="w-4 h-4 text-emerald-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-semibold text-slate-800">{stats.activeSites}</div>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card className="shadow-sm border-green-100 bg-gradient-to-br from-green-50 to-white">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Total Users</CardTitle>
-            <div className="p-2 bg-green-100 rounded-full">
-              <Users className="w-4 h-4 text-green-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">{stats.totalUsers}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm border-purple-100 bg-gradient-to-br from-purple-50 to-white">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Total Company</CardTitle>
-            <div className="p-2 bg-purple-100 rounded-full">
-              <Briefcase className="w-4 h-4 text-purple-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">{stats.totalCompany}</div>
-          </CardContent>
-        </Card>
+        <Link to="/organizations" className="block outline-none">
+          <Card className="shadow-sm border-slate-200 bg-white hover:shadow-md hover:border-slate-300 transition-all cursor-pointer h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-slate-500">Total Organizations</CardTitle>
+              <div className="p-2 bg-indigo-50 rounded-md">
+                <Briefcase className="w-4 h-4 text-indigo-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-semibold text-slate-800">{stats.totalCompany}</div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -109,9 +103,19 @@ function SuperAdminDashboard() {
                   <YAxis axisLine={false} tickLine={false} />
                   <RechartsTooltip />
                   <Legend />
-                  <Line type="monotone" dataKey="acmeCorp" stroke="#4f46e5" strokeWidth={2} dot={{ r: 4 }} />
-                  <Line type="monotone" dataKey="test" stroke="#10b981" strokeWidth={2} dot={{ r: 4 }} />
-                  <Line type="monotone" dataKey="tcs" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} />
+                  {(stats.topOrgs || []).map((orgName: string, index: number) => {
+                    const colors = ["#4f46e5", "#10b981", "#f59e0b"];
+                    return (
+                      <Line 
+                        key={orgName}
+                        type="monotone" 
+                        dataKey={orgName} 
+                        stroke={colors[index % colors.length]} 
+                        strokeWidth={2} 
+                        dot={{ r: 4 }}
+                      />
+                    )
+                  })}
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>

@@ -1,5 +1,5 @@
 import { Link, useRouterState, useRouter, useNavigate } from "@tanstack/react-router";
-import { Bell, ChevronRight, LogOut, Search, CheckCircle2, User, Building, Loader2 } from "lucide-react";
+import { Bell, ChevronRight, LogOut, Search, CheckCircle2, User, Building, Loader2, LayoutDashboard } from "lucide-react";
 import { useState, useEffect, useRef, useTransition } from "react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import {
 import { useAuth, roleLabel } from "@/lib/auth-context";
 import { ROLES, type Role } from "@/lib/mock-data";
 import { notificationsApi, searchApi } from "@/api";
+import { NAV, SUPER_ADMIN_NAV, canAccessRoute } from "@/components/app-sidebar";
 
 const LABELS: Record<string, string> = {
   "": "Dashboard", entities: "Entities", branches: "Branches", sites: "Sites", departments: "Departments",
@@ -29,6 +30,7 @@ function GlobalSearch() {
   const [isPending, startTransition] = useTransition();
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -48,15 +50,36 @@ function GlobalSearch() {
     const timer = setTimeout(() => {
       startTransition(async () => {
         try {
+          const q = query.toLowerCase();
+          const routeResults: any[] = [];
+          
+          const nav = (user?.role === "super_admin" || user?.is_superuser || user?.username === "Vibe_admin") ? SUPER_ADMIN_NAV : NAV;
+          nav.forEach(group => {
+            group.items.forEach(item => {
+              if (item.title.toLowerCase().includes(q) && canAccessRoute(item, user)) {
+                routeResults.push({
+                  id: item.url,
+                  type: 'page',
+                  title: item.title,
+                  subtitle: `Page • ${group.label}`,
+                  url: item.url,
+                  iconType: 'page'
+                });
+              }
+            });
+          });
+
           const res = await searchApi.query(query);
-          if (Array.isArray(res)) setResults(res);
+          const backendResults = Array.isArray(res) ? res : [];
+          
+          setResults([...routeResults, ...backendResults]);
         } catch (err) {
           console.error("Search error", err);
         }
       });
     }, 300);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, user]);
 
   return (
     <div className="relative hidden lg:block w-64" ref={containerRef}>
@@ -94,7 +117,7 @@ function GlobalSearch() {
                   }}
                 >
                   <div className="bg-primary/10 p-1.5 rounded-full shrink-0">
-                    {r.type === 'employee' ? <User className="h-4 w-4 text-primary" /> : <Building className="h-4 w-4 text-primary" />}
+                    {r.type === 'page' ? <LayoutDashboard className="h-4 w-4 text-primary" /> : r.type === 'employee' ? <User className="h-4 w-4 text-primary" /> : <Building className="h-4 w-4 text-primary" />}
                   </div>
                   <div className="min-w-0">
                     <div className="text-sm font-medium truncate">{r.title}</div>
@@ -228,7 +251,9 @@ export function AppHeader() {
 
   return (
     <header className="sticky top-0 z-30 h-14 bg-background/80 backdrop-blur border-b flex items-center gap-3 px-3">
-      <SidebarTrigger />
+      <div className="hidden md:block">
+        <SidebarTrigger />
+      </div>
       <nav className="hidden md:flex items-center text-sm text-muted-foreground min-w-0">
         {crumbs.map((c, i) => (
           <span key={c.href} className="flex items-center min-w-0">

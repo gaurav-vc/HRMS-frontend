@@ -78,8 +78,8 @@ function LeavePage() {
       <div className="bg-white border rounded-lg shadow-sm mt-6">
         <DataTable rows={mappedLeaves} rowKey={(r: any) => r.id} searchKeys={[(r: any) => r.empName, "reason"]} filename="my_leaves.csv"
           filters={[
-            { label: "Status", key: "status", options: ["Pending","Approved","Rejected"].map(s => ({ value: s, label: s })), predicate: (r: any, v: any) => r.status === v },
-            { label: "Type", key: "type", options: types.map((t: any) => ({ value: t.code, label: t.name })), predicate: (r: any, v: any) => r.type === v },
+            { label: "Status", key: "status", options: ["Pending","Approved","Rejected"].map(s => ({ value: s, label: s })), predicate: (r: any, v: any) => String(r.status).toLowerCase() === String(v).toLowerCase() },
+            { label: "Type", key: "type", options: types.map((t: any) => ({ value: t.code, label: t.name })), predicate: (r: any, v: any) => String(r.type).toLowerCase() === String(v).toLowerCase() },
           ]}
           columns={[
             { key: "empName", header: "Employee", accessor: (r: any) => r.empName },

@@ -63,13 +63,14 @@ function DesignationsPage() {
   return (
     <>
       <PageHeader title="Designations" description="Job titles & grades for every department" />
-      <DataTable rows={rows} rowKey={r => String(r.id)} searchKeys={["title","grade"]}
+      <DataTable rows={[...rows].sort((a, b) => new Date((b as any).createdAt || (b as any).created_at || 0).getTime() - new Date((a as any).createdAt || (a as any).created_at || 0).getTime())} rowKey={r => String(r.id)} searchKeys={["title","grade"]}
         filters={[{ label: "Department", key: "departmentId", options: departments.map(d => ({ value: String(d.id), label: d.name })), predicate: (r, v) => String(r.department) === String(v) }]}
         onCreate={() => { setEditing(null); setMode("create"); setOpen(true); }} createLabel="New Designation" filename="designations.csv"
         columns={[
           { key: "title", header: "Title", accessor: r => r.title, sortable: true },
           { key: "grade", header: "Grade", accessor: r => r.grade, sortable: true },
-          { key: "dept", header: "Department", render: r => departments.find(d => String(d.id) === String(r.department))?.name ?? "—" },
+          { key: "dept", header: "Department", accessor: r => departments.find(d => String(d.id) === String(r.department))?.name ?? "—", render: r => departments.find(d => String(d.id) === String(r.department))?.name ?? "—" },
+          { key: "created_at", header: "Created Date & Time", render: r => ((r as any).createdAt || (r as any).created_at) ? new Date((r as any).createdAt || (r as any).created_at).toLocaleString() : "-" },
         ]}
         actions={r => <div className="flex justify-end gap-1">
           <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setMode("view"); setOpen(true); }}><Eye className="h-4 w-4" /></Button>

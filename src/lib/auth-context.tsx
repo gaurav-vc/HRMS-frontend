@@ -12,6 +12,7 @@ interface User {
   permissions?: any; 
   role_name?: string;
   employee_id?: string | number;
+  is_superuser?: boolean;
 }
 interface AuthCtx {
   user: User | null;

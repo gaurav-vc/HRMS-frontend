@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, Briefcase, Building2, Calendar, FileText, Landmark, MapPin, Phone, Upload, User, Loader2, Trash2 } from "lucide-react";
@@ -76,6 +76,7 @@ export const Route = createFileRoute("/employees/$id")({
 });
 
 function EmployeeDetail() {
+  const router = useRouter();
   const { e: rawE, allEmps, depts, desgs, branches, sites, entities, structures, documents: initialDocs } = Route.useLoaderData();
   
   // Normalize snake_case to camelCase in case the backend renderer missed it
@@ -96,6 +97,8 @@ function EmployeeDetail() {
   const [taxRegime, setTaxRegime] = useState(e.taxRegime || "New");
   const [taxSavingDeductions, setTaxSavingDeductions] = useState(e.taxSavingDeductions || "0.00");
   const [isSaving, setIsSaving] = useState(false);
+  const [newManagerId, setNewManagerId] = useState("");
+  const [isSavingManager, setIsSavingManager] = useState(false);
   const [docs, setDocs] = useState<any[]>(Array.isArray(initialDocs) ? initialDocs : ((initialDocs as any)?.results || []));
 
   const handleSavePayroll = async () => {
@@ -125,7 +128,27 @@ function EmployeeDetail() {
   const entity = entitiesArray.find((en: any) => String(en.id) === String(e.entity));
   
   const manager = e.manager ? allEmpsArray.find((x: any) => String(x.id) === String(e.manager)) : null;
-  const managerName = manager ? `${manager.firstName} ${manager.lastName}` : "—";
+  const managerName = manager ? `${manager.firstName || (manager as any).first_name || ""} ${manager.lastName || (manager as any).last_name || ""}`.trim() : "—";
+  const managerDesg = manager ? desgsArray.find((d: any) => String(d.id) === String(manager.designation))?.title : null;
+  const managerDisplay = manager ? `${managerName}${managerDesg ? ` (${managerDesg})` : ''}` : "—";
+
+  const handleSaveManager = async () => {
+    if (!newManagerId) {
+      toast.error("Please select a new manager.");
+      return;
+    }
+    setIsSavingManager(true);
+    try {
+      await employeesApi.update(e.id, { manager: parseInt(newManagerId, 10) });
+      toast.success("Manager reassigned successfully!");
+      router.invalidate();
+      setNewManagerId("");
+    } catch (err: any) {
+      toast.error("Failed to reassign manager: " + (err.message || "Unknown error"));
+    } finally {
+      setIsSavingManager(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -165,6 +188,7 @@ function EmployeeDetail() {
           <TabButton active={tab === "manager"} onClick={() => setTab("manager")} label="Manager" />
           <TabButton active={tab === "location"} onClick={() => setTab("location")} icon={<Building2 className="h-3.5 w-3.5 mr-1" />} label="Location" />
           <TabButton active={tab === "site"} onClick={() => setTab("site")} icon={<MapPin className="h-3.5 w-3.5 mr-1" />} label="Site" />
+          <TabButton active={tab === "logs"} onClick={() => setTab("logs")} icon={<Calendar className="h-3.5 w-3.5 mr-1" />} label="Logs" />
         </div>
 
         {tab === "personal" && (
@@ -176,6 +200,19 @@ function EmployeeDetail() {
             <FieldRO label="Date of Birth" value={e.dob || "—"} />
             <FieldRO label="Gender" value={e.gender} />
             <div className="sm:col-span-2"><FieldRO label="Address" value={e.address || "—"} /></div>
+          </Card>
+        )}
+        
+        {tab === "logs" && (
+          <Card className="p-6 space-y-6">
+            <h3 className="font-semibold text-lg border-b pb-2">Audit Logs</h3>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <FieldRO label="Created On" value={(e as any).created_at ? new Date((e as any).created_at).toLocaleString() : "—"} />
+              <FieldRO label="Last Updated" value={(e as any).updated_at ? new Date((e as any).updated_at).toLocaleString() : "—"} />
+            </div>
+            {(!(e as any).created_at && !(e as any).updated_at) && (
+              <p className="text-sm text-muted-foreground mt-4 italic">No audit trail available for this record yet.</p>
+            )}
           </Card>
         )}
         
@@ -281,10 +318,28 @@ function EmployeeDetail() {
         )}
         
         {tab === "manager" && (
-          <Card className="p-6 space-y-3">
-            <FieldRO label="Reporting Manager" value={managerName} />
-            <div className="space-y-1.5"><Label>Reassign Manager</Label><Input placeholder="Search by name or code…" /></div>
-            <Button>Save Manager Assignment</Button>
+          <Card className="p-6 space-y-4">
+            <FieldRO label="Reporting Manager" value={managerDisplay} />
+            <div className="pt-4 border-t space-y-3">
+              <Label>Reassign Manager</Label>
+              <select 
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={newManagerId} 
+                onChange={(ev) => setNewManagerId(ev.target.value)}
+              >
+                <option value="">-- Select New Manager --</option>
+                {allEmpsArray.filter((x: any) => String(x.id) !== String(e.id)).map((emp: any) => {
+                  const empName = `${emp.firstName || emp.first_name || ""} ${emp.lastName || emp.last_name || ""}`.trim();
+                  const empDesg = desgsArray.find((d: any) => String(d.id) === String(emp.designation))?.title || 'No Designation';
+                  return (
+                    <option key={emp.id} value={emp.id}>{empName} ({empDesg}) - {emp.code}</option>
+                  );
+                })}
+              </select>
+              <Button onClick={handleSaveManager} disabled={isSavingManager || !newManagerId}>
+                {isSavingManager ? "Saving..." : "Reassign Manager"}
+              </Button>
+            </div>
           </Card>
         )}
         
