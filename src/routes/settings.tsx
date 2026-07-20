@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, Fragment } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
@@ -107,10 +107,26 @@ function UsersAndRolesTab() {
   
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("roles");
+  const [searchQuery, setSearchQuery] = useState("");
   const [roleModalOpen, setRoleModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<any>(null);
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
+
+  const [viewingRole, setViewingRole] = useState<any>(null);
+  const [viewRoleModalOpen, setViewRoleModalOpen] = useState(false);
+
+  const navigate = useNavigate();
+
+  const openViewRoleModal = async (id: number) => {
+    try {
+      const roleData = await rolesApi.get(id);
+      setViewingRole(roleData);
+      setViewRoleModalOpen(true);
+    } catch (e) {
+      toast.error("Failed to load role details from backend");
+    }
+  };
 
   const fetchAll = async () => {
     try {
@@ -173,7 +189,12 @@ function UsersAndRolesTab() {
       <div className="flex items-center justify-between">
         <div className="relative w-[300px]">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search..." className="pl-9 bg-background" />
+          <Input 
+            placeholder="Search..." 
+            className="pl-9 bg-background" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
         {activeTab === "roles" && (
           <>
@@ -190,6 +211,50 @@ function UsersAndRolesTab() {
                   <DialogDescription>Fields are linked to keep your hierarchy consistent.</DialogDescription>
                 </DialogHeader>
                 <RoleForm departments={departments} roles={roles} nodeTypes={nodeTypes} initialData={editingRole} onClose={() => { setRoleModalOpen(false); setEditingRole(null); fetchAll(); }} />
+              </DialogContent>
+            </Dialog>
+            <Dialog open={viewRoleModalOpen} onOpenChange={(open) => {
+              if (!open) setViewingRole(null);
+              setViewRoleModalOpen(open);
+            }}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>View Role Details</DialogTitle>
+                </DialogHeader>
+                {viewingRole ? (
+                  <div className="space-y-4 text-sm mt-4">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="font-semibold text-muted-foreground">Role Name</div>
+                      <div>{viewingRole.name}</div>
+                      
+                      <div className="font-semibold text-muted-foreground">Role Code</div>
+                      <div>{viewingRole.code || "-"}</div>
+                      
+                      <div className="font-semibold text-muted-foreground">Department</div>
+                      <div>{viewingRole.departmentName || "N/A"}</div>
+                      
+                      <div className="font-semibold text-muted-foreground">Hierarchy Level</div>
+                      <div>{viewingRole.hierarchyLevel || "-"}</div>
+                      
+                      <div className="font-semibold text-muted-foreground">Reporting To</div>
+                      <div>{viewingRole.reportingToName || "-"}</div>
+                      
+                      <div className="font-semibold text-muted-foreground">Access Scope</div>
+                      <div>
+                        <span className="inline-flex items-center whitespace-nowrap text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full">{viewingRole.accessScope || 'Self'}</span>
+                      </div>
+                      
+                      <div className="font-semibold text-muted-foreground">Status</div>
+                      <div>
+                        <Badge variant="outline" className={`${viewingRole.status === "Active" ? "border-success/40 text-success bg-success/5" : ""}`}>
+                          {viewingRole.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-8 text-center text-muted-foreground">Loading role data from backend...</div>
+                )}
               </DialogContent>
             </Dialog>
           </>
@@ -237,7 +302,11 @@ function UsersAndRolesTab() {
               <div className="text-right">Actions</div>
             </div>
             <div className="divide-y">
-              {roles.map(r => (
+              {roles.filter(r => 
+                (r.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (r.code || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (r.departmentName || "").toLowerCase().includes(searchQuery.toLowerCase())
+              ).map(r => (
                 <div key={r.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_120px] gap-4 py-2 px-4 items-center hover:bg-muted/30 transition-colors">
                   <div className="min-w-0">
                     <div className="font-medium text-sm truncate">{r.name}</div>
@@ -256,7 +325,7 @@ function UsersAndRolesTab() {
                     </Badge>
                   </div>
                   <div className="text-right flex justify-end gap-1 shrink-0">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" title="Preview">
+                      <Button variant="ghost" size="icon" onClick={() => openViewRoleModal(r.id)} className="h-8 w-8 text-muted-foreground hover:text-primary" title="Preview">
                         <span className="text-base">👁</span>
                       </Button>
                       <Button variant="ghost" size="icon" onClick={() => openRoleModal(r)} className="h-8 w-8 text-muted-foreground hover:text-primary" title="Edit">
@@ -273,7 +342,11 @@ function UsersAndRolesTab() {
               )}
             </div>
             <div className="p-4 border-t flex items-center justify-between text-xs text-muted-foreground bg-muted/20">
-              <div>Showing {roles.length} records</div>
+              <div>Showing {roles.filter(r => 
+                (r.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (r.code || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (r.departmentName || "").toLowerCase().includes(searchQuery.toLowerCase())
+              ).length} records</div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" disabled>Previous</Button>
                 <Button variant="outline" size="sm" disabled>Next</Button>
@@ -294,7 +367,13 @@ function UsersAndRolesTab() {
               <div className="text-right">Actions</div>
             </div>
             <div className="divide-y">
-              {employees.map(e => (
+              {employees.filter(e => 
+                ((e.firstName || "") + " " + (e.lastName || "")).toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (e.code || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (e.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (e.departmentName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (e.dynamicRoleName || e.roleName || "").toLowerCase().includes(searchQuery.toLowerCase())
+              ).map(e => (
                 <div key={e.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_120px] gap-4 py-2 px-4 items-center hover:bg-muted/30 transition-colors">
                   <div className="min-w-0">
                     <div className="font-medium text-sm truncate">{e.firstName} {e.lastName}</div>
@@ -313,7 +392,7 @@ function UsersAndRolesTab() {
                      <Switch checked={e.mfaEnabled} disabled />
                   </div>
                   <div className="text-right flex justify-end gap-1 shrink-0">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" title="Preview">
+                      <Button variant="ghost" size="icon" onClick={() => navigate({ to: `/employees/${e.id}` })} className="h-8 w-8 text-muted-foreground hover:text-primary" title="Preview">
                         <span className="text-base">👁</span>
                       </Button>
                       <Button variant="ghost" size="icon" onClick={() => openUserModal(e)} className="h-8 w-8 text-muted-foreground hover:text-primary" title="Edit">
@@ -330,7 +409,13 @@ function UsersAndRolesTab() {
               )}
             </div>
             <div className="p-4 border-t flex items-center justify-between text-xs text-muted-foreground bg-muted/20">
-              <div>Showing {employees.length} records</div>
+              <div>Showing {employees.filter(e => 
+                ((e.firstName || "") + " " + (e.lastName || "")).toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (e.code || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (e.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (e.departmentName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (e.dynamicRoleName || e.roleName || "").toLowerCase().includes(searchQuery.toLowerCase())
+              ).length} records</div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" disabled>Previous</Button>
                 <Button variant="outline" size="sm" disabled>Next</Button>
@@ -625,9 +710,18 @@ function UserForm({ departments, roles, nodeTypes, initialData, onClose }: { dep
   const submit = async () => {
     try {
       setLoading(true);
-      
       const payload: any = { ...form };
-      ['department', 'designation', 'dynamicRole', 'entity', 'branch', 'site', 'phone'].forEach(key => {
+      payload.first_name = payload.firstName;
+      payload.last_name = payload.lastName;
+      payload.mfa_enabled = payload.mfaEnabled;
+      payload.dynamic_role = payload.dynamicRole;
+      
+      delete payload.firstName;
+      delete payload.lastName;
+      delete payload.mfaEnabled;
+      delete payload.dynamicRole;
+
+      ['department', 'designation', 'dynamic_role', 'entity', 'branch', 'site', 'phone'].forEach(key => {
         if (payload[key] === "") payload[key] = null;
       });
 

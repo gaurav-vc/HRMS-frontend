@@ -22,6 +22,12 @@ function AuthPage() {
 
   useEffect(() => { 
     if (user) {
+      if (typeof window !== "undefined" && !localStorage.getItem("access_token")) {
+        // Prevent redirect loop if access_token was wiped but hrms-auth remained
+        localStorage.removeItem("hrms-auth");
+        window.location.reload();
+        return;
+      }
       if (user.role === "super_admin" || user.role_name === "Super Admin") {
         navigate({ to: "/superadmin-dashboard" });
       } else {

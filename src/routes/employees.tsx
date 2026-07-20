@@ -58,6 +58,12 @@ function EmployeesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const matchRoute = useMatchRoute();
 
+  const isDetailRoute = matchRoute({ to: "/employees/$id", fuzzy: false });
+
+  if (isDetailRoute) {
+    return <Outlet />;
+  }
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;

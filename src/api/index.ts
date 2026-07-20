@@ -396,6 +396,7 @@ export const regularizationsApi = {
 
 export const rolesApi = {
   getAll: async (): Promise<any[]> => apiCall('/roles/'),
+  get: async (id: string | number): Promise<any> => apiCall(`/roles/${id}/`),
   create: async (data: any): Promise<any> => apiCall('/roles/', 'POST', data),
   update: async (id: string | number, data: any): Promise<any> => apiCall(`/roles/${id}/`, 'PATCH', data),
   delete: async (id: string | number): Promise<void> => apiCall(`/roles/${id}/`, 'DELETE'),

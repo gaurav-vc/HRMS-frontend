@@ -35,11 +35,11 @@ function RunPage() {
   const { user } = useAuth();
   const { payrollRuns } = Route.useLoaderData();
   
-  const canViewConfidential = user?.permissions?.can_view_confidential_payroll === true;
-  const canApprove = user?.permissions?.can_approve_payroll === true;
+  const canViewConfidential = user?.permissions?.can_view_confidential_payroll === true || user?.permissions?.can_view_confidential === true || user?.permissions?.can_view_confidential_payroll === 'true';
+  const canApprove = user?.permissions?.can_approve_payroll === true || user?.permissions?.can_approve === true || user?.permissions?.can_approve_payroll === 'true';
   
   // Role based check for Maker
-  const isMaker = user?.permissions?.can_run_payroll === true;
+  const isMaker = user?.permissions?.can_run_payroll === true || user?.permissions?.can_process_payroll === true || user?.permissions?.can_run_payroll === 'true';
 
   return (
     <>
@@ -47,8 +47,8 @@ function RunPage() {
         <PageHeader title={isMaker ? "Run Payroll — June 2026" : "Payroll Approvals"} description={isMaker ? "One-click CEO mode or step-by-step HR wizard" : "Review and approve pending payroll runs"}
           actions={<Link to="/payroll"><Button variant="outline"><ArrowLeft className="h-4 w-4 mr-1" />Back</Button></Link>} />
       )}
-      <Tabs defaultValue={isMaker ? "oneclick" : "approvals"}>
-        {!isConfirming && (
+      <Tabs defaultValue={isMaker ? "oneclick" : canApprove ? "approvals" : ""}>
+        {!isConfirming && (isMaker || canApprove) && (
           <TabsList className={`grid w-full max-w-xl h-11 ${isMaker && canApprove ? 'grid-cols-3' : isMaker ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {isMaker && (
               <>
@@ -71,6 +71,15 @@ function RunPage() {
         )}
         {canApprove && (
           <TabsContent value="approvals"><ApprovalsPanel pendingRuns={payrollRuns.filter((r: any) => r.status === "Maker-Submitted" && r.employees > 0)} canViewConfidential={canViewConfidential} canApprove={canApprove} /></TabsContent>
+        )}
+        {!isMaker && !canApprove && (
+          <div className="py-20 mt-8 text-center bg-card border rounded-lg shadow-sm">
+            <ShieldCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+            <h3 className="text-xl font-medium text-foreground">Access Restricted</h3>
+            <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
+              You do not have the required permissions to run or approve payroll. If you believe this is an error, please contact your administrator.
+            </p>
+          </div>
         )}
       </Tabs>
     </>

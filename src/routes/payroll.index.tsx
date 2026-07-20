@@ -28,9 +28,9 @@ export const Route = createFileRoute("/payroll/")({
 function PayrollOverview() {
   const { payrollRuns, employees, loans, reimbursements } = Route.useLoaderData();
   const { user } = useAuth();
-  const canViewConfidential = user?.permissions?.can_view_confidential_payroll === true;
+  const canViewConfidential = user?.permissions?.can_view_confidential_payroll === true || user?.permissions?.can_view_confidential === true || user?.permissions?.can_view_confidential_payroll === 'true';
   
-  const last = payrollRuns.length > 0 ? payrollRuns[payrollRuns.length - 1] : { gross: 0, net: 0, period: "No Runs" };
+  const last = payrollRuns.length > 0 ? payrollRuns[0] : { gross: 0, net: 0, period: "No Runs" };
   const data = payrollRuns.map((r: any) => ({ name: r.period.slice(5), gross: r.gross/100000, net: r.net/100000 }));
 
   return (
