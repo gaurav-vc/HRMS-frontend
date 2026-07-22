@@ -1047,13 +1047,13 @@ function AttendanceSettingsTab() {
   const [policyId, setPolicyId] = useState<number | null>(null);
   
   const [formData, setFormData] = useState({
-    max_late_minutes: 15,
-    half_day_hours: 4.00,
-    full_day_hours: 8.00,
-    ot_applicable_after_hours: 2.0,
-    require_face: true,
-    require_qr: true,
-    require_gps: true,
+    maxLateMinutes: 15,
+    halfDayHours: 4.00,
+    fullDayHours: 8.00,
+    otApplicableAfterHours: 2.0,
+    requireFace: true,
+    requireQr: true,
+    requireGps: true,
   });
   
   const [loading, setLoading] = useState(false);
@@ -1098,37 +1098,37 @@ function AttendanceSettingsTab() {
         const p = res[0];
         setPolicyId(p.id);
         setFormData({
-          max_late_minutes: p.max_late_minutes,
-          half_day_hours: parseFloat(p.half_day_hours),
-          full_day_hours: parseFloat(p.full_day_hours),
-          ot_applicable_after_hours: parseFloat(p.ot_applicable_after_hours || 2.0),
-          require_face: p.require_face,
-          require_qr: p.require_qr,
-          require_gps: p.require_gps,
+          maxLateMinutes: p.maxLateMinutes ?? p.max_late_minutes,
+          halfDayHours: parseFloat(p.halfDayHours ?? p.half_day_hours),
+          fullDayHours: parseFloat(p.fullDayHours ?? p.full_day_hours),
+          otApplicableAfterHours: parseFloat((p.otApplicableAfterHours ?? p.ot_applicable_after_hours) || 2.0),
+          requireFace: p.requireFace ?? p.require_face,
+          requireQr: p.requireQr ?? p.require_qr,
+          requireGps: p.requireGps ?? p.require_gps,
         });
       } else if (res && res.results && res.results.length > 0) {
         const p = res.results[0];
         setPolicyId(p.id);
         setFormData({
-          max_late_minutes: p.max_late_minutes,
-          half_day_hours: parseFloat(p.half_day_hours),
-          full_day_hours: parseFloat(p.full_day_hours),
-          ot_applicable_after_hours: parseFloat(p.ot_applicable_after_hours || 2.0),
-          require_face: p.require_face,
-          require_qr: p.require_qr,
-          require_gps: p.require_gps,
+          maxLateMinutes: p.maxLateMinutes ?? p.max_late_minutes,
+          halfDayHours: parseFloat(p.halfDayHours ?? p.half_day_hours),
+          fullDayHours: parseFloat(p.fullDayHours ?? p.full_day_hours),
+          otApplicableAfterHours: parseFloat((p.otApplicableAfterHours ?? p.ot_applicable_after_hours) || 2.0),
+          requireFace: p.requireFace ?? p.require_face,
+          requireQr: p.requireQr ?? p.require_qr,
+          requireGps: p.requireGps ?? p.require_gps,
         });
       } else {
         // No policy found for this scope, reset to defaults
         setPolicyId(null);
         setFormData({
-          max_late_minutes: 15,
-          half_day_hours: 4.00,
-          full_day_hours: 8.00,
-          ot_applicable_after_hours: 2.0,
-          require_face: true,
-          require_qr: true,
-          require_gps: true,
+          maxLateMinutes: 15,
+          halfDayHours: 4.00,
+          fullDayHours: 8.00,
+          otApplicableAfterHours: 2.0,
+          requireFace: true,
+          requireQr: true,
+          requireGps: true,
         });
       }
     } catch (e) {
@@ -1259,8 +1259,8 @@ function AttendanceSettingsTab() {
                 <Label>Max Late Minutes Allowed</Label>
                 <Input 
                   type="number" 
-                  value={formData.max_late_minutes} 
-                  onChange={e => setFormData({...formData, max_late_minutes: parseInt(e.target.value) || 0})}
+                  value={formData.maxLateMinutes} 
+                  onChange={e => setFormData({...formData, maxLateMinutes: parseInt(e.target.value) || 0})}
                 />
                 <p className="text-xs text-muted-foreground">Grace period before a punch is marked as late.</p>
               </div>
@@ -1270,8 +1270,8 @@ function AttendanceSettingsTab() {
                 <Input 
                   type="number" 
                   step="0.1"
-                  value={formData.half_day_hours} 
-                  onChange={e => setFormData({...formData, half_day_hours: parseFloat(e.target.value) || 0})}
+                  value={formData.halfDayHours} 
+                  onChange={e => setFormData({...formData, halfDayHours: parseFloat(e.target.value) || 0})}
                 />
               </div>
               
@@ -1280,8 +1280,8 @@ function AttendanceSettingsTab() {
                 <Input 
                   type="number" 
                   step="0.1"
-                  value={formData.full_day_hours} 
-                  onChange={e => setFormData({...formData, full_day_hours: parseFloat(e.target.value) || 0})}
+                  value={formData.fullDayHours} 
+                  onChange={e => setFormData({...formData, fullDayHours: parseFloat(e.target.value) || 0})}
                 />
               </div>
               
@@ -1290,8 +1290,8 @@ function AttendanceSettingsTab() {
                 <Input 
                   type="number" 
                   step="0.5"
-                  value={formData.ot_applicable_after_hours} 
-                  onChange={e => setFormData({...formData, ot_applicable_after_hours: parseFloat(e.target.value) || 0})}
+                  value={formData.otApplicableAfterHours} 
+                  onChange={e => setFormData({...formData, otApplicableAfterHours: parseFloat(e.target.value) || 0})}
                 />
               </div>
             </div>
@@ -1304,7 +1304,7 @@ function AttendanceSettingsTab() {
                   <Label>Require GPS</Label>
                   <div className="text-xs text-muted-foreground">Ensure employee is within geofence radius.</div>
                 </div>
-                <Switch checked={formData.require_gps} onCheckedChange={v => setFormData({...formData, require_gps: v})} />
+                <Switch checked={formData.requireGps} onCheckedChange={v => setFormData({...formData, requireGps: v})} />
               </div>
               
               <div className="flex items-center justify-between p-3 border rounded-md">
@@ -1312,7 +1312,7 @@ function AttendanceSettingsTab() {
                   <Label>Require QR Scan</Label>
                   <div className="text-xs text-muted-foreground">Employee must scan the site's cryptographic QR.</div>
                 </div>
-                <Switch checked={formData.require_qr} onCheckedChange={v => setFormData({...formData, require_qr: v})} />
+                <Switch checked={formData.requireQr} onCheckedChange={v => setFormData({...formData, requireQr: v})} />
               </div>
               
               <div className="flex items-center justify-between p-3 border rounded-md">
@@ -1320,7 +1320,7 @@ function AttendanceSettingsTab() {
                   <Label>Require Face Verification</Label>
                   <div className="text-xs text-muted-foreground">Mandate liveness & biometric match on check-in.</div>
                 </div>
-                <Switch checked={formData.require_face} onCheckedChange={v => setFormData({...formData, require_face: v})} />
+                <Switch checked={formData.requireFace} onCheckedChange={v => setFormData({...formData, requireFace: v})} />
               </div>
             </div>
           </div>

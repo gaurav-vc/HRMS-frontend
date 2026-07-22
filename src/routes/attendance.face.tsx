@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Camera, ShieldCheck, CheckCircle2, QrCode, MapPin, Loader2, XCircle, Navigation as NavigationIcon } from "lucide-react";
@@ -9,25 +9,39 @@ import { Badge } from "@/components/ui/badge";
 import { Scanner } from '@yudiel/react-qr-scanner';
 import Webcam from "react-webcam";
 import { attendanceApi, sitesApi } from "@/api";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { isRedirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/attendance/face")({
   loader: async () => {
-    const sites = await sitesApi.getAll();
-    return { sites };
+    try {
+      const sites = await sitesApi.getAll();
+      return { sites, error: null };
+    } catch (error: any) {
+      if (isRedirect(error)) throw error;
+      return { sites: [], error: error.message || String(error) };
+    }
   },
   component: ScanPunchPage 
 });
 
-type ScanStep = "QR" | "FACE_LIVENESS" | "GEO" | "SUBMITTING" | "DONE" | "ERROR";
+type ScanStep = "SELECT_SITE" | "QR" | "FACE_LIVENESS" | "GEO" | "SUBMITTING" | "DONE" | "ERROR";
 
 function ScanPunchPage() {
-  const { sites } = Route.useLoaderData();
-  const site = sites[0]; // Assuming first site for demo
-
-  const [step, setStep] = useState<ScanStep>(site && site.qrEnabled === false ? "FACE_LIVENESS" : "QR");
+  const router = useRouter();
+  const loaderData = Route.useLoaderData();
+  const sitesList = Array.isArray(loaderData.sites) ? loaderData.sites : ((loaderData.sites as any).results || []);
+  const loaderError = (loaderData as any).error;
+  
+  const [site, setSite] = useState<any>(sitesList.length === 1 ? sitesList[0] : null);
+  const [step, setStep] = useState<ScanStep>(
+    (sitesList.length === 0 || loaderError) ? "ERROR" :
+    sitesList.length === 1 ? (sitesList[0].qrEnabled === false ? "FACE_LIVENESS" : "QR") : "SELECT_SITE"
+  );
   const [qrToken, setQrToken] = useState<string | null>(null);
   const [faceImageBlob, setFaceImageBlob] = useState<Blob | null>(null);
-  const [location, setLocation] = useState<{lat: number, lng: number} | null>(site ? { lat: site.latitude + 0.0005, lng: site.longitude - 0.0003 } : null);
+  const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [punchType, setPunchType] = useState<"IN" | "OUT">("IN");
   const isSubmitting = useRef(false);
   
@@ -36,7 +50,25 @@ function ScanPunchPage() {
   
   const [livenessPrompt, setLivenessPrompt] = useState("Please look straight into the camera");
   const [verifyStatus, setVerifyStatus] = useState<string>("");
-  const [errorMsg, setErrorMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState(
+    loaderError ? `Backend API Error: ${loaderError}` : 
+    sitesList.length === 0 ? "No site assigned to your profile. Backend returned 0 sites." : ""
+  );
+  
+  // Sync state if loader data updates (e.g. after Try Again)
+  useEffect(() => {
+    if (loaderError) {
+      setErrorMsg(`Backend API Error: ${loaderError}`);
+      setStep("ERROR");
+    } else if (sitesList.length > 0 && step === "ERROR" && errorMsg.includes("No site assigned")) {
+      setSite(sitesList.length === 1 ? sitesList[0] : null);
+      setStep(sitesList.length === 1 ? (sitesList[0].qrEnabled === false ? "FACE_LIVENESS" : "QR") : "SELECT_SITE");
+      setErrorMsg("");
+    } else if (sitesList.length === 0 && step !== "ERROR") {
+      setErrorMsg("No site assigned to your profile. Backend returned 0 sites.");
+      setStep("ERROR");
+    }
+  }, [sitesList, loaderError, step, errorMsg]);
   
   const webcamRef = useRef<Webcam>(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
@@ -186,7 +218,19 @@ function ScanPunchPage() {
     setErrorMsg("");
     setVerifyStatus("");
     setIsCameraReady(false);
-    setStep(site && site.qrEnabled === false ? "FACE_LIVENESS" : "QR");
+    
+    if (loaderError) {
+      setErrorMsg(`Backend API Error: ${loaderError}`);
+      setStep("ERROR");
+    } else if (sitesList.length === 0) {
+      router.invalidate();
+      setErrorMsg("No site assigned to your profile. Backend returned 0 sites.");
+      setStep("ERROR");
+    } else if (!site) {
+      setStep("SELECT_SITE");
+    } else {
+      setStep(site.qrEnabled === false ? "FACE_LIVENESS" : "QR");
+    }
   };
 
   return (
@@ -216,6 +260,36 @@ function ScanPunchPage() {
           )}
           
           <div className="relative aspect-[3/4] sm:aspect-square bg-slate-950 rounded-xl overflow-hidden border-2 border-slate-800 flex flex-col items-center justify-center">
+            
+            {step === "SELECT_SITE" && (
+              <div className="w-full h-full p-8 flex flex-col items-center justify-center bg-white text-slate-900 absolute inset-0 z-20">
+                 <MapPin className="h-12 w-12 text-primary mb-4" />
+                 <h4 className="text-xl font-semibold mb-2">Select Your Location</h4>
+                 <p className="text-sm text-muted-foreground text-center mb-6">Please confirm the site you are punching from.</p>
+                 <div className="w-full max-w-xs space-y-4">
+                   <div className="space-y-1.5">
+                     <Label>Available Sites</Label>
+                     <Select 
+                       value={site ? String(site.id) : ""} 
+                       onValueChange={(val) => {
+                         const s = sitesList.find((x: any) => String(x.id) === val);
+                         if (s) {
+                           setSite(s);
+                           setStep(s.qrEnabled === false ? "FACE_LIVENESS" : "QR");
+                         }
+                       }}
+                     >
+                       <SelectTrigger><SelectValue placeholder="Select a site..." /></SelectTrigger>
+                       <SelectContent>
+                         {sitesList.map((s: any) => (
+                           <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                         ))}
+                       </SelectContent>
+                     </Select>
+                   </div>
+                 </div>
+              </div>
+            )}
             
             {step === "QR" && (
               <div className="w-full h-full p-4 relative">

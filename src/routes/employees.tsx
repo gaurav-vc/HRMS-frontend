@@ -27,21 +27,15 @@ export const Route = createFileRoute("/employees")({
   },
   loader: async () => {
     const [employees, departments, designations, branches, entities, sites, structures, offers, offerTemplates] = await Promise.all([
-      employeesApi.getAll(),
-      departmentsApi.getAll(),
-      designationsApi.getAll(),
-      branchesApi.getAll(),
-      entitiesApi.getAll(),
-      sitesApi.getAll().then((res: any) => res?.results || res),
+      employeesApi.getAll().catch(() => []),
+      departmentsApi.getAll().catch(() => []),
+      designationsApi.getAll().catch(() => []),
+      branchesApi.getAll().catch(() => []),
+      entitiesApi.getAll().catch(() => []),
+      sitesApi.getAll().then((res: any) => res?.results || res).catch(() => []),
       payrollApi.getStructures().catch(() => []),
-      offersApi.getAll().catch((err: any) => {
-        setTimeout(() => toast.error(`Error fetching offers: ${err.message || String(err)}`, { duration: 10000 }), 1000);
-        return [];
-      }),
-      offerTemplatesApi.getAll().catch((err: any) => {
-        setTimeout(() => toast.error(`Error fetching templates: ${err.message || String(err)}`, { duration: 10000 }), 1000);
-        return [];
-      }),
+      offersApi.getAll().catch(() => []),
+      offerTemplatesApi.getAll().catch(() => [])
     ]);
     return { employees, departments, designations, branches, entities, sites, structures, offers, offerTemplates };
   },
@@ -57,6 +51,21 @@ function EmployeesPage() {
   const [activeTab, setActiveTab] = useState("directory");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const matchRoute = useMatchRoute();
+
+  const searchParams = Route.useSearch();
+
+  useEffect(() => { setRows(initial); }, [initial]);
+
+  useEffect(() => {
+    const editId = searchParams.edit;
+    if (editId && initial.length > 0) {
+      const emp = initial.find(e => String(e.id) === String(editId));
+      if (emp) {
+        setEditing(emp);
+        setOpen(true);
+      }
+    }
+  }, [initial, searchParams.edit]);
 
   const isDetailRoute = matchRoute({ to: "/employees/$id", fuzzy: false });
 
@@ -100,20 +109,7 @@ function EmployeesPage() {
     URL.revokeObjectURL(url);
   };
 
-  const searchParams = Route.useSearch();
 
-  useEffect(() => { setRows(initial); }, [initial]);
-
-  useEffect(() => {
-    const editId = searchParams.edit;
-    if (editId && initial.length > 0) {
-      const emp = initial.find(e => String(e.id) === String(editId));
-      if (emp) {
-        setEditing(emp);
-        setOpen(true);
-      }
-    }
-  }, [initial, searchParams.edit]);
   const save = async (e: Employee, pendingDocs?: {file: File, type: string}[]) => {
     try {
       const cleanData: any = { ...e };
@@ -301,8 +297,9 @@ function EmployeeDialog({ open, onOpenChange, employee, onSave, departments, des
   }, [open, employee, canAddCTC, searchParams.tab]);
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(b) => { onOpenChange(b); if (b && employee) setForm(employee); }}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader><DialogTitle>{employee ? "Edit" : "Onboard"} Employee</DialogTitle></DialogHeader>
         <div className="mt-4">
           <div className="flex border-b mb-4">
@@ -647,6 +644,7 @@ function EmployeeDialog({ open, onOpenChange, employee, onSave, departments, des
           )}
         </DialogFooter>
       </DialogContent>
+    </Dialog>
       {showEstimator && (
         <SalaryEstimatorModal 
           isOpen={showEstimator} 
@@ -654,7 +652,7 @@ function EmployeeDialog({ open, onOpenChange, employee, onSave, departments, des
           ctc={form.ctc || 0} 
         />
       )}
-    </Dialog>
+    </>
   );
 }
 
@@ -744,7 +742,7 @@ function SalaryEstimatorModal({ isOpen, onClose, ctc }: { isOpen: boolean, onClo
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Calculator className="h-5 w-5" /> Salary Estimator (FY 2026-27)

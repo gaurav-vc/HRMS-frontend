@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, isRedirect } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Users, Wallet, CalendarCheck2, AlertTriangle, TrendingUp, PlayCircle, ArrowRight, QrCode, ScanFace, Navigation as NavigationIcon, ShieldAlert } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -16,6 +16,7 @@ export const Route = createFileRoute("/")({
     try {
       return await api.getDashboardStats();
     } catch (e) {
+      if (isRedirect(e)) throw e;
       console.error(e);
       return null;
     }

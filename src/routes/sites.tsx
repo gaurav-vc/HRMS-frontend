@@ -260,18 +260,18 @@ function SiteDialog({ open, onOpenChange, site, onSave, readOnly }: any) {
               <div className="flex items-center space-x-2">
                 <Switch 
                   id="qr-mode"
-                  checked={form.qr_enabled ?? true} 
+                  checked={form.qrEnabled ?? true} 
                   disabled={readOnly}
-                  onCheckedChange={(c) => setForm({...form, qr_enabled: c})}
+                  onCheckedChange={(c) => setForm({...form, qrEnabled: c})}
                 />
                 <Label htmlFor="qr-mode" className="cursor-pointer">QR Check-in</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <Switch 
                   id="face-mode"
-                  checked={form.face_enabled ?? true} 
+                  checked={form.faceEnabled ?? true} 
                   disabled={readOnly}
-                  onCheckedChange={(c) => setForm({...form, face_enabled: c})}
+                  onCheckedChange={(c) => setForm({...form, faceEnabled: c})}
                 />
                 <Label htmlFor="face-mode" className="cursor-pointer">Face Verification</Label>
               </div>
