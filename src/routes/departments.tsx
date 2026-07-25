@@ -80,7 +80,7 @@ function DepartmentsPage() {
               return headEmp ? `${headEmp.firstName || headEmp.first_name} ${headEmp.lastName || headEmp.last_name}` : (r.head || '—');
           }},
           { key: "size", header: "Headcount", accessor: r => employees.filter((e: any) => String(e.department) === String(r.id)).length, render: r => employees.filter((e: any) => String(e.department) === String(r.id)).length },
-          { key: "created_at", header: "Created Date & Time", render: r => ((r as any).createdAt || (r as any).created_at) ? new Date((r as any).createdAt || (r as any).created_at).toLocaleString() : "-" },
+          { key: "created_at", header: "Created Date & Time", accessor: r => ((r as any).createdAt || (r as any).created_at) ? new Date((r as any).createdAt || (r as any).created_at).toLocaleString() : "", render: r => ((r as any).createdAt || (r as any).created_at) ? new Date((r as any).createdAt || (r as any).created_at).toLocaleString() : "-" },
         ]}
         actions={r => <div className="flex justify-end gap-1">
           <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setMode("view"); setOpen(true); }}><Eye className="h-4 w-4" /></Button>

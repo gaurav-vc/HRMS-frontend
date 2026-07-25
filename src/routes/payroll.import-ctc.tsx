@@ -91,7 +91,9 @@ function ImportCTCPage() {
   };
 
   const formatDate = (d: string) => {
+    if (!d) return 'N/A';
     const date = new Date(d);
+    if (isNaN(date.getTime())) return 'Invalid Date';
     return new Intl.DateTimeFormat('en-GB', { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(date);
   };
 
@@ -213,14 +215,14 @@ function ImportCTCPage() {
               rowKey={r => r.id}
               filename="ctc_imports_history.csv"
               columns={[
-                { key: "date", header: "Import date", render: (r: any) => <div><div className="font-medium text-slate-900">{formatDate(r.import_date)}</div><div className="text-xs text-slate-500">IMP-{r.id.toString().padStart(6, '0')}</div></div> },
-                { key: "by", header: "Imported by", render: (r: any) => <div className="text-slate-900 font-medium">{r.imported_by_name || 'System User'}</div> },
-                { key: "records", header: "Records", accessor: (r: any) => r.records_processed },
-                { key: "successful", header: "Successful", render: (r: any) => <span className="text-emerald-600 font-medium">{r.successful}</span> },
-                { key: "failed", header: "Failed", render: (r: any) => <span className="text-red-600 font-medium">{r.failed}</span> },
-                { key: "template", header: "Template", render: (r: any) => <Badge variant="outline">{r.file_type}</Badge> },
-                { key: "duration", header: "Duration", render: (r: any) => <span className="text-slate-600">{Math.floor(r.duration_seconds/60)}m {r.duration_seconds%60}s</span> },
-                { key: "status", header: "Status", render: (r: any) => (
+                { key: "date", header: "Import date", accessor: (r: any) => formatDate(r.import_date || r.importDate), render: (r: any) => <div><div className="font-medium text-slate-900">{formatDate(r.import_date || r.importDate)}</div><div className="text-xs text-slate-500">IMP-{r.id.toString().padStart(6, '0')}</div></div> },
+                { key: "by", header: "Imported by", accessor: (r: any) => r.imported_by_name || r.importedByName || 'System User', render: (r: any) => <div className="text-slate-900 font-medium">{r.imported_by_name || r.importedByName || 'System User'}</div> },
+                { key: "records", header: "Records", accessor: (r: any) => r.records_processed ?? r.recordsProcessed ?? 0, render: (r: any) => r.records_processed ?? r.recordsProcessed ?? 0 },
+                { key: "successful", header: "Successful", accessor: (r: any) => r.successful, render: (r: any) => <span className="text-emerald-600 font-medium">{r.successful}</span> },
+                { key: "failed", header: "Failed", accessor: (r: any) => r.failed, render: (r: any) => <span className="text-red-600 font-medium">{r.failed}</span> },
+                { key: "template", header: "Template", accessor: (r: any) => r.file_type || r.fileType || '—', render: (r: any) => <Badge variant="outline">{r.file_type || r.fileType || '—'}</Badge> },
+                { key: "duration", header: "Duration for import", accessor: (r: any) => { const ds = r.duration_seconds ?? r.durationSeconds ?? 0; return `${Math.floor(ds/60)}m ${ds%60}s`; }, render: (r: any) => { const ds = r.duration_seconds ?? r.durationSeconds ?? 0; return <span className="text-slate-600">{Math.floor(ds/60)}m {ds%60}s</span>; } },
+                { key: "status", header: "Status", accessor: (r: any) => r.status, render: (r: any) => (
                   <Badge variant={r.status === 'Completed' ? 'default' : r.status === 'Failed' ? 'destructive' : 'secondary'} 
                          className={r.status === 'Completed' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100' : ''}>
                     {r.status}

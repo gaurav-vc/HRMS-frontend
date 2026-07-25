@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Edit, Pencil, Trash2, MapPin, Building2, Clock, CheckCircle2, AlertCircle, Copy, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";

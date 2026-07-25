@@ -74,7 +74,7 @@ function EntitiesPage() {
           { key: "currency", header: "Currency", accessor: r => r.currency },
           { key: "gstin", header: "GSTIN" },
           { key: "status", header: "Status", render: r => <Badge variant={r.status === "Active" ? "default" : "secondary"} className={r.status === "Active" ? "bg-success text-success-foreground" : ""}>{r.status}</Badge> },
-          { key: "created_at", header: "Created Date & Time", render: r => ((r as any).createdAt || (r as any).created_at) ? new Date((r as any).createdAt || (r as any).created_at).toLocaleString() : "-" },
+          { key: "created_at", header: "Created Date & Time", accessor: r => ((r as any).createdAt || (r as any).created_at) ? new Date((r as any).createdAt || (r as any).created_at).toLocaleString() : "", render: r => ((r as any).createdAt || (r as any).created_at) ? new Date((r as any).createdAt || (r as any).created_at).toLocaleString() : "-" },
         ]}
         actions={r => (
           <div className="flex justify-end gap-1">

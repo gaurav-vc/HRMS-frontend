@@ -24,7 +24,7 @@ export const Route = createFileRoute("/leave-inbox")({
 function LeaveInboxPage() {
   const { inboxLeaves, types } = Route.useLoaderData();
   const router = useRouter();
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>("Pending");
 
   const counts = {
     pending: inboxLeaves.filter((r: any) => r.status === "Pending").length,
@@ -44,7 +44,7 @@ function LeaveInboxPage() {
   };
 
   const inboxMapped = inboxLeaves
-    .filter((r: any) => !statusFilter || r.status === statusFilter)
+    .filter((r: any) => !statusFilter || String(r.status).toLowerCase() === statusFilter.toLowerCase())
     .map((r: any) => ({
       ...r,
       from: r.startDate || r.start_date,

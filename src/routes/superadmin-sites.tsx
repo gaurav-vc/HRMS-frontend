@@ -280,8 +280,35 @@ function SiteDialog({ open, onOpenChange, site, onSave, organizations, mode, loc
   useEffect(() => {
     if (open) {
       setForm(site || defaultForm);
+      setModuleSearch("");
     }
   }, [open, site]);
+
+  const [moduleSearch, setModuleSearch] = useState("");
+
+  const handleAddModule = () => {
+    if (!moduleSearch.trim() || mode === 'view') return;
+    const mod = moduleSearch.trim();
+    let mods = form.modules || [];
+    if (!mods.includes(mod)) {
+      setForm({ ...form, modules: [...mods, mod] });
+      toast.success(`Module "${mod}" added`);
+    } else {
+      toast.info(`Module "${mod}" already selected`);
+    }
+    setModuleSearch("");
+  };
+
+  const customItems = (form.modules || []).filter((m: string) => !MODULES.flatMap(g => g.items).includes(m));
+  const allModulesList = [...MODULES];
+  if (customItems.length > 0) {
+    allModulesList.push({ group: "Custom Modules", items: customItems });
+  }
+
+  const displayedModules = allModulesList.map(g => ({
+    ...g,
+    items: g.items.filter(item => item.toLowerCase().includes(moduleSearch.toLowerCase()))
+  })).filter(g => g.items.length > 0);
 
   const handleChange = (e: any) => setForm({ ...form, [e.target.name]: e.target.value });
   const handleToggleModule = (modName: string, checked: boolean) => {
@@ -419,9 +446,20 @@ function SiteDialog({ open, onOpenChange, site, onSave, organizations, mode, loc
             <div className="flex gap-4 items-center">
                <div className="relative flex-1">
                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                 <Input placeholder="Search modules..." className="pl-9" />
+                 <Input 
+                   placeholder="Search modules or type to add new..." 
+                   className="pl-9" 
+                   value={moduleSearch}
+                   onChange={e => setModuleSearch(e.target.value)}
+                   onKeyDown={e => {
+                     if (e.key === 'Enter') {
+                       e.preventDefault();
+                       handleAddModule();
+                     }
+                   }}
+                 />
                </div>
-               <Button className="bg-[#1a4cd2] hover:bg-[#1641b4] text-white">
+               <Button className="bg-[#1a4cd2] hover:bg-[#1641b4] text-white" onClick={handleAddModule} disabled={mode === 'view' || !moduleSearch.trim()}>
                  <Plus className="w-4 h-4 mr-2" /> Add Module
                </Button>
             </div>
@@ -450,22 +488,25 @@ function SiteDialog({ open, onOpenChange, site, onSave, organizations, mode, loc
             </div>
 
             <div className="space-y-8 mt-6">
-              {MODULES.map((group, gIdx) => (
-                <div key={gIdx} className="space-y-4">
+              {displayedModules.length === 0 && (
+                <div className="text-center py-8 text-slate-500">No modules found matching your search.</div>
+              )}
+              {displayedModules.map((group, gIdx) => (
+                <div key={group.group} className="space-y-4">
                   <h4 className="font-semibold text-slate-900 border-b pb-2 flex justify-between items-center">
                     {group.group}
                     <span className="text-xs text-muted-foreground">{group.items.length} items</span>
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-6">
                     {group.items.map((mod, mIdx) => (
-                      <div key={mIdx} className="flex items-center space-x-2">
+                      <div key={mod} className="flex items-center space-x-2">
                         <Checkbox 
-                          id={`mod-${gIdx}-${mIdx}`} 
+                          id={`mod-${group.group}-${mod}`} 
                           checked={(form.modules || []).includes(mod)}
                           onCheckedChange={(c) => handleToggleModule(mod, c as boolean)}
                           disabled={mode === 'view'}
                         />
-                        <label htmlFor={`mod-${gIdx}-${mIdx}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-700">
+                        <label htmlFor={`mod-${group.group}-${mod}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-700">
                           {mod}
                         </label>
                       </div>

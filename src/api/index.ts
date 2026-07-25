@@ -145,7 +145,9 @@ export const employeesApi = {
   getById: async (id: string | number): Promise<Employee> => apiCall(`/employees/${id}/`),
   create: async (data: Partial<Employee>): Promise<Employee> => apiCall('/employees/', 'POST', data),
   update: async (id: string | number, data: Partial<Employee>): Promise<Employee> => apiCall(`/employees/${id}/`, 'PATCH', data),
-  delete: async (id: string | number): Promise<void> => apiCall(`/employees/${id}/`, 'DELETE'),
+  delete: async (id: string | number) => apiCall(`/employees/${id}/`, 'DELETE'),
+  getAuditLogs: async (id: string | number) => apiCall(`/employees/${id}/audit_logs/`),
+  
   bulkImport: async (file: File): Promise<any> => {
     const formData = new FormData();
     formData.append('file', file);

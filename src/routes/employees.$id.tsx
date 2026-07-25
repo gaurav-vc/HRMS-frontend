@@ -99,6 +99,20 @@ function EmployeeDetail() {
   const [isSaving, setIsSaving] = useState(false);
   const [newManagerId, setNewManagerId] = useState("");
   const [isSavingManager, setIsSavingManager] = useState(false);
+
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+
+  React.useEffect(() => {
+    if (tab === "logs") {
+      setLoadingLogs(true);
+      employeesApi.getAuditLogs(rawE.id)
+        .then(res => setAuditLogs(res))
+        .catch(err => console.error("Failed to load audit logs", err))
+        .finally(() => setLoadingLogs(false));
+    }
+  }, [tab, rawE.id]);
+
   const [docs, setDocs] = useState<any[]>(Array.isArray(initialDocs) ? initialDocs : ((initialDocs as any)?.results || []));
 
   const handleSavePayroll = async () => {
@@ -206,12 +220,50 @@ function EmployeeDetail() {
         {tab === "logs" && (
           <Card className="p-6 space-y-6">
             <h3 className="font-semibold text-lg border-b pb-2">Audit Logs</h3>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <FieldRO label="Created On" value={(e as any).created_at ? new Date((e as any).created_at).toLocaleString() : "—"} />
-              <FieldRO label="Last Updated" value={(e as any).updated_at ? new Date((e as any).updated_at).toLocaleString() : "—"} />
-            </div>
-            {(!(e as any).created_at && !(e as any).updated_at) && (
-              <p className="text-sm text-muted-foreground mt-4 italic">No audit trail available for this record yet.</p>
+            {loadingLogs ? (
+              <div className="text-center py-4 text-muted-foreground animate-pulse">Loading audit logs...</div>
+            ) : auditLogs.length === 0 ? (
+              <div className="grid sm:grid-cols-2 gap-4">
+                <FieldRO label="Created On" value={((e as any).createdAt || (e as any).created_at) ? new Date(((e as any).createdAt || (e as any).created_at)).toLocaleString() : "—"} />
+                <FieldRO label="Last Updated" value={((e as any).updatedAt || (e as any).updated_at) ? new Date(((e as any).updatedAt || (e as any).updated_at)).toLocaleString() : "—"} />
+                <div className="sm:col-span-2">
+                  <p className="text-sm text-muted-foreground mt-4 italic">No detailed audit trail available for this record yet.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {auditLogs.map((log) => (
+                  <div key={log.id} className="border rounded-md p-4 bg-slate-50">
+                    <div className="flex justify-between items-start border-b pb-2 mb-3">
+                      <div>
+                        <Badge variant={log.action === 'Create' ? 'default' : 'secondary'} className="mb-1">
+                          {log.action}
+                        </Badge>
+                        <p className="text-sm text-slate-600">Performed by <span className="font-semibold">{log.performed_by}</span></p>
+                      </div>
+                      <span className="text-xs text-slate-500 font-mono">
+                        {new Date(log.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {Object.entries(log.changes || {}).map(([field, vals]: [string, any]) => (
+                        <div key={field} className="text-sm grid grid-cols-[120px_1fr] gap-2 items-center">
+                          <span className="font-medium text-slate-700 capitalize">{field.replace(/_/g, ' ')}:</span>
+                          {vals.old !== undefined || vals.new !== undefined ? (
+                            <span className="text-slate-600">
+                              <span className="line-through text-red-400 mr-2">{vals.old || "None"}</span>
+                              <ArrowLeft className="inline w-3 h-3 mx-1 text-slate-400 rotate-180" />
+                              <span className="text-green-600 font-medium ml-2">{vals.new || "None"}</span>
+                            </span>
+                          ) : (
+                            <span className="text-slate-600">{vals}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </Card>
         )}

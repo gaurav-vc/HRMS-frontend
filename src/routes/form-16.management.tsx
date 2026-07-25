@@ -298,7 +298,7 @@ function Form16ManagementPage() {
                   <Button variant="ghost" size="icon" onClick={() => setPreviewDoc(row)} title="View Document">
                     <Eye className="h-4 w-4 text-blue-600" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => forceDownload(row.file, `Form16_${fyFilter}_${row.employee_code}.pdf`)} title="Download">
+                  <Button variant="ghost" size="icon" onClick={() => forceDownload(row.file, `Form16_${fyFilter}_${row.employee_code}.${row.file?.split('.').pop() || 'pdf'}`)} title="Download">
                     <Download className="h-4 w-4 text-muted-foreground" />
                   </Button>
                 </>
@@ -321,8 +321,8 @@ function Form16ManagementPage() {
           <DialogHeader className="p-4 border-b border-border bg-muted/30">
             <DialogTitle className="flex items-center justify-between">
               <span>{previewDoc?.employee_name} - Form 16 ({fyFilter})</span>
-              <Button size="sm" variant="outline" className="gap-2 h-8 mr-6" onClick={() => forceDownload(previewDoc?.file, `Form16_${fyFilter}_${previewDoc?.employee_code}.pdf`)}>
-                <Download className="h-3.5 w-3.5" /> Download PDF
+              <Button size="sm" variant="outline" className="gap-2 h-8 mr-6" onClick={() => forceDownload(previewDoc?.file, `Form16_${fyFilter}_${previewDoc?.employee_code}.${previewDoc?.file?.split('.').pop() || 'pdf'}`)}>
+                <Download className="h-3.5 w-3.5" /> Download
               </Button>
             </DialogTitle>
           </DialogHeader>
