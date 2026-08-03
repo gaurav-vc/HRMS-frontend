@@ -273,7 +273,7 @@ function UsersAndRolesTab() {
                   <DialogTitle>{editingUser ? "Edit User" : "New User"}</DialogTitle>
                   <DialogDescription>Fields are linked to keep your hierarchy consistent.</DialogDescription>
                 </DialogHeader>
-                <UserForm departments={departments} roles={roles} nodeTypes={nodeTypes} initialData={editingUser} onClose={() => { setUserModalOpen(false); setEditingUser(null); fetchAll(); }} />
+                <UserForm departments={departments} roles={roles} nodeTypes={nodeTypes} employees={employees} initialData={editingUser} onClose={() => { setUserModalOpen(false); setEditingUser(null); fetchAll(); }} />
               </DialogContent>
             </Dialog>
           </>
@@ -684,7 +684,7 @@ function RoleForm({ departments, roles, nodeTypes, initialData, onClose }: { dep
   );
 }
 
-function UserForm({ departments, roles, nodeTypes, initialData, onClose }: { departments: any[], roles: any[], nodeTypes: any[], initialData?: any, onClose: () => void }) {
+function UserForm({ departments, roles, nodeTypes, employees, initialData, onClose }: { departments: any[], roles: any[], nodeTypes: any[], employees: any[], initialData?: any, onClose: () => void }) {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState(initialData ? {
     firstName: initialData.firstName || "", 
@@ -703,7 +703,7 @@ function UserForm({ departments, roles, nodeTypes, initialData, onClose }: { dep
     password: "Password123!" // Ignored on edit typically, or leave as default
   } : {
     firstName: "", lastName: "", code: "", email: "", phone: "",
-    department: "", designation: "", dynamicRole: "", entity: "", branch: "", site: "",
+    department: "", designation: "", dynamicRole: "", entity: "", branch: "", site: "", manager: "",
     mfaEnabled: false, status: "Active" as "Active" | "Inactive", password: "Password123!"
   });
 
@@ -721,7 +721,7 @@ function UserForm({ departments, roles, nodeTypes, initialData, onClose }: { dep
       delete payload.mfaEnabled;
       delete payload.dynamicRole;
 
-      ['department', 'designation', 'dynamic_role', 'entity', 'branch', 'site', 'phone'].forEach(key => {
+      ['department', 'designation', 'dynamic_role', 'entity', 'branch', 'site', 'phone', 'manager'].forEach(key => {
         if (payload[key] === "") payload[key] = null;
       });
 
@@ -792,6 +792,17 @@ function UserForm({ departments, roles, nodeTypes, initialData, onClose }: { dep
           </select>
         </div>
         <div className="space-y-2">
+          <Label>Reporting Manager</Label>
+          <select 
+            className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring"
+            value={form.manager || ""} 
+            onChange={e => setForm({...form, manager: e.target.value})}
+          >
+            <option value="">None</option>
+            {employees.map(emp => <option key={emp.id} value={String(emp.id)}>{emp.firstName} {emp.lastName}</option>)}
+          </select>
+        </div>
+        <div className="space-y-2">
           <Label>Status</Label>
           <select 
             className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring"
@@ -859,18 +870,36 @@ function RolePermissionsTab() {
     }
   }, [selectedRole, roles]);
 
-  const handlePermissionChange = (moduleName: string, action: string, value: any) => {
-    setPermissions((prev: any) => ({
-      ...prev,
-      [moduleName]: {
-        ...(prev[moduleName] || { create: false, view: false, update: false, delete: false }),
-        [action]: value
-      }
-    }));
-  };
-
   const handleToggle = (moduleName: string, action: string, checked: boolean) => {
-    handlePermissionChange(moduleName, action, checked);
+    setPermissions((prev: any) => {
+      const current = prev[moduleName] || { create: false, view: false, update: false, delete: false };
+      const next = { ...current, [action]: checked };
+
+      if (checked) {
+        if (action === 'create' || action === 'update' || action === 'delete') {
+          next.view = true;
+          next.create = true;
+          next.update = true;
+          next.delete = true;
+        }
+      } else {
+        if (action === 'view') {
+          next.create = false;
+          next.update = false;
+          next.delete = false;
+        }
+        if (action === 'create' || action === 'update' || action === 'delete') {
+          next.create = false;
+          next.update = false;
+          next.delete = false;
+        }
+      }
+
+      return {
+        ...prev,
+        [moduleName]: next
+      };
+    });
   };
 
   const handleSpecialToggle = (key: string, value: boolean | string) => {

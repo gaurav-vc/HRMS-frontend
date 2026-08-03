@@ -16,7 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { employeesApi, departmentsApi, designationsApi, branchesApi, entitiesApi, sitesApi, payrollApi, offersApi, offerTemplatesApi } from "@/api";
 import type { Employee, Department, Designation, Branch, Entity, Site } from "@/lib/mock-data";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth, usePermissions } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/employees")({
   validateSearch: (search: Record<string, unknown>): { edit?: string; tab?: string } => {
@@ -53,6 +53,7 @@ function EmployeesPage() {
   const matchRoute = useMatchRoute();
 
   const searchParams = Route.useSearch();
+  const { canView, canCreate, canUpdate, canDelete } = usePermissions("Employees");
 
   useEffect(() => { setRows(initial); }, [initial]);
 
@@ -179,6 +180,15 @@ function EmployeesPage() {
     return <Outlet />;
   }
 
+  if (!canView) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-100px)]">
+        <h2 className="text-xl font-bold text-slate-700">Access Denied</h2>
+        <p className="text-slate-500 mt-2">You do not have permission to view the Employees module.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full bg-slate-50/50">
       <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
@@ -188,8 +198,8 @@ function EmployeesPage() {
         actions={
           <div className="flex gap-2 pointer-events-auto">
             <Button onClick={downloadSampleTemplate} variant="outline" className="bg-white"><Download className="h-4 w-4 mr-1" />Download Template</Button>
-            <Button onClick={() => fileInputRef.current?.click()} variant="outline"><UserPlus className="h-4 w-4 mr-1" />Bulk Import</Button>
-            <Button onClick={() => { setEditing(null); setOpen(true); }}><UserPlus className="h-4 w-4 mr-1" />Onboard Employee</Button>
+            {canCreate && <Button onClick={() => fileInputRef.current?.click()} variant="outline"><UserPlus className="h-4 w-4 mr-1" />Bulk Import</Button>}
+            {canCreate && <Button onClick={() => { setEditing(null); setOpen(true); }}><UserPlus className="h-4 w-4 mr-1" />Onboard Employee</Button>}
           </div>
         } 
       />
@@ -251,8 +261,8 @@ function EmployeesPage() {
             >
               <Eye className="h-4 w-4" />
             </Link>
-            <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-            <Button size="icon" variant="ghost" onClick={() => handleDelete(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+            {canUpdate && <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
+            {canDelete && <Button size="icon" variant="ghost" onClick={() => handleDelete(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
           </div>}
         />
       )}

@@ -143,3 +143,19 @@ export function useAuth() {
 }
 
 export function roleLabel(r: Role) { return ROLES.find(x => x.value === r)?.label ?? r; }
+
+export function usePermissions(moduleName: string) {
+  const { user } = useAuth();
+  
+  if (user?.role === 'super_admin' || user?.username === 'Vibe_admin') {
+    return { canView: true, canCreate: true, canUpdate: true, canDelete: true };
+  }
+  
+  const perms = user?.permissions?.[moduleName] || { view: false, create: false, update: false, delete: false };
+  return {
+    canView: !!perms.view,
+    canCreate: !!perms.create,
+    canUpdate: !!perms.update,
+    canDelete: !!perms.delete,
+  };
+}

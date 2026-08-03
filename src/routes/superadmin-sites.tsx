@@ -290,8 +290,9 @@ function SiteDialog({ open, onOpenChange, site, onSave, organizations, mode, loc
     if (!moduleSearch.trim() || mode === 'view') return;
     const mod = moduleSearch.trim();
     let mods = form.modules || [];
-    if (!mods.includes(mod)) {
-      setForm({ ...form, modules: [...mods, mod] });
+    const exists = mods.some((m: any) => typeof m === 'string' ? m === mod : m.name === mod);
+    if (!exists) {
+      setForm({ ...form, modules: [...mods, { name: mod, view: true, create: false, update: false, delete: false }] });
       toast.success(`Module "${mod}" added`);
     } else {
       toast.info(`Module "${mod}" already selected`);
@@ -299,7 +300,10 @@ function SiteDialog({ open, onOpenChange, site, onSave, organizations, mode, loc
     setModuleSearch("");
   };
 
-  const customItems = (form.modules || []).filter((m: string) => !MODULES.flatMap(g => g.items).includes(m));
+  const customItems = (form.modules || []).filter((m: any) => {
+    const mName = typeof m === 'string' ? m : m.name;
+    return !MODULES.flatMap(g => g.items).includes(mName);
+  }).map((m: any) => typeof m === 'string' ? m : m.name);
   const allModulesList = [...MODULES];
   if (customItems.length > 0) {
     allModulesList.push({ group: "Custom Modules", items: customItems });
@@ -311,10 +315,14 @@ function SiteDialog({ open, onOpenChange, site, onSave, organizations, mode, loc
   })).filter(g => g.items.length > 0);
 
   const handleChange = (e: any) => setForm({ ...form, [e.target.name]: e.target.value });
-  const handleToggleModule = (modName: string, checked: boolean) => {
-    let mods = form.modules || [];
-    if (checked && !mods.includes(modName)) mods = [...mods, modName];
-    else if (!checked) mods = mods.filter((m: string) => m !== modName);
+  
+  const handleToggleModuleAction = (modName: string, checked: boolean) => {
+    let mods = [...(form.modules || [])].map(m => typeof m === 'string' ? m : m.name);
+    if (checked) {
+      if (!mods.includes(modName)) mods.push(modName);
+    } else {
+      mods = mods.filter(m => m !== modName);
+    }
     setForm({ ...form, modules: mods });
   };
 
@@ -498,19 +506,19 @@ function SiteDialog({ open, onOpenChange, site, onSave, organizations, mode, loc
                     <span className="text-xs text-muted-foreground">{group.items.length} items</span>
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-6">
-                    {group.items.map((mod, mIdx) => (
-                      <div key={mod} className="flex items-center space-x-2">
+                    {group.items.map((mod) => {
+                      const isSelected = (form.modules || []).includes(mod);
+                      
+                      return (
+                      <div key={mod} className="flex items-center space-x-2 border p-3 rounded-md bg-white">
                         <Checkbox 
-                          id={`mod-${group.group}-${mod}`} 
-                          checked={(form.modules || []).includes(mod)}
-                          onCheckedChange={(c) => handleToggleModule(mod, c as boolean)}
-                          disabled={mode === 'view'}
+                           checked={isSelected}
+                           onCheckedChange={(c) => handleToggleModuleAction(mod, c as boolean)}
+                           disabled={mode === 'view'}
                         />
-                        <label htmlFor={`mod-${group.group}-${mod}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-700">
-                          {mod}
-                        </label>
+                        <span className="text-sm font-medium text-slate-700">{mod}</span>
                       </div>
-                    ))}
+                    )})}
                   </div>
                 </div>
               ))}
