@@ -3,11 +3,11 @@ import { fmtINR, empName, type Employee } from "./mock-data";
 export function openPayslipPdf(emp: Employee | any, period: string) {
   const { gross, net, basic, hra, special, pf, pt, tds, ded } = emp;
   const ctc = emp.ctc || 0;
-  
+
   // Safe string variables
-  const bAcct = emp.bankAccount ? emp.bankAccount.slice(-4) : '0000';
-  const bName = emp.bankName || 'N/A';
-  
+  const bAcct = emp.bankAccount ? emp.bankAccount.slice(-4) : "0000";
+  const bName = emp.bankName || "N/A";
+
   const html = `<!doctype html><html><head><meta charset="utf-8"/><title>Payslip ${emp.code} ${period}</title>
 <style>
   *{box-sizing:border-box;font-family:Arial,sans-serif;}
@@ -68,7 +68,7 @@ export function openPayslipPdf(emp: Employee | any, period: string) {
         <td>Month</td><td>${period}</td>
       </tr>
       <tr>
-        <td>Department</td><td>${emp.department || 'IT'}</td>
+        <td>Department</td><td>${emp.department || "IT"}</td>
         <td>Status</td><td>Completed</td>
       </tr>
       <tr>
@@ -84,8 +84,8 @@ export function openPayslipPdf(emp: Employee | any, period: string) {
         <td>ESI No</td><td>N/A</td>
       </tr>
       <tr>
-        <td>UAN</td><td>${emp.uan || 'N/A'}</td>
-        <td>PAN</td><td>${emp.pan || 'N/A'}</td>
+        <td>UAN</td><td>${emp.uan || "N/A"}</td>
+        <td>PAN</td><td>${emp.pan || "N/A"}</td>
       </tr>
       <tr>
         <td>PRAN No</td><td>N/A</td>
@@ -99,9 +99,9 @@ export function openPayslipPdf(emp: Employee | any, period: string) {
       <tr><th>Earnings</th><th>Amount</th></tr>
     </thead>
     <tbody>
-      <tr><td>Basic Pay</td><td>Rs. ${(basic||0).toFixed(2)}</td></tr>
-      <tr><td>HRA</td><td>Rs. ${(hra||0).toFixed(2)}</td></tr>
-      <tr><td>Allowance</td><td>Rs. ${(special||0).toFixed(2)}</td></tr>
+      <tr><td>Basic Pay</td><td>Rs. ${(basic || 0).toFixed(2)}</td></tr>
+      <tr><td>HRA</td><td>Rs. ${(hra || 0).toFixed(2)}</td></tr>
+      <tr><td>Allowance</td><td>Rs. ${(special || 0).toFixed(2)}</td></tr>
       <tr><td>Current Month SP</td><td>Rs. 0.00</td></tr>
       <tr><td>Conveyance</td><td>Rs. 0.00</td></tr>
     </tbody>
@@ -112,15 +112,15 @@ export function openPayslipPdf(emp: Employee | any, period: string) {
       <tr><th>Deductions</th><th>Amount</th></tr>
     </thead>
     <tbody>
-      <tr><td>PF</td><td>Rs. ${(pf||0).toFixed(2)}</td></tr>
-      <tr><td>Tax</td><td>Rs. ${(tds||0).toFixed(2)}</td></tr>
+      <tr><td>PF</td><td>Rs. ${(pf || 0).toFixed(2)}</td></tr>
+      <tr><td>Tax</td><td>Rs. ${(tds || 0).toFixed(2)}</td></tr>
       <tr><td>Other Deductions</td><td>Rs. 0.00</td></tr>
     </tbody>
   </table>
   
   <table class="fin-table" style="margin-top:-31px;">
     <tbody>
-      <tr class="net-row"><td width="50%">Net Salary</td><td width="50%">Rs. ${(net||0).toFixed(2)}</td></tr>
+      <tr class="net-row"><td width="50%">Net Salary</td><td width="50%">Rs. ${(net || 0).toFixed(2)}</td></tr>
     </tbody>
   </table>
 </div>

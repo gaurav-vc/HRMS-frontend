@@ -1,7 +1,19 @@
 import React, { useState } from "react";
 import { createFileRoute, Link, Navigate, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, Edit, Pencil, Trash2, MapPin, Building2, Clock, CheckCircle2, AlertCircle, Copy, Mail } from "lucide-react";
+import {
+  ChevronLeft,
+  Edit,
+  Pencil,
+  Trash2,
+  MapPin,
+  Building2,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Copy,
+  Mail,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/data-table";
@@ -15,7 +27,7 @@ export const Route = createFileRoute("/organizations/$orgId")({
   component: OrganizationDetailPage,
   loader: async ({ params }) => {
     return { orgId: params.orgId };
-  }
+  },
 });
 
 function OrganizationDetailPage() {
@@ -25,7 +37,11 @@ function OrganizationDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const router = useRouter();
 
-  const { data: organization, isLoading: isLoadingOrg, refetch } = useQuery({
+  const {
+    data: organization,
+    isLoading: isLoadingOrg,
+    refetch,
+  } = useQuery({
     queryKey: ["organization", orgId],
     queryFn: () => organizationsApi.getById(orgId),
   });
@@ -47,7 +63,9 @@ function OrganizationDetailPage() {
     return <div className="p-8 text-center text-red-500">Organization not found.</div>;
   }
 
-  const orgSites = (allSites || []).filter((s: any) => s.organization?.toString() === orgId.toString());
+  const orgSites = (allSites || []).filter(
+    (s: any) => s.organization?.toString() === orgId.toString(),
+  );
 
   return (
     <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
@@ -61,14 +79,23 @@ function OrganizationDetailPage() {
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900">{organization.name}</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                {organization.name}
+              </h1>
             </div>
             <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
               <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600 font-mono text-xs">
                 ID: {organization.id || orgId}
               </span>
-              <Badge variant="outline" className={organization.status === 'Active' ? 'text-emerald-600 border-emerald-200 bg-emerald-50' : 'text-slate-600 border-slate-200 bg-slate-50'}>
-                {organization.status?.toUpperCase() || 'ACTIVE'}
+              <Badge
+                variant="outline"
+                className={
+                  organization.status === "Active"
+                    ? "text-emerald-600 border-emerald-200 bg-emerald-50"
+                    : "text-slate-600 border-slate-200 bg-slate-50"
+                }
+              >
+                {organization.status?.toUpperCase() || "ACTIVE"}
               </Badge>
             </div>
           </div>
@@ -78,28 +105,32 @@ function OrganizationDetailPage() {
             <Pencil className="w-4 h-4 mr-2" />
             Edit Details
           </Button>
-          <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700" onClick={async () => {
-            if (window.confirm("Are you sure you want to delete this organization?")) {
-              try {
-                await organizationsApi.delete(orgId);
-                toast.success("Organization deleted");
-                router.navigate({ to: "/organizations" });
-              } catch (e) {
-                toast.error("Failed to delete organization");
+          <Button
+            variant="outline"
+            className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+            onClick={async () => {
+              if (window.confirm("Are you sure you want to delete this organization?")) {
+                try {
+                  await organizationsApi.delete(orgId);
+                  toast.success("Organization deleted");
+                  router.navigate({ to: "/organizations" });
+                } catch (e) {
+                  toast.error("Failed to delete organization");
+                }
               }
-            }
-          }}>
+            }}
+          >
             <Trash2 className="w-4 h-4 mr-2" />
             Delete
           </Button>
         </div>
       </div>
 
-      <OrgDialog 
-        open={isEditing} 
-        onOpenChange={setIsEditing} 
-        data={organization} 
-        mode="edit" 
+      <OrgDialog
+        open={isEditing}
+        onOpenChange={setIsEditing}
+        data={organization}
+        mode="edit"
         onSave={async (e: any) => {
           try {
             await organizationsApi.update(e.id, e);
@@ -109,13 +140,12 @@ function OrganizationDetailPage() {
           } catch (err) {
             toast.error("Failed to update organization");
           }
-        }} 
+        }}
       />
 
       <div className="grid grid-cols-3 gap-6">
         {/* Left Column (Main Info) */}
         <div className="col-span-2 space-y-6">
-          
           {/* Organization Profile */}
           <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
             <div className="p-5 border-b bg-slate-50/50 flex items-center gap-2">
@@ -126,29 +156,43 @@ function OrganizationDetailPage() {
             </div>
             <div className="p-6 grid grid-cols-3 gap-y-6 gap-x-4">
               <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Company Name</p>
-                <p className="font-medium text-slate-800">{organization.companyName || '—'}</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  Company Name
+                </p>
+                <p className="font-medium text-slate-800">{organization.companyName || "—"}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Entity</p>
-                <p className="font-medium text-slate-800">{organization.entityName || '—'}</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  Entity
+                </p>
+                <p className="font-medium text-slate-800">{organization.entityName || "—"}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Site Location</p>
-                <p className="font-medium text-slate-800">{organization.siteLocation || '—'}</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  Site Location
+                </p>
+                <p className="font-medium text-slate-800">{organization.siteLocation || "—"}</p>
               </div>
               <div className="col-span-2">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Location Details</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  Location Details
+                </p>
                 <div className="flex items-center gap-1.5 text-slate-700">
                   <MapPin className="w-4 h-4 text-slate-400" />
                   <span>
-                    {[organization.city, organization.state, organization.country].filter(Boolean).join(', ') || '—'}
+                    {[organization.city, organization.state, organization.country]
+                      .filter(Boolean)
+                      .join(", ") || "—"}
                   </span>
                 </div>
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Sub-Domain</p>
-                <p className="font-medium text-blue-600 hover:underline cursor-pointer">{organization.subDomain || '—'}</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  Sub-Domain
+                </p>
+                <p className="font-medium text-blue-600 hover:underline cursor-pointer">
+                  {organization.subDomain || "—"}
+                </p>
               </div>
             </div>
           </div>
@@ -162,44 +206,66 @@ function OrganizationDetailPage() {
                 </div>
                 <h2 className="font-semibold text-slate-800">Billing Configuration</h2>
               </div>
-              <Button variant="outline" size="sm" className="text-xs">View Full Billing</Button>
+              <Button variant="outline" size="sm" className="text-xs">
+                View Full Billing
+              </Button>
             </div>
             <div className="p-6 grid grid-cols-3 gap-y-6 gap-x-4">
               <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Solution Type</p>
-                <p className="font-medium text-slate-800">{organization.solutionType || '—'}</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  Solution Type
+                </p>
+                <p className="font-medium text-slate-800">{organization.solutionType || "—"}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Solution For</p>
-                <p className="font-medium text-slate-800">{organization.solutionFor || '—'}</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  Solution For
+                </p>
+                <p className="font-medium text-slate-800">{organization.solutionFor || "—"}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Billing Term</p>
-                <p className="font-medium text-slate-800">{organization.billingTerm || '—'}</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  Billing Term
+                </p>
+                <p className="font-medium text-slate-800">{organization.billingTerm || "—"}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Rate</p>
-                <p className="font-medium text-slate-800">{organization.rateOfBilling ? `$${organization.rateOfBilling}` : '—'}</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  Rate
+                </p>
+                <p className="font-medium text-slate-800">
+                  {organization.rateOfBilling ? `$${organization.rateOfBilling}` : "—"}
+                </p>
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Cycle</p>
-                <p className="font-medium text-slate-800">{organization.billingCycle || '—'}</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  Cycle
+                </p>
+                <p className="font-medium text-slate-800">{organization.billingCycle || "—"}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Project Duration</p>
-                <p className="font-medium text-slate-800">{organization.projectDuration || '—'}</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  Project Duration
+                </p>
+                <p className="font-medium text-slate-800">{organization.projectDuration || "—"}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Start Date</p>
-                <p className="font-medium text-slate-800">{organization.startDate || '—'}</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  Start Date
+                </p>
+                <p className="font-medium text-slate-800">{organization.startDate || "—"}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">End Date</p>
-                <p className="font-medium text-slate-800">{organization.endDate || '—'}</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  End Date
+                </p>
+                <p className="font-medium text-slate-800">{organization.endDate || "—"}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Billing Date</p>
-                <p className="font-medium text-slate-800">{organization.billingDate || '—'}</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  Billing Date
+                </p>
+                <p className="font-medium text-slate-800">{organization.billingDate || "—"}</p>
               </div>
             </div>
           </div>
@@ -214,9 +280,11 @@ function OrganizationDetailPage() {
                 <h2 className="font-semibold text-slate-800">Operational sites</h2>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="text-xs">Manage Sites</Button>
+                <Button variant="outline" size="sm" className="text-xs">
+                  Manage Sites
+                </Button>
                 <Button size="sm" className="bg-[#1a4cd2] hover:bg-[#1641b4] text-xs" asChild>
-                  <Link to="/superadmin-sites" search={{ action: 'add', orgId: orgId.toString() }}>
+                  <Link to="/superadmin-sites" search={{ action: "add", orgId: orgId.toString() }}>
                     + Add Site
                   </Link>
                 </Button>
@@ -227,33 +295,46 @@ function OrganizationDetailPage() {
                 rows={orgSites}
                 rowKey={(r: any) => r.id}
                 columns={[
-                  { 
-                    key: "name", 
-                    header: "Site name", 
+                  {
+                    key: "name",
+                    header: "Site name",
                     accessor: (r: any) => r.name,
-                    render: (r: any) => <span className="font-medium text-slate-800">{r.name}</span> 
+                    render: (r: any) => (
+                      <span className="font-medium text-slate-800">{r.name}</span>
+                    ),
                   },
-                  { 
-                    key: "product_type", 
-                    header: "Product types", 
+                  {
+                    key: "product_type",
+                    header: "Product types",
                     accessor: (r: any) => r.productType || "—",
-                    render: (r: any) => <span className="text-slate-600">{r.productType || "—"}</span> 
+                    render: (r: any) => (
+                      <span className="text-slate-600">{r.productType || "—"}</span>
+                    ),
                   },
-                  { 
-                    key: "users", 
-                    header: "Users", 
+                  {
+                    key: "users",
+                    header: "Users",
                     accessor: (r: any) => String(r.usersCount || "0"),
-                    render: (r: any) => <span className="text-slate-600">{r.usersCount || "0"}</span> 
+                    render: (r: any) => (
+                      <span className="text-slate-600">{r.usersCount || "0"}</span>
+                    ),
                   },
-                  { 
-                    key: "status", 
-                    header: "Status", 
+                  {
+                    key: "status",
+                    header: "Status",
                     accessor: (r: any) => r.status || "Active",
                     render: (r: any) => (
-                      <Badge variant="outline" className={r.status === 'Active' ? 'text-emerald-600 border-emerald-200 bg-emerald-50 text-[10px]' : 'text-slate-600 border-slate-200 bg-slate-50 text-[10px]'}>
-                        {r.status?.toUpperCase() || 'ACTIVE'}
+                      <Badge
+                        variant="outline"
+                        className={
+                          r.status === "Active"
+                            ? "text-emerald-600 border-emerald-200 bg-emerald-50 text-[10px]"
+                            : "text-slate-600 border-slate-200 bg-slate-50 text-[10px]"
+                        }
+                      >
+                        {r.status?.toUpperCase() || "ACTIVE"}
                       </Badge>
-                    )
+                    ),
                   },
                 ]}
                 actions={(r: any) => (
@@ -264,7 +345,6 @@ function OrganizationDetailPage() {
               />
             </div>
           </div>
-
         </div>
 
         {/* Right Column (Audit Trail) */}
@@ -284,15 +364,19 @@ function OrganizationDetailPage() {
                 <div className="bg-slate-50 p-4 rounded-lg border">
                   <h4 className="font-semibold text-slate-900 text-sm">Organization Created</h4>
                   <p className="text-xs text-slate-500 mt-1">
-                    {organization.createdAt ? format(new Date(organization.createdAt), 'MMM dd, yyyy, h:mm a') : 'Recently'}
+                    {organization.createdAt
+                      ? format(new Date(organization.createdAt), "MMM dd, yyyy, h:mm a")
+                      : "Recently"}
                   </p>
-                  <p className="text-xs text-slate-600 mt-2">Created securely by system admin <span className="text-indigo-600">(Admin)</span>.</p>
+                  <p className="text-xs text-slate-600 mt-2">
+                    Created securely by system admin{" "}
+                    <span className="text-indigo-600">(Admin)</span>.
+                  </p>
                 </div>
               </div>
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

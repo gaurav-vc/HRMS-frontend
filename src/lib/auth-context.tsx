@@ -3,13 +3,13 @@ import type { Role } from "./mock-data";
 import { ROLES } from "./mock-data";
 import { authApi } from "@/api";
 
-interface User { 
-  name: string; 
+interface User {
+  name: string;
   username: string;
-  email: string; 
-  role: Role; 
+  email: string;
+  role: Role;
   avatar?: string;
-  permissions?: any; 
+  permissions?: any;
   role_name?: string;
   employee_id?: string | number;
   is_superuser?: boolean;
@@ -32,25 +32,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-    
+
     const initAuth = async () => {
       try {
         const raw = typeof localStorage !== "undefined" ? localStorage.getItem(KEY) : null;
         if (raw && mounted) setUser(JSON.parse(raw));
-        
+
         // Background refresh of user data to ensure latest permissions
-        const access = typeof localStorage !== "undefined" ? localStorage.getItem('access_token') : null;
+        const access =
+          typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
         if (access) {
           try {
             const me = await authApi.getMe();
             if (mounted) {
               const updatedUser = {
-                name: `${me.firstName || ''} ${me.lastName || ''}`.trim() || me.email?.split("@")[0] || "User",
-                username: me.username || '',
+                name:
+                  `${me.firstName || ""} ${me.lastName || ""}`.trim() ||
+                  me.email?.split("@")[0] ||
+                  "User",
+                username: me.username || "",
                 email: me.email,
-                role: me.role as Role || 'employee',
+                role: (me.role as Role) || "employee",
                 permissions: me.permissions || {},
-                role_name: me.roleName || me.role_name || '',
+                role_name: me.roleName || me.role_name || "",
                 employee_id: me.employeeId || me.employee_id,
               };
               setUser(updatedUser);
@@ -62,78 +66,86 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Token might be expired, but we let axios interceptor or logout logic handle it later
           }
         }
-      } catch {}
+      } catch {
+        /* ignore */
+      }
       if (mounted) setInit(true);
     };
 
     initAuth();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const persist = (u: User | null, access?: string, refresh?: string) => {
     setUser(u);
     try {
-        if (typeof localStorage !== "undefined") {
-            if (u) {
-                localStorage.setItem(KEY, JSON.stringify(u)); 
-                if (access) localStorage.setItem('access_token', access);
-                if (refresh) localStorage.setItem('refresh_token', refresh);
-            } else { 
-                localStorage.removeItem(KEY); 
-                localStorage.removeItem('access_token');
-                localStorage.removeItem('refresh_token');
-            }
+      if (typeof localStorage !== "undefined") {
+        if (u) {
+          localStorage.setItem(KEY, JSON.stringify(u));
+          if (access) localStorage.setItem("access_token", access);
+          if (refresh) localStorage.setItem("refresh_token", refresh);
+        } else {
+          localStorage.removeItem(KEY);
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
         }
-    } catch {}
+      }
+    } catch {
+      /* ignore */
+    }
   };
 
   const performLogin = async (email: string, password?: string) => {
-      // In reality, role isn't selected by user anymore, it comes from API
-      try {
-          const res = await authApi.login({ username: email, password });
-          if (res.access && res.refresh) {
-              // Now fetch the user's profile
-              if (typeof localStorage !== "undefined") {
-                  localStorage.setItem('access_token', res.access);
-                  localStorage.setItem('refresh_token', res.refresh);
-              }
-              const me = await authApi.getMe();
-              persist({
-                  name: `${me.firstName || ''} ${me.lastName || ''}`.trim() || email.split("@")[0],
-                  username: me.username || email.split("@")[0],
-                  email: email,
-                  role: (me.role as Role) || "employee",
-                  permissions: me.permissions || {},
-                  role_name: me.role_name || '',
-                  employee_id: me.employee_id || me.employeeId,
-              }, res.access, res.refresh);
-          }
-      } catch (e: any) {
-          throw e;
+    // In reality, role isn't selected by user anymore, it comes from API
+    const res = await authApi.login({ username: email, password });
+    if (res.access && res.refresh) {
+      // Now fetch the user's profile
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem("access_token", res.access);
+        localStorage.setItem("refresh_token", res.refresh);
       }
+      const me = await authApi.getMe();
+      persist(
+        {
+          name: `${me.firstName || ""} ${me.lastName || ""}`.trim() || email.split("@")[0],
+          username: me.username || email.split("@")[0],
+          email: email,
+          role: (me.role as Role) || "employee",
+          permissions: me.permissions || {},
+          role_name: me.role_name || "",
+          employee_id: me.employee_id || me.employeeId,
+        },
+        res.access,
+        res.refresh,
+      );
+    }
   };
 
   const performLogout = async () => {
-      try {
-          const refresh = typeof localStorage !== "undefined" ? localStorage.getItem('refresh_token') : null;
-          if (refresh) await authApi.logout(refresh);
-      } catch (e) {}
-      persist(null);
+    try {
+      const refresh =
+        typeof localStorage !== "undefined" ? localStorage.getItem("refresh_token") : null;
+      if (refresh) await authApi.logout(refresh);
+    } catch (e) {
+      /* ignore */
+    }
+    persist(null);
   };
 
-  const contextValue = useMemo(() => ({
-    user,
-    init,
-    login: performLogin as any,
-    logout: performLogout,
-    setRole: (r: Role) => user && persist({ ...user, role: r }),
-  }), [user, init]);
-
-  return (
-    <Ctx.Provider value={contextValue}>
-      {children}
-    </Ctx.Provider>
+  const contextValue = useMemo(
+    () => ({
+      user,
+      init,
+      login: performLogin as any,
+      logout: performLogout,
+      setRole: (r: Role) => user && persist({ ...user, role: r }),
+    }),
+    [user, init],
   );
+
+  return <Ctx.Provider value={contextValue}>{children}</Ctx.Provider>;
 }
 
 export function useAuth() {
@@ -142,16 +154,23 @@ export function useAuth() {
   return v;
 }
 
-export function roleLabel(r: Role) { return ROLES.find(x => x.value === r)?.label ?? r; }
+export function roleLabel(r: Role) {
+  return ROLES.find((x) => x.value === r)?.label ?? r;
+}
 
 export function usePermissions(moduleName: string) {
   const { user } = useAuth();
-  
-  if (user?.role === 'super_admin' || user?.username === 'Vibe_admin') {
+
+  if (user?.role === "super_admin" || user?.username === "Vibe_admin") {
     return { canView: true, canCreate: true, canUpdate: true, canDelete: true };
   }
-  
-  const perms = user?.permissions?.[moduleName] || { view: false, create: false, update: false, delete: false };
+
+  const perms = user?.permissions?.[moduleName] || {
+    view: false,
+    create: false,
+    update: false,
+    delete: false,
+  };
   return {
     canView: !!perms.view,
     canCreate: !!perms.create,

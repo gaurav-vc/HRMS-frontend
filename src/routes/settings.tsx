@@ -10,7 +10,16 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, MoreHorizontal, ChevronDown, Check, Info } from "lucide-react";
-import { rolesApi, employeesApi, departmentsApi, orgEngineApi, entitiesApi, sitesApi, attendancePoliciesApi, leavesConfigApi } from "@/api";
+import {
+  rolesApi,
+  employeesApi,
+  departmentsApi,
+  orgEngineApi,
+  entitiesApi,
+  sitesApi,
+  attendancePoliciesApi,
+  leavesConfigApi,
+} from "@/api";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +28,13 @@ import {
   DialogTrigger,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
@@ -27,7 +42,10 @@ export const Route = createFileRoute("/settings")({ component: SettingsPage });
 function SettingsPage() {
   return (
     <>
-      <PageHeader title="Settings" description="Organisation, payroll, attendance, notifications, and user roles" />
+      <PageHeader
+        title="Settings"
+        description="Organisation, payroll, attendance, notifications, and user roles"
+      />
       <Tabs defaultValue="pay">
         <TabsList>
           <TabsTrigger value="pay">Payroll</TabsTrigger>
@@ -51,13 +69,13 @@ function SettingsPage() {
 
         <TabsContent value="att">
           <Card className="p-6 mt-4 border shadow-sm rounded-lg">
-             <AttendanceSettingsTab />
+            <AttendanceSettingsTab />
           </Card>
         </TabsContent>
 
         <TabsContent value="leaves">
           <Card className="p-6 mt-4 border shadow-sm rounded-lg">
-             <LeaveSettingsTab />
+            <LeaveSettingsTab />
           </Card>
         </TabsContent>
 
@@ -72,27 +90,36 @@ function SettingsPage() {
 
         <TabsContent value="roles">
           <Card className="p-6 mt-4">
-             <UsersAndRolesTab />
+            <UsersAndRolesTab />
           </Card>
         </TabsContent>
 
         <TabsContent value="permissions">
           <Card className="p-6 mt-4 border shadow-sm rounded-lg">
-             <RolePermissionsTab />
+            <RolePermissionsTab />
           </Card>
         </TabsContent>
-
       </Tabs>
     </>
   );
 }
 
 function Field({ label, defaultValue }: { label: string; defaultValue?: string }) {
-  return <div className="space-y-1.5"><Label>{label}</Label><Input defaultValue={defaultValue} /></div>;
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <Input defaultValue={defaultValue} />
+    </div>
+  );
 }
 
 function Toggle({ label, defaultChecked }: { label: string; defaultChecked?: boolean }) {
-  return <div className="flex items-center justify-between p-3 rounded-md border"><Label>{label}</Label><Switch defaultChecked={defaultChecked} /></div>;
+  return (
+    <div className="flex items-center justify-between p-3 rounded-md border">
+      <Label>{label}</Label>
+      <Switch defaultChecked={defaultChecked} />
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------------
@@ -104,7 +131,7 @@ function UsersAndRolesTab() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [nodeTypes, setNodeTypes] = useState<any[]>([]);
-  
+
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("roles");
   const [searchQuery, setSearchQuery] = useState("");
@@ -135,7 +162,7 @@ function UsersAndRolesTab() {
         rolesApi.getAll(),
         employeesApi.getAll(),
         departmentsApi.getAll(),
-        orgEngineApi.getNodeTypes()
+        orgEngineApi.getNodeTypes(),
       ]);
       setRoles(r);
       setEmployees(e);
@@ -158,7 +185,12 @@ function UsersAndRolesTab() {
   };
 
   const deleteRole = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this role? This will also remove it from the Organization Tree.")) return;
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this role? This will also remove it from the Organization Tree.",
+      )
+    )
+      return;
     try {
       await rolesApi.delete(id);
       toast.success("Role deleted");
@@ -174,7 +206,12 @@ function UsersAndRolesTab() {
   };
 
   const deleteUser = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this user? This will also remove them from the Organization Tree.")) return;
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this user? This will also remove them from the Organization Tree.",
+      )
+    )
+      return;
     try {
       await employeesApi.delete(id);
       toast.success("User deleted");
@@ -189,34 +226,55 @@ function UsersAndRolesTab() {
       <div className="flex items-center justify-between">
         <div className="relative w-[300px]">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search..." 
-            className="pl-9 bg-background" 
+          <Input
+            placeholder="Search..."
+            className="pl-9 bg-background"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
         {activeTab === "roles" && (
           <>
-            <Button onClick={() => openRoleModal(null)} className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
+            <Button
+              onClick={() => openRoleModal(null)}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+            >
               <Plus className="h-4 w-4" /> Add Role
             </Button>
-            <Dialog open={roleModalOpen} onOpenChange={(open) => {
-              if (!open) setEditingRole(null);
-              setRoleModalOpen(open);
-            }}>
+            <Dialog
+              open={roleModalOpen}
+              onOpenChange={(open) => {
+                if (!open) setEditingRole(null);
+                setRoleModalOpen(open);
+              }}
+            >
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>{editingRole ? "Edit Role" : "New Role"}</DialogTitle>
-                  <DialogDescription>Fields are linked to keep your hierarchy consistent.</DialogDescription>
+                  <DialogDescription>
+                    Fields are linked to keep your hierarchy consistent.
+                  </DialogDescription>
                 </DialogHeader>
-                <RoleForm departments={departments} roles={roles} nodeTypes={nodeTypes} initialData={editingRole} onClose={() => { setRoleModalOpen(false); setEditingRole(null); fetchAll(); }} />
+                <RoleForm
+                  departments={departments}
+                  roles={roles}
+                  nodeTypes={nodeTypes}
+                  initialData={editingRole}
+                  onClose={() => {
+                    setRoleModalOpen(false);
+                    setEditingRole(null);
+                    fetchAll();
+                  }}
+                />
               </DialogContent>
             </Dialog>
-            <Dialog open={viewRoleModalOpen} onOpenChange={(open) => {
-              if (!open) setViewingRole(null);
-              setViewRoleModalOpen(open);
-            }}>
+            <Dialog
+              open={viewRoleModalOpen}
+              onOpenChange={(open) => {
+                if (!open) setViewingRole(null);
+                setViewRoleModalOpen(open);
+              }}
+            >
               <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>View Role Details</DialogTitle>
@@ -226,34 +284,41 @@ function UsersAndRolesTab() {
                     <div className="grid grid-cols-2 gap-2">
                       <div className="font-semibold text-muted-foreground">Role Name</div>
                       <div>{viewingRole.name}</div>
-                      
+
                       <div className="font-semibold text-muted-foreground">Role Code</div>
                       <div>{viewingRole.code || "-"}</div>
-                      
+
                       <div className="font-semibold text-muted-foreground">Department</div>
                       <div>{viewingRole.departmentName || "N/A"}</div>
-                      
+
                       <div className="font-semibold text-muted-foreground">Hierarchy Level</div>
                       <div>{viewingRole.hierarchyLevel || "-"}</div>
-                      
+
                       <div className="font-semibold text-muted-foreground">Reporting To</div>
                       <div>{viewingRole.reportingToName || "-"}</div>
-                      
+
                       <div className="font-semibold text-muted-foreground">Access Scope</div>
                       <div>
-                        <span className="inline-flex items-center whitespace-nowrap text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full">{viewingRole.accessScope || 'Self'}</span>
+                        <span className="inline-flex items-center whitespace-nowrap text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full">
+                          {viewingRole.accessScope || "Self"}
+                        </span>
                       </div>
-                      
+
                       <div className="font-semibold text-muted-foreground">Status</div>
                       <div>
-                        <Badge variant="outline" className={`${viewingRole.status === "Active" ? "border-success/40 text-success bg-success/5" : ""}`}>
+                        <Badge
+                          variant="outline"
+                          className={`${viewingRole.status === "Active" ? "border-success/40 text-success bg-success/5" : ""}`}
+                        >
                           {viewingRole.status}
                         </Badge>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="py-8 text-center text-muted-foreground">Loading role data from backend...</div>
+                  <div className="py-8 text-center text-muted-foreground">
+                    Loading role data from backend...
+                  </div>
                 )}
               </DialogContent>
             </Dialog>
@@ -261,19 +326,38 @@ function UsersAndRolesTab() {
         )}
         {activeTab === "users" && (
           <>
-            <Button onClick={() => openUserModal(null)} className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
+            <Button
+              onClick={() => openUserModal(null)}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+            >
               <Plus className="h-4 w-4" /> Add User
             </Button>
-            <Dialog open={userModalOpen} onOpenChange={(open) => {
-              if (!open) setEditingUser(null);
-              setUserModalOpen(open);
-            }}>
+            <Dialog
+              open={userModalOpen}
+              onOpenChange={(open) => {
+                if (!open) setEditingUser(null);
+                setUserModalOpen(open);
+              }}
+            >
               <DialogContent className="max-w-3xl">
                 <DialogHeader>
                   <DialogTitle>{editingUser ? "Edit User" : "New User"}</DialogTitle>
-                  <DialogDescription>Fields are linked to keep your hierarchy consistent.</DialogDescription>
+                  <DialogDescription>
+                    Fields are linked to keep your hierarchy consistent.
+                  </DialogDescription>
                 </DialogHeader>
-                <UserForm departments={departments} roles={roles} nodeTypes={nodeTypes} employees={employees} initialData={editingUser} onClose={() => { setUserModalOpen(false); setEditingUser(null); fetchAll(); }} />
+                <UserForm
+                  departments={departments}
+                  roles={roles}
+                  nodeTypes={nodeTypes}
+                  employees={employees}
+                  initialData={editingUser}
+                  onClose={() => {
+                    setUserModalOpen(false);
+                    setEditingUser(null);
+                    fetchAll();
+                  }}
+                />
               </DialogContent>
             </Dialog>
           </>
@@ -282,11 +366,26 @@ function UsersAndRolesTab() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="bg-transparent border-b rounded-none w-full justify-start h-auto p-0 gap-6">
-          <TabsTrigger value="roles" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none bg-transparent px-0 pb-3 pt-2">
-            Roles <Badge variant="secondary" className="ml-2 bg-primary/10 text-primary hover:bg-primary/10">{roles.length}</Badge>
+          <TabsTrigger
+            value="roles"
+            className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none bg-transparent px-0 pb-3 pt-2"
+          >
+            Roles{" "}
+            <Badge
+              variant="secondary"
+              className="ml-2 bg-primary/10 text-primary hover:bg-primary/10"
+            >
+              {roles.length}
+            </Badge>
           </TabsTrigger>
-          <TabsTrigger value="users" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none bg-transparent px-0 pb-3 pt-2">
-            Users <Badge variant="secondary" className="ml-2">{employees.length}</Badge>
+          <TabsTrigger
+            value="users"
+            className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none bg-transparent px-0 pb-3 pt-2"
+          >
+            Users{" "}
+            <Badge variant="secondary" className="ml-2">
+              {employees.length}
+            </Badge>
           </TabsTrigger>
         </TabsList>
 
@@ -302,61 +401,107 @@ function UsersAndRolesTab() {
               <div className="text-right">Actions</div>
             </div>
             <div className="divide-y">
-              {roles.filter(r => 
-                (r.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (r.code || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (r.departmentName || "").toLowerCase().includes(searchQuery.toLowerCase())
-              ).map(r => (
-                <div key={r.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_120px] gap-4 py-2 px-4 items-center hover:bg-muted/30 transition-colors">
-                  <div className="min-w-0">
-                    <div className="font-medium text-sm truncate">{r.name}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5 truncate">{r.code}</div>
-                  </div>
-                  <div className="text-sm truncate min-w-0">{r.departmentName || "N/A"}</div>
-                  <div className="text-sm font-medium truncate min-w-0">{r.hierarchyLevel || "-"}</div>
-                  <div className="text-sm truncate min-w-0">{r.reportingToName || "-"}</div>
-                  <div className="min-w-0">
-                    <span className="inline-flex items-center whitespace-nowrap text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full">{r.accessScope || 'Self'}</span>
-                  </div>
-                  <div className="flex items-center min-w-0">
-                    <Badge variant="outline" className={`whitespace-nowrap ${r.status === "Active" ? "border-success/40 text-success bg-success/5" : ""}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full mr-1.5 shrink-0 ${r.status === "Active" ? "bg-success" : "bg-muted-foreground"}`} />
-                      {r.status}
-                    </Badge>
-                  </div>
-                  <div className="text-right flex justify-end gap-1 shrink-0">
-                      <Button variant="ghost" size="icon" onClick={() => openViewRoleModal(r.id)} className="h-8 w-8 text-muted-foreground hover:text-primary" title="Preview">
+              {roles
+                .filter(
+                  (r) =>
+                    (r.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (r.code || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (r.departmentName || "").toLowerCase().includes(searchQuery.toLowerCase()),
+                )
+                .map((r) => (
+                  <div
+                    key={r.id}
+                    className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_120px] gap-4 py-2 px-4 items-center hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-medium text-sm truncate">{r.name}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5 truncate">{r.code}</div>
+                    </div>
+                    <div className="text-sm truncate min-w-0">{r.departmentName || "N/A"}</div>
+                    <div className="text-sm font-medium truncate min-w-0">
+                      {r.hierarchyLevel || "-"}
+                    </div>
+                    <div className="text-sm truncate min-w-0">{r.reportingToName || "-"}</div>
+                    <div className="min-w-0">
+                      <span className="inline-flex items-center whitespace-nowrap text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full">
+                        {r.accessScope || "Self"}
+                      </span>
+                    </div>
+                    <div className="flex items-center min-w-0">
+                      <Badge
+                        variant="outline"
+                        className={`whitespace-nowrap ${r.status === "Active" ? "border-success/40 text-success bg-success/5" : ""}`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full mr-1.5 shrink-0 ${r.status === "Active" ? "bg-success" : "bg-muted-foreground"}`}
+                        />
+                        {r.status}
+                      </Badge>
+                    </div>
+                    <div className="text-right flex justify-end gap-1 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openViewRoleModal(r.id)}
+                        className="h-8 w-8 text-muted-foreground hover:text-primary"
+                        title="Preview"
+                      >
                         <span className="text-base">👁</span>
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => openRoleModal(r)} className="h-8 w-8 text-muted-foreground hover:text-primary" title="Edit">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openRoleModal(r)}
+                        className="h-8 w-8 text-muted-foreground hover:text-primary"
+                        title="Edit"
+                      >
                         <span className="text-base">✎</span>
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => deleteRole(r.id)} className="h-8 w-8 text-muted-foreground hover:text-destructive" title="Delete">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteRole(r.id)}
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        title="Delete"
+                      >
                         <span className="text-base">🗑</span>
                       </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
               {roles.length === 0 && !loading && (
-                <div className="p-8 text-center text-muted-foreground text-sm">No roles configured.</div>
+                <div className="p-8 text-center text-muted-foreground text-sm">
+                  No roles configured.
+                </div>
               )}
             </div>
             <div className="p-4 border-t flex items-center justify-between text-xs text-muted-foreground bg-muted/20">
-              <div>Showing {roles.filter(r => 
-                (r.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (r.code || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (r.departmentName || "").toLowerCase().includes(searchQuery.toLowerCase())
-              ).length} records</div>
+              <div>
+                Showing{" "}
+                {
+                  roles.filter(
+                    (r) =>
+                      (r.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      (r.code || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      (r.departmentName || "").toLowerCase().includes(searchQuery.toLowerCase()),
+                  ).length
+                }{" "}
+                records
+              </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled>Previous</Button>
-                <Button variant="outline" size="sm" disabled>Next</Button>
+                <Button variant="outline" size="sm" disabled>
+                  Previous
+                </Button>
+                <Button variant="outline" size="sm" disabled>
+                  Next
+                </Button>
               </div>
             </div>
           </Card>
         </TabsContent>
 
         <TabsContent value="users" className="mt-6">
-           <Card className="border shadow-sm rounded-lg overflow-hidden">
+          <Card className="border shadow-sm rounded-lg overflow-hidden">
             <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_120px] gap-4 py-3 px-4 border-b bg-muted/40 text-xs font-semibold text-muted-foreground uppercase">
               <div>User</div>
               <div>Employee ID</div>
@@ -367,58 +512,114 @@ function UsersAndRolesTab() {
               <div className="text-right">Actions</div>
             </div>
             <div className="divide-y">
-              {employees.filter(e => 
-                ((e.firstName || "") + " " + (e.lastName || "")).toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (e.code || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (e.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (e.departmentName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (e.dynamicRoleName || e.roleName || "").toLowerCase().includes(searchQuery.toLowerCase())
-              ).map(e => (
-                <div key={e.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_120px] gap-4 py-2 px-4 items-center hover:bg-muted/30 transition-colors">
-                  <div className="min-w-0">
-                    <div className="font-medium text-sm truncate">{e.firstName} {e.lastName}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5 truncate">{e.email}</div>
-                  </div>
-                  <div className="text-sm font-mono text-muted-foreground truncate min-w-0">{e.code}</div>
-                  <div className="text-sm truncate min-w-0">{e.departmentName || "N/A"}</div>
-                  <div className="text-sm truncate min-w-0">{e.dynamicRoleName || e.roleName || "-"}</div>
-                  <div className="min-w-0 flex items-center">
-                    <Badge variant="outline" className={`whitespace-nowrap ${e.status === "Active" ? "border-success/40 text-success bg-success/5" : ""}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full mr-1.5 shrink-0 ${e.status === "Active" ? "bg-success" : "bg-muted-foreground"}`} />
-                      {e.status}
-                    </Badge>
-                  </div>
-                  <div className="min-w-0">
-                     <Switch checked={e.mfaEnabled} disabled />
-                  </div>
-                  <div className="text-right flex justify-end gap-1 shrink-0">
-                      <Button variant="ghost" size="icon" onClick={() => navigate({ to: `/employees/${e.id}` })} className="h-8 w-8 text-muted-foreground hover:text-primary" title="Preview">
+              {employees
+                .filter(
+                  (e) =>
+                    ((e.firstName || "") + " " + (e.lastName || ""))
+                      .toLowerCase()
+                      .includes(searchQuery.toLowerCase()) ||
+                    (e.code || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (e.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (e.departmentName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (e.dynamicRoleName || e.roleName || "")
+                      .toLowerCase()
+                      .includes(searchQuery.toLowerCase()),
+                )
+                .map((e) => (
+                  <div
+                    key={e.id}
+                    className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_120px] gap-4 py-2 px-4 items-center hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-medium text-sm truncate">
+                        {e.firstName} {e.lastName}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5 truncate">{e.email}</div>
+                    </div>
+                    <div className="text-sm font-mono text-muted-foreground truncate min-w-0">
+                      {e.code}
+                    </div>
+                    <div className="text-sm truncate min-w-0">{e.departmentName || "N/A"}</div>
+                    <div className="text-sm truncate min-w-0">
+                      {e.dynamicRoleName || e.roleName || "-"}
+                    </div>
+                    <div className="min-w-0 flex items-center">
+                      <Badge
+                        variant="outline"
+                        className={`whitespace-nowrap ${e.status === "Active" ? "border-success/40 text-success bg-success/5" : ""}`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full mr-1.5 shrink-0 ${e.status === "Active" ? "bg-success" : "bg-muted-foreground"}`}
+                        />
+                        {e.status}
+                      </Badge>
+                    </div>
+                    <div className="min-w-0">
+                      <Switch checked={e.mfaEnabled} disabled />
+                    </div>
+                    <div className="text-right flex justify-end gap-1 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => navigate({ to: `/employees/${e.id}` })}
+                        className="h-8 w-8 text-muted-foreground hover:text-primary"
+                        title="Preview"
+                      >
                         <span className="text-base">👁</span>
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => openUserModal(e)} className="h-8 w-8 text-muted-foreground hover:text-primary" title="Edit">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openUserModal(e)}
+                        className="h-8 w-8 text-muted-foreground hover:text-primary"
+                        title="Edit"
+                      >
                         <span className="text-base">✎</span>
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => deleteUser(e.id)} className="h-8 w-8 text-muted-foreground hover:text-destructive" title="Delete">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteUser(e.id)}
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        title="Delete"
+                      >
                         <span className="text-base">🗑</span>
                       </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
               {employees.length === 0 && !loading && (
-                <div className="p-8 text-center text-muted-foreground text-sm">No users configured.</div>
+                <div className="p-8 text-center text-muted-foreground text-sm">
+                  No users configured.
+                </div>
               )}
             </div>
             <div className="p-4 border-t flex items-center justify-between text-xs text-muted-foreground bg-muted/20">
-              <div>Showing {employees.filter(e => 
-                ((e.firstName || "") + " " + (e.lastName || "")).toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (e.code || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (e.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (e.departmentName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (e.dynamicRoleName || e.roleName || "").toLowerCase().includes(searchQuery.toLowerCase())
-              ).length} records</div>
+              <div>
+                Showing{" "}
+                {
+                  employees.filter(
+                    (e) =>
+                      ((e.firstName || "") + " " + (e.lastName || ""))
+                        .toLowerCase()
+                        .includes(searchQuery.toLowerCase()) ||
+                      (e.code || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      (e.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      (e.departmentName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      (e.dynamicRoleName || e.roleName || "")
+                        .toLowerCase()
+                        .includes(searchQuery.toLowerCase()),
+                  ).length
+                }{" "}
+                records
+              </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled>Previous</Button>
-                <Button variant="outline" size="sm" disabled>Next</Button>
+                <Button variant="outline" size="sm" disabled>
+                  Previous
+                </Button>
+                <Button variant="outline" size="sm" disabled>
+                  Next
+                </Button>
               </div>
             </div>
           </Card>
@@ -428,53 +629,85 @@ function UsersAndRolesTab() {
   );
 }
 
-function RoleForm({ departments, roles, nodeTypes, initialData, onClose }: { departments: any[], roles: any[], nodeTypes: any[], initialData?: any, onClose: () => void }) {
+function RoleForm({
+  departments,
+  roles,
+  nodeTypes,
+  initialData,
+  onClose,
+}: {
+  departments: any[];
+  roles: any[];
+  nodeTypes: any[];
+  initialData?: any;
+  onClose: () => void;
+}) {
   const [loading, setLoading] = useState(false);
-  
-  const [form, setForm] = useState(initialData ? {
-    name: initialData.name || "", 
-    code: initialData.code || "", 
-    department: initialData.department ? String(initialData.department) : "", 
-    accessScope: initialData.accessScope || "Self", 
-    dashboardType: initialData.dashboardType || "Employee",
-    hierarchyLevel: initialData.hierarchyLevel || "", 
-    reportingTo: initialData.reportingTo ? String(initialData.reportingTo) : "",
-    canManageUsers: initialData.canManageUsers || false, 
-    canApprove: initialData.canApprove || false, 
-    crossDepartmentAccess: initialData.crossDepartmentAccess || false,
-    permissions: initialData.permissions || {},
-    allowedEntities: initialData.permissions?.allowed_entities || []
-  } : {
-    name: "", code: "", department: "", accessScope: "Self", dashboardType: "Employee",
-    hierarchyLevel: "", reportingTo: "",
-    canManageUsers: false, canApprove: false, crossDepartmentAccess: false,
-    permissions: {}, allowedEntities: []
-  });
 
-  const standardLevels = Array.from({length: 15}, (_, i) => `L${i+1}`);
-  const customDbLevels = Array.from(new Set(roles.map((r: any) => r.hierarchyLevel).filter(Boolean)))
+  const [form, setForm] = useState(
+    initialData
+      ? {
+          name: initialData.name || "",
+          code: initialData.code || "",
+          department: initialData.department ? String(initialData.department) : "",
+          accessScope: initialData.accessScope || "Self",
+          dashboardType: initialData.dashboardType || "Employee",
+          hierarchyLevel: initialData.hierarchyLevel || "",
+          reportingTo: initialData.reportingTo ? String(initialData.reportingTo) : "",
+          canManageUsers: initialData.canManageUsers || false,
+          canApprove: initialData.canApprove || false,
+          crossDepartmentAccess: initialData.crossDepartmentAccess || false,
+          permissions: initialData.permissions || {},
+          allowedEntities: initialData.permissions?.allowed_entities || [],
+        }
+      : {
+          name: "",
+          code: "",
+          department: "",
+          accessScope: "Self",
+          dashboardType: "Employee",
+          hierarchyLevel: "",
+          reportingTo: "",
+          canManageUsers: false,
+          canApprove: false,
+          crossDepartmentAccess: false,
+          permissions: {},
+          allowedEntities: [],
+        },
+  );
+
+  const standardLevels = Array.from({ length: 15 }, (_, i) => `L${i + 1}`);
+  const customDbLevels = Array.from(
+    new Set(roles.map((r: any) => r.hierarchyLevel).filter(Boolean)),
+  )
     .filter((lvl: any) => !standardLevels.includes(lvl))
-    .sort((a: any, b: any) => String(a).localeCompare(String(b), undefined, {numeric: true}));
+    .sort((a: any, b: any) => String(a).localeCompare(String(b), undefined, { numeric: true }));
 
   const [isCustomLevel, setIsCustomLevel] = useState(
-    initialData?.hierarchyLevel ? !standardLevels.includes(initialData.hierarchyLevel) && !customDbLevels.includes(initialData.hierarchyLevel) : false
+    initialData?.hierarchyLevel
+      ? !standardLevels.includes(initialData.hierarchyLevel) &&
+          !customDbLevels.includes(initialData.hierarchyLevel)
+      : false,
   );
 
   const [entities, setEntities] = useState<any[]>([]);
   useEffect(() => {
-    entitiesApi.getAll().then(setEntities).catch(() => {});
+    entitiesApi
+      .getAll()
+      .then(setEntities)
+      .catch(() => {});
   }, []);
 
   const submit = async () => {
     try {
       setLoading(true);
       const payload: any = { ...form };
-      ['department', 'reportingTo', 'hierarchyLevel'].forEach(key => {
+      ["department", "reportingTo", "hierarchyLevel"].forEach((key) => {
         if (payload[key] === "") payload[key] = null;
       });
-      
+
       payload.permissions = { ...payload.permissions };
-      if (payload.accessScope === 'Custom') {
+      if (payload.accessScope === "Custom") {
         payload.permissions.allowed_entities = payload.allowedEntities;
       } else {
         delete payload.permissions.allowed_entities;
@@ -499,38 +732,56 @@ function RoleForm({ departments, roles, nodeTypes, initialData, onClose }: { dep
 
   return (
     <div className="space-y-6 pt-4">
-      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Role Configuration</div>
+      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        Role Configuration
+      </div>
       <div className="grid grid-cols-2 gap-6">
         <div className="space-y-2">
-          <Label>Role Name <span className="text-destructive">*</span></Label>
-          <Input placeholder="e.g. Site Manager" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+          <Label>
+            Role Name <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            placeholder="e.g. Site Manager"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
         </div>
         <div className="space-y-2">
-          <Label>Role Code <span className="text-destructive">*</span></Label>
-          <Input placeholder="SITE_MGR" value={form.code} onChange={e => setForm({...form, code: e.target.value})} />
+          <Label>
+            Role Code <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            placeholder="SITE_MGR"
+            value={form.code}
+            onChange={(e) => setForm({ ...form, code: e.target.value })}
+          />
         </div>
         <div className="space-y-2">
           <Label>Department</Label>
-          <select 
+          <select
             className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring"
-            value={form.department} 
-            onChange={e => setForm({...form, department: e.target.value})}
+            value={form.department}
+            onChange={(e) => setForm({ ...form, department: e.target.value })}
           >
             <option value="">Select...</option>
-            {departments.map(d => <option key={d.id} value={String(d.id)}>{d.name}</option>)}
+            {departments.map((d) => (
+              <option key={d.id} value={String(d.id)}>
+                {d.name}
+              </option>
+            ))}
           </select>
         </div>
         <div className="space-y-2">
           <Label>Hierarchy Level</Label>
-          <Select 
-            value={isCustomLevel ? "Custom" : (form.hierarchyLevel || undefined)}
+          <Select
+            value={isCustomLevel ? "Custom" : form.hierarchyLevel || undefined}
             onValueChange={(v) => {
               if (v === "Custom") {
                 setIsCustomLevel(true);
-                setForm({...form, hierarchyLevel: ""});
+                setForm({ ...form, hierarchyLevel: "" });
               } else {
                 setIsCustomLevel(false);
-                setForm({...form, hierarchyLevel: v});
+                setForm({ ...form, hierarchyLevel: v });
               }
             }}
           >
@@ -539,13 +790,19 @@ function RoleForm({ departments, roles, nodeTypes, initialData, onClose }: { dep
             </SelectTrigger>
             <SelectContent className="max-h-[300px]">
               {standardLevels.map((lvl: string) => (
-                <SelectItem key={lvl} value={lvl}>{lvl}</SelectItem>
+                <SelectItem key={lvl} value={lvl}>
+                  {lvl}
+                </SelectItem>
               ))}
               {customDbLevels.length > 0 && (
                 <>
-                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/20 mt-1">Custom Database Levels</div>
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/20 mt-1">
+                    Custom Database Levels
+                  </div>
                   {customDbLevels.map((lvl: any) => (
-                    <SelectItem key={lvl} value={lvl}>{lvl}</SelectItem>
+                    <SelectItem key={lvl} value={lvl}>
+                      {lvl}
+                    </SelectItem>
                   ))}
                 </>
               )}
@@ -554,10 +811,10 @@ function RoleForm({ departments, roles, nodeTypes, initialData, onClose }: { dep
             </SelectContent>
           </Select>
           {isCustomLevel && (
-            <Input 
-              placeholder="Enter custom level (e.g. C-Suite)" 
-              value={form.hierarchyLevel} 
-              onChange={e => setForm({...form, hierarchyLevel: e.target.value})}
+            <Input
+              placeholder="Enter custom level (e.g. C-Suite)"
+              value={form.hierarchyLevel}
+              onChange={(e) => setForm({ ...form, hierarchyLevel: e.target.value })}
               className="mt-2"
               autoFocus
             />
@@ -565,27 +822,36 @@ function RoleForm({ departments, roles, nodeTypes, initialData, onClose }: { dep
         </div>
         <div className="space-y-2">
           <Label>Reporting To</Label>
-          <select 
+          <select
             className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring"
-            value={form.reportingTo} 
-            onChange={e => setForm({...form, reportingTo: e.target.value})}
+            value={form.reportingTo}
+            onChange={(e) => setForm({ ...form, reportingTo: e.target.value })}
           >
             <option value="">Select...</option>
-            {roles.map(r => <option key={r.id} value={String(r.id)}>{r.name}</option>)}
+            {roles.map((r) => (
+              <option key={r.id} value={String(r.id)}>
+                {r.name}
+              </option>
+            ))}
           </select>
         </div>
         <div className="space-y-2 col-span-2 pt-2 pb-2">
-          <Label className="text-sm font-semibold">Can View Data <span className="text-destructive">*</span></Label>
+          <Label className="text-sm font-semibold">
+            Can View Data <span className="text-destructive">*</span>
+          </Label>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full justify-between h-10 px-3 bg-muted/20 border-border/60 hover:bg-muted/40 font-normal">
+              <Button
+                variant="outline"
+                className="w-full justify-between h-10 px-3 bg-muted/20 border-border/60 hover:bg-muted/40 font-normal"
+              >
                 <span className="truncate text-sm">
-                  {form.accessScope === 'Self'
+                  {form.accessScope === "Self"
                     ? "Self data only"
-                    : form.accessScope === 'Corporate' 
-                      ? "All data of the entities" 
-                      : form.allowedEntities.length > 0 
-                        ? `${form.allowedEntities.length} entities selected` 
+                    : form.accessScope === "Corporate"
+                      ? "All data of the entities"
+                      : form.allowedEntities.length > 0
+                        ? `${form.allowedEntities.length} entities selected`
                         : "Select entities..."}
                 </span>
                 <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
@@ -595,49 +861,70 @@ function RoleForm({ departments, roles, nodeTypes, initialData, onClose }: { dep
               <div className="flex flex-col">
                 <div className="p-2 border-b border-border/50 bg-muted/10 space-y-1">
                   <label className="flex items-center gap-3 p-2 hover:bg-background rounded-md cursor-pointer group transition-colors">
-                    <input 
-                      type="radio" 
+                    <input
+                      type="radio"
                       className="accent-primary w-4 h-4 cursor-pointer"
-                      checked={form.accessScope === 'Self'} 
-                      onChange={() => setForm({...form, accessScope: 'Self', allowedEntities: []})} 
+                      checked={form.accessScope === "Self"}
+                      onChange={() =>
+                        setForm({ ...form, accessScope: "Self", allowedEntities: [] })
+                      }
                     />
-                    <span className="font-medium text-sm group-hover:text-primary transition-colors">Self data only</span>
+                    <span className="font-medium text-sm group-hover:text-primary transition-colors">
+                      Self data only
+                    </span>
                   </label>
                   <label className="flex items-center gap-3 p-2 hover:bg-background rounded-md cursor-pointer group transition-colors">
-                    <input 
-                      type="radio" 
+                    <input
+                      type="radio"
                       className="accent-primary w-4 h-4 cursor-pointer"
-                      checked={form.accessScope === 'Corporate'} 
-                      onChange={() => setForm({...form, accessScope: 'Corporate', allowedEntities: []})} 
+                      checked={form.accessScope === "Corporate"}
+                      onChange={() =>
+                        setForm({ ...form, accessScope: "Corporate", allowedEntities: [] })
+                      }
                     />
-                    <span className="font-medium text-sm group-hover:text-primary transition-colors">All data of the entities</span>
+                    <span className="font-medium text-sm group-hover:text-primary transition-colors">
+                      All data of the entities
+                    </span>
                   </label>
                 </div>
                 <div className="p-3">
-                  <div className="px-2 pb-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Choose Entities</div>
+                  <div className="px-2 pb-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Choose Entities
+                  </div>
                   <div className="space-y-1 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
-                    {entities.map(ent => (
-                      <label key={ent.id} className="flex items-center gap-3 p-2 hover:bg-muted/30 rounded-md cursor-pointer group transition-colors">
-                        <input 
-                          type="checkbox" 
-                          className="accent-primary rounded w-4 h-4 cursor-pointer" 
-                          checked={form.accessScope === 'Custom' && form.allowedEntities.includes(ent.id)}
+                    {entities.map((ent) => (
+                      <label
+                        key={ent.id}
+                        className="flex items-center gap-3 p-2 hover:bg-muted/30 rounded-md cursor-pointer group transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          className="accent-primary rounded w-4 h-4 cursor-pointer"
+                          checked={
+                            form.accessScope === "Custom" && form.allowedEntities.includes(ent.id)
+                          }
                           onChange={(e) => {
                             let newEntities = [...form.allowedEntities];
                             if (e.target.checked) newEntities.push(ent.id);
                             else newEntities = newEntities.filter((id: number) => id !== ent.id);
-                            
+
                             setForm({
-                              ...form, 
-                              accessScope: newEntities.length > 0 ? 'Custom' : 'Corporate', 
-                              allowedEntities: newEntities
+                              ...form,
+                              accessScope: newEntities.length > 0 ? "Custom" : "Corporate",
+                              allowedEntities: newEntities,
                             });
                           }}
                         />
-                        <span className="text-sm font-medium opacity-90 group-hover:opacity-100">{ent.name}</span>
+                        <span className="text-sm font-medium opacity-90 group-hover:opacity-100">
+                          {ent.name}
+                        </span>
                       </label>
                     ))}
-                    {entities.length === 0 && <div className="text-xs text-muted-foreground italic px-2 py-4 text-center">Loading entities...</div>}
+                    {entities.length === 0 && (
+                      <div className="text-xs text-muted-foreground italic px-2 py-4 text-center">
+                        Loading entities...
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -646,10 +933,10 @@ function RoleForm({ departments, roles, nodeTypes, initialData, onClose }: { dep
         </div>
         <div className="space-y-2">
           <Label>Dashboard Type</Label>
-          <select 
+          <select
             className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring"
-            value={form.dashboardType} 
-            onChange={e => setForm({...form, dashboardType: e.target.value})}
+            value={form.dashboardType}
+            onChange={(e) => setForm({ ...form, dashboardType: e.target.value })}
           >
             <option value="">Select...</option>
             <option value="Executive">Executive</option>
@@ -660,52 +947,102 @@ function RoleForm({ departments, roles, nodeTypes, initialData, onClose }: { dep
         <div className="space-y-2 flex flex-col justify-center pt-6">
           <div className="flex items-center justify-between max-w-[200px]">
             <Label>Can Manage Users</Label>
-            <Switch checked={form.canManageUsers} onCheckedChange={v => setForm({...form, canManageUsers: v})} className="data-[state=checked]:bg-primary" />
+            <Switch
+              checked={form.canManageUsers}
+              onCheckedChange={(v) => setForm({ ...form, canManageUsers: v })}
+              className="data-[state=checked]:bg-primary"
+            />
           </div>
         </div>
         <div className="space-y-2 flex flex-col justify-center">
           <div className="flex items-center justify-between max-w-[200px]">
             <Label>Can Approve</Label>
-            <Switch checked={form.canApprove} onCheckedChange={v => setForm({...form, canApprove: v})} className="data-[state=checked]:bg-primary" />
+            <Switch
+              checked={form.canApprove}
+              onCheckedChange={(v) => setForm({ ...form, canApprove: v })}
+              className="data-[state=checked]:bg-primary"
+            />
           </div>
         </div>
         <div className="space-y-2 flex flex-col justify-center">
           <div className="flex items-center justify-between max-w-[200px]">
             <Label>Cross-Department Access</Label>
-            <Switch checked={form.crossDepartmentAccess} onCheckedChange={v => setForm({...form, crossDepartmentAccess: v})} className="data-[state=checked]:bg-primary" />
+            <Switch
+              checked={form.crossDepartmentAccess}
+              onCheckedChange={(v) => setForm({ ...form, crossDepartmentAccess: v })}
+              className="data-[state=checked]:bg-primary"
+            />
           </div>
         </div>
       </div>
       <div className="flex justify-end gap-3 pt-4 border-t">
-        <Button variant="outline" onClick={onClose}>Cancel</Button>
-        <Button onClick={submit} disabled={loading} className="bg-primary hover:bg-primary/90 text-primary-foreground">Save Role</Button>
+        <Button variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button
+          onClick={submit}
+          disabled={loading}
+          className="bg-primary hover:bg-primary/90 text-primary-foreground"
+        >
+          Save Role
+        </Button>
       </div>
     </div>
   );
 }
 
-function UserForm({ departments, roles, nodeTypes, employees, initialData, onClose }: { departments: any[], roles: any[], nodeTypes: any[], employees: any[], initialData?: any, onClose: () => void }) {
+function UserForm({
+  departments,
+  roles,
+  nodeTypes,
+  employees,
+  initialData,
+  onClose,
+}: {
+  departments: any[];
+  roles: any[];
+  nodeTypes: any[];
+  employees: any[];
+  initialData?: any;
+  onClose: () => void;
+}) {
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState(initialData ? {
-    firstName: initialData.firstName || "", 
-    lastName: initialData.lastName || "", 
-    code: initialData.code || "", 
-    email: initialData.email || "", 
-    phone: initialData.phone || "",
-    department: initialData.department ? String(initialData.department) : "", 
-    designation: initialData.designation ? String(initialData.designation) : "", 
-    dynamicRole: initialData.dynamicRole ? String(initialData.dynamicRole) : "", 
-    entity: initialData.entity ? String(initialData.entity) : "", 
-    branch: initialData.branch ? String(initialData.branch) : "", 
-    site: initialData.site ? String(initialData.site) : "",
-    mfaEnabled: initialData.mfaEnabled || false, 
-    status: initialData.status || "Active", 
-    password: "Password123!" // Ignored on edit typically, or leave as default
-  } : {
-    firstName: "", lastName: "", code: "", email: "", phone: "",
-    department: "", designation: "", dynamicRole: "", entity: "", branch: "", site: "", manager: "",
-    mfaEnabled: false, status: "Active" as "Active" | "Inactive", password: "Password123!"
-  });
+  const [form, setForm] = useState(
+    initialData
+      ? {
+          firstName: initialData.firstName || "",
+          lastName: initialData.lastName || "",
+          code: initialData.code || "",
+          email: initialData.email || "",
+          phone: initialData.phone || "",
+          department: initialData.department ? String(initialData.department) : "",
+          designation: initialData.designation ? String(initialData.designation) : "",
+          dynamicRole: initialData.dynamicRole ? String(initialData.dynamicRole) : "",
+          entity: initialData.entity ? String(initialData.entity) : "",
+          branch: initialData.branch ? String(initialData.branch) : "",
+          site: initialData.site ? String(initialData.site) : "",
+          mfaEnabled: initialData.mfaEnabled || false,
+          status: initialData.status || "Active",
+          password: "Password123!", // Ignored on edit typically, or leave as default
+        }
+      : {
+          firstName: "",
+          lastName: "",
+          code: "",
+          email: "",
+          phone: "",
+          department: "",
+          designation: "",
+          dynamicRole: "",
+          entity: "",
+          branch: "",
+          site: "",
+          manager: "",
+          mfaEnabled: false,
+          status: "Active" as "Active" | "Inactive",
+          password: "Password123!",
+        },
+  );
 
   const submit = async () => {
     try {
@@ -715,13 +1052,22 @@ function UserForm({ departments, roles, nodeTypes, employees, initialData, onClo
       payload.last_name = payload.lastName;
       payload.mfa_enabled = payload.mfaEnabled;
       payload.dynamic_role = payload.dynamicRole;
-      
+
       delete payload.firstName;
       delete payload.lastName;
       delete payload.mfaEnabled;
       delete payload.dynamicRole;
 
-      ['department', 'designation', 'dynamic_role', 'entity', 'branch', 'site', 'phone', 'manager'].forEach(key => {
+      [
+        "department",
+        "designation",
+        "dynamic_role",
+        "entity",
+        "branch",
+        "site",
+        "phone",
+        "manager",
+      ].forEach((key) => {
         if (payload[key] === "") payload[key] = null;
       });
 
@@ -743,73 +1089,126 @@ function UserForm({ departments, roles, nodeTypes, employees, initialData, onClo
 
   return (
     <div className="space-y-6 pt-4 max-h-[70vh] overflow-y-auto px-1">
-      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Personal Information</div>
+      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        Personal Information
+      </div>
       <div className="grid grid-cols-2 gap-6">
         <div className="space-y-2">
-          <Label>First Name <span className="text-destructive">*</span></Label>
-          <Input placeholder="e.g. Aarav" value={form.firstName} onChange={e => setForm({...form, firstName: e.target.value})} />
+          <Label>
+            First Name <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            placeholder="e.g. Aarav"
+            value={form.firstName}
+            onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+          />
         </div>
         <div className="space-y-2">
-          <Label>Last Name <span className="text-destructive">*</span></Label>
-          <Input placeholder="e.g. Mehta" value={form.lastName} onChange={e => setForm({...form, lastName: e.target.value})} />
+          <Label>
+            Last Name <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            placeholder="e.g. Mehta"
+            value={form.lastName}
+            onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+          />
         </div>
         <div className="space-y-2">
-          <Label>Employee ID <span className="text-destructive">*</span></Label>
-          <Input placeholder="EMP001" value={form.code} onChange={e => setForm({...form, code: e.target.value})} />
+          <Label>
+            Employee ID <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            placeholder="EMP001"
+            value={form.code}
+            onChange={(e) => setForm({ ...form, code: e.target.value })}
+          />
         </div>
         <div className="space-y-2">
-          <Label>Email <span className="text-destructive">*</span></Label>
-          <Input placeholder="user@logicon.io" type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
+          <Label>
+            Email <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            placeholder="user@logicon.io"
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          />
         </div>
         <div className="space-y-2">
           <Label>Mobile</Label>
-          <Input placeholder="+91 98100 00000" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
+          <Input
+            placeholder="+91 98100 00000"
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+          />
         </div>
       </div>
 
-      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-4">Organizational Assignment</div>
+      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-4">
+        Organizational Assignment
+      </div>
       <div className="grid grid-cols-2 gap-6">
         <div className="space-y-2">
-          <Label>Department <span className="text-destructive">*</span></Label>
-          <select 
+          <Label>
+            Department <span className="text-destructive">*</span>
+          </Label>
+          <select
             className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring"
-            value={form.department} 
-            onChange={e => setForm({...form, department: e.target.value})}
+            value={form.department}
+            onChange={(e) => setForm({ ...form, department: e.target.value })}
           >
             <option value="">Select...</option>
-            {departments.map(d => <option key={d.id} value={String(d.id)}>{d.name}</option>)}
+            {departments.map((d) => (
+              <option key={d.id} value={String(d.id)}>
+                {d.name}
+              </option>
+            ))}
           </select>
         </div>
         <div className="space-y-2">
-          <Label>Role <span className="text-destructive">*</span></Label>
-          <select 
+          <Label>
+            Role <span className="text-destructive">*</span>
+          </Label>
+          <select
             className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring"
-            value={form.dynamicRole} 
-            onChange={e => setForm({...form, dynamicRole: e.target.value})}
+            value={form.dynamicRole}
+            onChange={(e) => setForm({ ...form, dynamicRole: e.target.value })}
           >
-            <option value="" disabled>Select role</option>
-            {roles.map(r => <option key={r.id} value={String(r.id)}>{r.name}</option>)}
+            <option value="" disabled>
+              Select role
+            </option>
+            {roles.map((r) => (
+              <option key={r.id} value={String(r.id)}>
+                {r.name}
+              </option>
+            ))}
           </select>
         </div>
         <div className="space-y-2">
           <Label>Reporting Manager</Label>
-          <select 
+          <select
             className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring"
-            value={form.manager || ""} 
-            onChange={e => setForm({...form, manager: e.target.value})}
+            value={form.manager || ""}
+            onChange={(e) => setForm({ ...form, manager: e.target.value })}
           >
             <option value="">None</option>
-            {employees.map(emp => <option key={emp.id} value={String(emp.id)}>{emp.firstName} {emp.lastName}</option>)}
+            {employees.map((emp) => (
+              <option key={emp.id} value={String(emp.id)}>
+                {emp.firstName} {emp.lastName}
+              </option>
+            ))}
           </select>
         </div>
         <div className="space-y-2">
           <Label>Status</Label>
-          <select 
+          <select
             className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring"
-            value={form.status} 
-            onChange={e => setForm({...form, status: e.target.value as "Active" | "Inactive"})}
+            value={form.status}
+            onChange={(e) => setForm({ ...form, status: e.target.value as "Active" | "Inactive" })}
           >
-            <option value="" disabled>Select...</option>
+            <option value="" disabled>
+              Select...
+            </option>
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
           </select>
@@ -817,14 +1216,26 @@ function UserForm({ departments, roles, nodeTypes, employees, initialData, onClo
         <div className="space-y-2 flex flex-col justify-center pt-6">
           <div className="flex items-center justify-between max-w-[200px]">
             <Label>MFA Enabled</Label>
-            <Switch checked={form.mfaEnabled} onCheckedChange={v => setForm({...form, mfaEnabled: v})} className="data-[state=checked]:bg-primary" />
+            <Switch
+              checked={form.mfaEnabled}
+              onCheckedChange={(v) => setForm({ ...form, mfaEnabled: v })}
+              className="data-[state=checked]:bg-primary"
+            />
           </div>
         </div>
       </div>
 
       <div className="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-background/95 backdrop-blur py-4">
-        <Button variant="outline" onClick={onClose}>Cancel</Button>
-        <Button onClick={submit} disabled={loading} className="bg-primary hover:bg-primary/90 text-primary-foreground">Save User</Button>
+        <Button variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button
+          onClick={submit}
+          disabled={loading}
+          className="bg-primary hover:bg-primary/90 text-primary-foreground"
+        >
+          Save User
+        </Button>
       </div>
     </div>
   );
@@ -836,12 +1247,48 @@ function UserForm({ departments, roles, nodeTypes, employees, initialData, onClo
 
 const MODULES = [
   { group: "Overview", items: ["Dashboard"] },
-  { group: "Organisation", items: ["Entities", "Branches", "Sites", "Departments", "Designations"] },
-  { group: "People", items: ["Employees", "My Calendar", "Offer Letters", "Offer Templates", "Separation Request", "Manage Exits"] },
-  { group: "Attendance", items: ["Attendance", "Shift Definitions", "Weekly Roster", "QR Check-in", "Face Verification", "GPS Capture", "Regularization"] },
+  {
+    group: "Organisation",
+    items: ["Entities", "Branches", "Sites", "Departments", "Designations"],
+  },
+  {
+    group: "People",
+    items: [
+      "Employees",
+      "My Calendar",
+      "Offer Letters",
+      "Offer Templates",
+      "Separation Request",
+      "Manage Exits",
+    ],
+  },
+  {
+    group: "Attendance",
+    items: [
+      "Attendance",
+      "Shift Definitions",
+      "Weekly Roster",
+      "QR Check-in",
+      "Face Verification",
+      "GPS Capture",
+      "Regularization",
+    ],
+  },
   { group: "Leave", items: ["Leave Requests", "Inbox"] },
   { group: "Holiday Planner", items: ["Holiday Planner", "Calendar"] },
-  { group: "Payroll", items: ["Payroll Overview", "Salary Structure", "Import CTC", "Run Payroll", "Salary Slips", "Compliance", "Loans & Advances", "Reimbursements"] },
+  {
+    group: "Payroll",
+    items: [
+      "Payroll Overview",
+      "Salary Structure",
+      "Import CTC",
+      "Run Payroll",
+      "Salary Slips",
+      "Compliance",
+      "Loans & Advances",
+      "Reimbursements",
+    ],
+  },
   { group: "FORM 16", items: ["Form 16 Management", "My Form 16"] },
   { group: "Insights", items: ["Organization Tree", "Reports", "Settings"] },
 ];
@@ -855,16 +1302,16 @@ function RolePermissionsTab() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    rolesApi.getAll().then(res => {
+    rolesApi.getAll().then((res) => {
       setRoles(res);
       if (res.length > 0) setSelectedRole(String(res[0].id));
     });
-    entitiesApi.getAll().then(res => setEntities(res));
+    entitiesApi.getAll().then((res) => setEntities(res));
   }, []);
 
   useEffect(() => {
     if (!selectedRole) return;
-    const role = roles.find(r => String(r.id) === selectedRole);
+    const role = roles.find((r) => String(r.id) === selectedRole);
     if (role) {
       setPermissions(role.permissions || {});
     }
@@ -872,23 +1319,28 @@ function RolePermissionsTab() {
 
   const handleToggle = (moduleName: string, action: string, checked: boolean) => {
     setPermissions((prev: any) => {
-      const current = prev[moduleName] || { create: false, view: false, update: false, delete: false };
+      const current = prev[moduleName] || {
+        create: false,
+        view: false,
+        update: false,
+        delete: false,
+      };
       const next = { ...current, [action]: checked };
 
       if (checked) {
-        if (action === 'create' || action === 'update' || action === 'delete') {
+        if (action === "create" || action === "update" || action === "delete") {
           next.view = true;
           next.create = true;
           next.update = true;
           next.delete = true;
         }
       } else {
-        if (action === 'view') {
+        if (action === "view") {
           next.create = false;
           next.update = false;
           next.delete = false;
         }
-        if (action === 'create' || action === 'update' || action === 'delete') {
+        if (action === "create" || action === "update" || action === "delete") {
           next.create = false;
           next.update = false;
           next.delete = false;
@@ -897,7 +1349,7 @@ function RolePermissionsTab() {
 
       return {
         ...prev,
-        [moduleName]: next
+        [moduleName]: next,
       };
     });
   };
@@ -905,7 +1357,7 @@ function RolePermissionsTab() {
   const handleSpecialToggle = (key: string, value: boolean | string) => {
     setPermissions((prev: any) => ({
       ...prev,
-      [key]: value
+      [key]: value,
     }));
   };
 
@@ -915,7 +1367,7 @@ function RolePermissionsTab() {
       await rolesApi.update(selectedRole, { permissions });
       toast.success("Permissions updated successfully");
       // Update local state roles
-      setRoles(roles.map(r => String(r.id) === selectedRole ? { ...r, permissions } : r));
+      setRoles(roles.map((r) => (String(r.id) === selectedRole ? { ...r, permissions } : r)));
     } catch (e: any) {
       toast.error(e.message || "Failed to save permissions");
     } finally {
@@ -924,7 +1376,11 @@ function RolePermissionsTab() {
   };
 
   if (roles.length === 0) {
-    return <div className="text-center text-muted-foreground p-8">No roles found. Please create a role first.</div>;
+    return (
+      <div className="text-center text-muted-foreground p-8">
+        No roles found. Please create a role first.
+      </div>
+    );
   }
 
   return (
@@ -932,7 +1388,9 @@ function RolePermissionsTab() {
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h2 className="text-lg font-medium">Permission Matrix</h2>
-          <p className="text-sm text-muted-foreground">Configure detailed access rights for each module.</p>
+          <p className="text-sm text-muted-foreground">
+            Configure detailed access rights for each module.
+          </p>
         </div>
         <div className="flex items-center gap-4">
           <Select value={selectedRole} onValueChange={setSelectedRole}>
@@ -940,12 +1398,18 @@ function RolePermissionsTab() {
               <SelectValue placeholder="Select a role..." />
             </SelectTrigger>
             <SelectContent>
-              {roles.map(r => (
-                <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+              {roles.map((r) => (
+                <SelectItem key={r.id} value={String(r.id)}>
+                  {r.name}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Button onClick={savePermissions} disabled={saving || !selectedRole} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+          <Button
+            onClick={savePermissions}
+            disabled={saving || !selectedRole}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
+          >
             Save Permissions
           </Button>
         </div>
@@ -966,21 +1430,29 @@ function RolePermissionsTab() {
             {MODULES.map((group, gIdx) => (
               <Fragment key={gIdx}>
                 <tr className="bg-muted/10">
-                  <td colSpan={5} className="px-6 py-2 font-semibold text-xs uppercase tracking-wider text-primary bg-primary/5">
+                  <td
+                    colSpan={5}
+                    className="px-6 py-2 font-semibold text-xs uppercase tracking-wider text-primary bg-primary/5"
+                  >
                     {group.group}
                   </td>
                 </tr>
-                {group.items.map(mod => {
-                  const modsPerms = permissions[mod] || { view: false, create: false, update: false, delete: false };
+                {group.items.map((mod) => {
+                  const modsPerms = permissions[mod] || {
+                    view: false,
+                    create: false,
+                    update: false,
+                    delete: false,
+                  };
                   return (
                     <tr key={mod} className="hover:bg-muted/30 transition-colors">
                       <td className="px-6 py-3 font-medium">
                         <div>{mod}</div>
                         {mod === "Dashboard" && (
                           <div className="mt-2">
-                            <Select 
-                              value={permissions.dashboard_type || "employee"} 
-                              onValueChange={(val) => handleSpecialToggle('dashboard_type', val)}
+                            <Select
+                              value={permissions.dashboard_type || "employee"}
+                              onValueChange={(val) => handleSpecialToggle("dashboard_type", val)}
                             >
                               <SelectTrigger className="w-[180px] h-8 text-xs bg-background">
                                 <SelectValue placeholder="Select dashboard" />
@@ -996,19 +1468,39 @@ function RolePermissionsTab() {
                         )}
                       </td>
                       <td className="px-6 py-3 text-center">
-                        <input type="checkbox" checked={modsPerms.view} onChange={e => handleToggle(mod, 'view', e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                        <input
+                          type="checkbox"
+                          checked={modsPerms.view}
+                          onChange={(e) => handleToggle(mod, "view", e.target.checked)}
+                          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
                       </td>
                       <td className="px-6 py-3 text-center">
-                        <input type="checkbox" checked={modsPerms.create} onChange={e => handleToggle(mod, 'create', e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                        <input
+                          type="checkbox"
+                          checked={modsPerms.create}
+                          onChange={(e) => handleToggle(mod, "create", e.target.checked)}
+                          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
                       </td>
                       <td className="px-6 py-3 text-center">
-                        <input type="checkbox" checked={modsPerms.update} onChange={e => handleToggle(mod, 'update', e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                        <input
+                          type="checkbox"
+                          checked={modsPerms.update}
+                          onChange={(e) => handleToggle(mod, "update", e.target.checked)}
+                          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
                       </td>
                       <td className="px-6 py-3 text-center">
-                        <input type="checkbox" checked={modsPerms.delete} onChange={e => handleToggle(mod, 'delete', e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                        <input
+                          type="checkbox"
+                          checked={modsPerms.delete}
+                          onChange={(e) => handleToggle(mod, "delete", e.target.checked)}
+                          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
                       </td>
                     </tr>
-                  )
+                  );
                 })}
               </Fragment>
             ))}
@@ -1018,47 +1510,74 @@ function RolePermissionsTab() {
 
       <div className="border rounded-md p-6 bg-muted/10 space-y-4">
         <h3 className="text-sm font-semibold">Special Workflow Permissions</h3>
-        <p className="text-xs text-muted-foreground mb-4">These permissions drive the automated payroll and approval workflows.</p>
-        
+        <p className="text-xs text-muted-foreground mb-4">
+          These permissions drive the automated payroll and approval workflows.
+        </p>
+
         <div className="grid sm:grid-cols-2 gap-6">
           <div className="flex items-center justify-between p-3 border rounded-md bg-background">
             <div className="space-y-0.5">
               <Label className="text-sm font-medium">Run Payroll</Label>
-              <div className="text-xs text-muted-foreground">Calculate salaries and view masked previews.</div>
+              <div className="text-xs text-muted-foreground">
+                Calculate salaries and view masked previews.
+              </div>
             </div>
-            <Switch checked={!!permissions.can_run_payroll} onCheckedChange={v => handleSpecialToggle('can_run_payroll', v)} />
+            <Switch
+              checked={!!permissions.can_run_payroll}
+              onCheckedChange={(v) => handleSpecialToggle("can_run_payroll", v)}
+            />
           </div>
 
           <div className="flex items-center justify-between p-3 border rounded-md bg-background">
             <div className="space-y-0.5">
               <Label className="text-sm font-medium">View Confidential Payroll</Label>
-              <div className="text-xs text-muted-foreground">See raw gross, net, and deduction amounts.</div>
+              <div className="text-xs text-muted-foreground">
+                See raw gross, net, and deduction amounts.
+              </div>
             </div>
-            <Switch checked={!!permissions.can_view_confidential_payroll} onCheckedChange={v => handleSpecialToggle('can_view_confidential_payroll', v)} />
+            <Switch
+              checked={!!permissions.can_view_confidential_payroll}
+              onCheckedChange={(v) => handleSpecialToggle("can_view_confidential_payroll", v)}
+            />
           </div>
 
           <div className="flex items-center justify-between p-3 border rounded-md bg-background">
             <div className="space-y-0.5">
               <Label className="text-sm font-medium">Approve Payroll (CEO)</Label>
-              <div className="text-xs text-muted-foreground">Receive review notifications and accept/reject.</div>
+              <div className="text-xs text-muted-foreground">
+                Receive review notifications and accept/reject.
+              </div>
             </div>
-            <Switch checked={!!permissions.can_approve_payroll} onCheckedChange={v => handleSpecialToggle('can_approve_payroll', v)} />
+            <Switch
+              checked={!!permissions.can_approve_payroll}
+              onCheckedChange={(v) => handleSpecialToggle("can_approve_payroll", v)}
+            />
           </div>
 
           <div className="flex items-center justify-between p-3 border rounded-md bg-background">
             <div className="space-y-0.5">
               <Label className="text-sm font-medium">Release Salary (Finance)</Label>
-              <div className="text-xs text-muted-foreground">Get notified to disburse funds once approved.</div>
+              <div className="text-xs text-muted-foreground">
+                Get notified to disburse funds once approved.
+              </div>
             </div>
-            <Switch checked={!!permissions.can_release_salary} onCheckedChange={v => handleSpecialToggle('can_release_salary', v)} />
+            <Switch
+              checked={!!permissions.can_release_salary}
+              onCheckedChange={(v) => handleSpecialToggle("can_release_salary", v)}
+            />
           </div>
 
           <div className="flex items-center justify-between p-3 border rounded-md bg-background">
             <div className="space-y-0.5">
               <Label className="text-sm font-medium">Add Compensation (CEO/Admin)</Label>
-              <div className="text-xs text-muted-foreground">Exclusive permission to add CTC, Bonus, and PF for new employees.</div>
+              <div className="text-xs text-muted-foreground">
+                Exclusive permission to add CTC, Bonus, and PF for new employees.
+              </div>
             </div>
-            <Switch checked={!!permissions.can_add_ctc} onCheckedChange={v => handleSpecialToggle('can_add_ctc', v)} />
+            <Switch
+              checked={!!permissions.can_add_ctc}
+              onCheckedChange={(v) => handleSpecialToggle("can_add_ctc", v)}
+            />
           </div>
         </div>
       </div>
@@ -1074,17 +1593,17 @@ function AttendanceSettingsTab() {
   const [selectedId, setSelectedId] = useState<string>("");
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [policyId, setPolicyId] = useState<number | null>(null);
-  
+
   const [formData, setFormData] = useState({
     maxLateMinutes: 15,
-    halfDayHours: 4.00,
-    fullDayHours: 8.00,
+    halfDayHours: 4.0,
+    fullDayHours: 8.0,
     otApplicableAfterHours: 2.0,
     requireFace: true,
     requireQr: true,
     requireGps: true,
   });
-  
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dropdownError, setDropdownError] = useState<string | null>(null);
@@ -1092,11 +1611,11 @@ function AttendanceSettingsTab() {
   useEffect(() => {
     Promise.all([entitiesApi.getAll(), sitesApi.getAll(), employeesApi.getAll()])
       .then(([ents, sts, emps]) => {
-        setEntities(Array.isArray(ents) ? ents : ((ents as any).results || []));
-        setSites(Array.isArray(sts) ? sts : ((sts as any).results || []));
-        setEmployees(Array.isArray(emps) ? emps : ((emps as any).results || []));
+        setEntities(Array.isArray(ents) ? ents : (ents as any).results || []);
+        setSites(Array.isArray(sts) ? sts : (sts as any).results || []);
+        setEmployees(Array.isArray(emps) ? emps : (emps as any).results || []);
       })
-      .catch(err => {
+      .catch((err) => {
         setDropdownError(err.message || String(err));
       });
   }, []);
@@ -1108,20 +1627,20 @@ function AttendanceSettingsTab() {
   const fetchPolicy = async () => {
     setLoading(true);
     try {
-      let params = '';
+      let params = "";
       if (selectedEmployeeId) {
         params = `?employee=${selectedEmployeeId}`;
-      } else if (scope === 'entity' && selectedId) {
+      } else if (scope === "entity" && selectedId) {
         params = `?organization=${selectedId}`;
-      } else if (scope === 'site' && selectedId) {
+      } else if (scope === "site" && selectedId) {
         params = `?site=${selectedId}`;
-      } else if (scope !== 'global') {
+      } else if (scope !== "global") {
         setLoading(false);
         return;
       }
-      
+
       const res = await attendancePoliciesApi.getAll(params);
-      
+
       // If we got results, use the first one
       if (Array.isArray(res) && res.length > 0) {
         const p = res[0];
@@ -1130,7 +1649,9 @@ function AttendanceSettingsTab() {
           maxLateMinutes: p.maxLateMinutes ?? p.max_late_minutes,
           halfDayHours: parseFloat(p.halfDayHours ?? p.half_day_hours),
           fullDayHours: parseFloat(p.fullDayHours ?? p.full_day_hours),
-          otApplicableAfterHours: parseFloat((p.otApplicableAfterHours ?? p.ot_applicable_after_hours) || 2.0),
+          otApplicableAfterHours: parseFloat(
+            (p.otApplicableAfterHours ?? p.ot_applicable_after_hours) || 2.0,
+          ),
           requireFace: p.requireFace ?? p.require_face,
           requireQr: p.requireQr ?? p.require_qr,
           requireGps: p.requireGps ?? p.require_gps,
@@ -1142,7 +1663,9 @@ function AttendanceSettingsTab() {
           maxLateMinutes: p.maxLateMinutes ?? p.max_late_minutes,
           halfDayHours: parseFloat(p.halfDayHours ?? p.half_day_hours),
           fullDayHours: parseFloat(p.fullDayHours ?? p.full_day_hours),
-          otApplicableAfterHours: parseFloat((p.otApplicableAfterHours ?? p.ot_applicable_after_hours) || 2.0),
+          otApplicableAfterHours: parseFloat(
+            (p.otApplicableAfterHours ?? p.ot_applicable_after_hours) || 2.0,
+          ),
           requireFace: p.requireFace ?? p.require_face,
           requireQr: p.requireQr ?? p.require_qr,
           requireGps: p.requireGps ?? p.require_gps,
@@ -1152,8 +1675,8 @@ function AttendanceSettingsTab() {
         setPolicyId(null);
         setFormData({
           maxLateMinutes: 15,
-          halfDayHours: 4.00,
-          fullDayHours: 8.00,
+          halfDayHours: 4.0,
+          fullDayHours: 8.0,
           otApplicableAfterHours: 2.0,
           requireFace: true,
           requireQr: true,
@@ -1174,10 +1697,10 @@ function AttendanceSettingsTab() {
       if (selectedEmployeeId) {
         payload.employee = selectedEmployeeId;
       } else {
-        if (scope === 'entity' && selectedId) payload.organization = selectedId;
-        if (scope === 'site' && selectedId) payload.site = selectedId;
+        if (scope === "entity" && selectedId) payload.organization = selectedId;
+        if (scope === "site" && selectedId) payload.site = selectedId;
       }
-      
+
       if (policyId) {
         await attendancePoliciesApi.update(policyId, payload);
         toast.success("Attendance Policy updated!");
@@ -1199,9 +1722,11 @@ function AttendanceSettingsTab() {
       <div className="flex flex-col space-y-4 pb-6 border-b">
         <div>
           <h3 className="text-lg font-medium">Configurable Attendance Policies</h3>
-          <p className="text-sm text-muted-foreground">Manage attendance rules globally or override them per entity/site.</p>
+          <p className="text-sm text-muted-foreground">
+            Manage attendance rules globally or override them per entity/site.
+          </p>
         </div>
-        
+
         {dropdownError && (
           <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md">
             <strong>Error loading dropdowns:</strong> {dropdownError}
@@ -1211,7 +1736,14 @@ function AttendanceSettingsTab() {
         <div className="flex items-center gap-4">
           <div className="space-y-1">
             <Label>Policy Scope</Label>
-            <Select value={scope} onValueChange={(v) => { setScope(v); setSelectedId(""); setSelectedEmployeeId(""); }}>
+            <Select
+              value={scope}
+              onValueChange={(v) => {
+                setScope(v);
+                setSelectedId("");
+                setSelectedEmployeeId("");
+              }}
+            >
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="Select Scope" />
               </SelectTrigger>
@@ -1222,8 +1754,8 @@ function AttendanceSettingsTab() {
               </SelectContent>
             </Select>
           </div>
-          
-          {scope === 'entity' && (
+
+          {scope === "entity" && (
             <div className="space-y-1">
               <Label>Select Entity</Label>
               <Select value={selectedId} onValueChange={setSelectedId}>
@@ -1231,27 +1763,41 @@ function AttendanceSettingsTab() {
                   <SelectValue placeholder="Select Entity" />
                 </SelectTrigger>
                 <SelectContent>
-                  {entities.map(e => <SelectItem key={e.id} value={e.id.toString()}>{e.name}</SelectItem>)}
+                  {entities.map((e) => (
+                    <SelectItem key={e.id} value={e.id.toString()}>
+                      {e.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
           )}
-          
-          {scope === 'site' && (
+
+          {scope === "site" && (
             <div className="space-y-1">
               <Label>Select Site</Label>
-              <Select value={selectedId} onValueChange={(v) => { setSelectedId(v); setSelectedEmployeeId(""); }}>
+              <Select
+                value={selectedId}
+                onValueChange={(v) => {
+                  setSelectedId(v);
+                  setSelectedEmployeeId("");
+                }}
+              >
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Select Site" />
                 </SelectTrigger>
                 <SelectContent>
-                  {sites.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                  {sites.map((s) => (
+                    <SelectItem key={s.id} value={s.id.toString()}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
           )}
-          
-          {(scope === 'entity' || scope === 'site') && selectedId && (
+
+          {(scope === "entity" || scope === "site") && selectedId && (
             <div className="space-y-1">
               <Label>Select Employee (Optional)</Label>
               <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
@@ -1261,8 +1807,10 @@ function AttendanceSettingsTab() {
                 <SelectContent>
                   <SelectItem value="">All Employees (Default)</SelectItem>
                   {employees
-                    .filter(e => scope === 'entity' ? e.entity == selectedId : e.site == selectedId)
-                    .map(e => (
+                    .filter((e) =>
+                      scope === "entity" ? e.entity == selectedId : e.site == selectedId,
+                    )
+                    .map((e) => (
                       <SelectItem key={e.id} value={e.id.toString()}>
                         {e.firstName || e.first_name} {e.lastName || e.last_name} ({e.code || e.id})
                       </SelectItem>
@@ -1273,90 +1821,124 @@ function AttendanceSettingsTab() {
           )}
         </div>
       </div>
-      
+
       {loading ? (
         <div className="py-8 text-center text-muted-foreground">Loading policy...</div>
-      ) : (scope !== 'global' && !selectedId) ? (
-        <div className="py-8 text-center text-muted-foreground">Please select an {scope} to configure its policy.</div>
+      ) : scope !== "global" && !selectedId ? (
+        <div className="py-8 text-center text-muted-foreground">
+          Please select an {scope} to configure its policy.
+        </div>
       ) : (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
-              <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">Time Rules</h4>
-              
+              <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">
+                Time Rules
+              </h4>
+
               <div className="space-y-2">
                 <Label>Max Late Minutes Allowed</Label>
-                <Input 
-                  type="number" 
-                  value={formData.maxLateMinutes} 
-                  onChange={e => setFormData({...formData, maxLateMinutes: parseInt(e.target.value) || 0})}
+                <Input
+                  type="number"
+                  value={formData.maxLateMinutes}
+                  onChange={(e) =>
+                    setFormData({ ...formData, maxLateMinutes: parseInt(e.target.value) || 0 })
+                  }
                 />
-                <p className="text-xs text-muted-foreground">Grace period before a punch is marked as late.</p>
+                <p className="text-xs text-muted-foreground">
+                  Grace period before a punch is marked as late.
+                </p>
               </div>
-              
+
               <div className="space-y-2">
                 <Label>Half Day Threshold (Hours)</Label>
-                <Input 
-                  type="number" 
+                <Input
+                  type="number"
                   step="0.1"
-                  value={formData.halfDayHours} 
-                  onChange={e => setFormData({...formData, halfDayHours: parseFloat(e.target.value) || 0})}
+                  value={formData.halfDayHours}
+                  onChange={(e) =>
+                    setFormData({ ...formData, halfDayHours: parseFloat(e.target.value) || 0 })
+                  }
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label>Full Day Threshold (Hours)</Label>
-                <Input 
-                  type="number" 
+                <Input
+                  type="number"
                   step="0.1"
-                  value={formData.fullDayHours} 
-                  onChange={e => setFormData({...formData, fullDayHours: parseFloat(e.target.value) || 0})}
+                  value={formData.fullDayHours}
+                  onChange={(e) =>
+                    setFormData({ ...formData, fullDayHours: parseFloat(e.target.value) || 0 })
+                  }
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label>OT Applies After (Hours)</Label>
-                <Input 
-                  type="number" 
+                <Input
+                  type="number"
                   step="0.5"
-                  value={formData.otApplicableAfterHours} 
-                  onChange={e => setFormData({...formData, otApplicableAfterHours: parseFloat(e.target.value) || 0})}
+                  value={formData.otApplicableAfterHours}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      otApplicableAfterHours: parseFloat(e.target.value) || 0,
+                    })
+                  }
                 />
               </div>
             </div>
-            
+
             <div className="space-y-4">
-              <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">Verification Requirements</h4>
-              
+              <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">
+                Verification Requirements
+              </h4>
+
               <div className="flex items-center justify-between p-3 border rounded-md">
                 <div className="space-y-0.5">
                   <Label>Require GPS</Label>
-                  <div className="text-xs text-muted-foreground">Ensure employee is within geofence radius.</div>
+                  <div className="text-xs text-muted-foreground">
+                    Ensure employee is within geofence radius.
+                  </div>
                 </div>
-                <Switch checked={formData.requireGps} onCheckedChange={v => setFormData({...formData, requireGps: v})} />
+                <Switch
+                  checked={formData.requireGps}
+                  onCheckedChange={(v) => setFormData({ ...formData, requireGps: v })}
+                />
               </div>
-              
+
               <div className="flex items-center justify-between p-3 border rounded-md">
                 <div className="space-y-0.5">
                   <Label>Require QR Scan</Label>
-                  <div className="text-xs text-muted-foreground">Employee must scan the site's cryptographic QR.</div>
+                  <div className="text-xs text-muted-foreground">
+                    Employee must scan the site's cryptographic QR.
+                  </div>
                 </div>
-                <Switch checked={formData.requireQr} onCheckedChange={v => setFormData({...formData, requireQr: v})} />
+                <Switch
+                  checked={formData.requireQr}
+                  onCheckedChange={(v) => setFormData({ ...formData, requireQr: v })}
+                />
               </div>
-              
+
               <div className="flex items-center justify-between p-3 border rounded-md">
                 <div className="space-y-0.5">
                   <Label>Require Face Verification</Label>
-                  <div className="text-xs text-muted-foreground">Mandate liveness & biometric match on check-in.</div>
+                  <div className="text-xs text-muted-foreground">
+                    Mandate liveness & biometric match on check-in.
+                  </div>
                 </div>
-                <Switch checked={formData.requireFace} onCheckedChange={v => setFormData({...formData, requireFace: v})} />
+                <Switch
+                  checked={formData.requireFace}
+                  onCheckedChange={(v) => setFormData({ ...formData, requireFace: v })}
+                />
               </div>
             </div>
           </div>
-          
+
           <div className="flex justify-end pt-4 border-t">
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving...' : (policyId ? 'Update Policy' : 'Create Policy')}
+              {saving ? "Saving..." : policyId ? "Update Policy" : "Create Policy"}
             </Button>
           </div>
         </div>
@@ -1377,25 +1959,34 @@ function LeaveSettingsTab() {
     tenured_annual_leaves: 15,
     standard_annual_leaves: 12,
     max_consecutive_leaves: 3,
-    exception_month: 3
+    exception_month: 3,
   });
 
   const months = [
-    { value: 1, label: "January" }, { value: 2, label: "February" }, { value: 3, label: "March" },
-    { value: 4, label: "April" }, { value: 5, label: "May" }, { value: 6, label: "June" },
-    { value: 7, label: "July" }, { value: 8, label: "August" }, { value: 9, label: "September" },
-    { value: 10, label: "October" }, { value: 11, label: "November" }, { value: 12, label: "December" }
+    { value: 1, label: "January" },
+    { value: 2, label: "February" },
+    { value: 3, label: "March" },
+    { value: 4, label: "April" },
+    { value: 5, label: "May" },
+    { value: 6, label: "June" },
+    { value: 7, label: "July" },
+    { value: 8, label: "August" },
+    { value: 9, label: "September" },
+    { value: 10, label: "October" },
+    { value: 11, label: "November" },
+    { value: 12, label: "December" },
   ];
 
   useEffect(() => {
-    leavesConfigApi.getSettings()
-      .then(res => {
+    leavesConfigApi
+      .getSettings()
+      .then((res) => {
         setForm({
           tenured_years_threshold: res.tenured_years_threshold || 5,
           tenured_annual_leaves: Number(res.tenured_annual_leaves) || 15,
           standard_annual_leaves: Number(res.standard_annual_leaves) || 12,
           max_consecutive_leaves: res.max_consecutive_leaves || 3,
-          exception_month: res.exception_month || 3
+          exception_month: res.exception_month || 3,
         });
       })
       .catch(() => toast.error("Failed to load leave settings"))
@@ -1404,67 +1995,86 @@ function LeaveSettingsTab() {
 
   const handleSave = () => {
     setSaving(true);
-    leavesConfigApi.updateSettings(form)
-      .then(res => {
+    leavesConfigApi
+      .updateSettings(form)
+      .then((res) => {
         toast.success("Leave policy updated successfully!");
         setForm({
           tenured_years_threshold: res.tenured_years_threshold || 5,
           tenured_annual_leaves: Number(res.tenured_annual_leaves) || 15,
           standard_annual_leaves: Number(res.standard_annual_leaves) || 12,
           max_consecutive_leaves: res.max_consecutive_leaves || 3,
-          exception_month: res.exception_month || 3
+          exception_month: res.exception_month || 3,
         });
       })
       .catch(() => toast.error("Failed to update leave settings"))
       .finally(() => setSaving(false));
   };
 
-  if (loading) return <div className="p-8 text-center text-muted-foreground">Loading configurations...</div>;
+  if (loading)
+    return <div className="p-8 text-center text-muted-foreground">Loading configurations...</div>;
 
   return (
     <div className="space-y-8">
       <div>
         <h3 className="text-lg font-semibold">Configurable Leave Policies</h3>
-        <p className="text-sm text-muted-foreground">Manage global rules for employee leaves, tenure perks, and restrictions.</p>
+        <p className="text-sm text-muted-foreground">
+          Manage global rules for employee leaves, tenure perks, and restrictions.
+        </p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
         <div className="space-y-6">
           <div className="bg-muted/30 p-4 rounded-lg border space-y-4">
-            <h4 className="font-semibold flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600"/> Base Entitlements</h4>
+            <h4 className="font-semibold flex items-center gap-2">
+              <Check className="h-4 w-4 text-emerald-600" /> Base Entitlements
+            </h4>
             <div className="space-y-2">
               <Label>Standard Annual Leaves (Days)</Label>
-              <Input 
-                type="number" 
-                value={form.standard_annual_leaves} 
-                onChange={e => setForm({...form, standard_annual_leaves: Number(e.target.value)})} 
+              <Input
+                type="number"
+                value={form.standard_annual_leaves}
+                onChange={(e) =>
+                  setForm({ ...form, standard_annual_leaves: Number(e.target.value) })
+                }
               />
-              <p className="text-xs text-muted-foreground">Accrual rate: {(form.standard_annual_leaves / 12).toFixed(2)} leaves per month</p>
+              <p className="text-xs text-muted-foreground">
+                Accrual rate: {(form.standard_annual_leaves / 12).toFixed(2)} leaves per month
+              </p>
             </div>
           </div>
 
           <div className="bg-primary/5 p-4 rounded-lg border border-primary/10 space-y-4">
-            <h4 className="font-semibold text-primary flex items-center gap-2">🏆 Tenured Employee Perks</h4>
+            <h4 className="font-semibold text-primary flex items-center gap-2">
+              🏆 Tenured Employee Perks
+            </h4>
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Tenure Threshold (Years)</Label>
-                <Input 
-                  type="number" 
-                  value={form.tenured_years_threshold} 
-                  onChange={e => setForm({...form, tenured_years_threshold: Number(e.target.value)})} 
+                <Input
+                  type="number"
+                  value={form.tenured_years_threshold}
+                  onChange={(e) =>
+                    setForm({ ...form, tenured_years_threshold: Number(e.target.value) })
+                  }
                 />
                 <p className="text-[11px] text-muted-foreground leading-tight">
-                  Automatically applied starting the month following the completion of this anniversary.
+                  Automatically applied starting the month following the completion of this
+                  anniversary.
                 </p>
               </div>
               <div className="space-y-2">
                 <Label>Tenured Annual Leaves (Days)</Label>
-                <Input 
-                  type="number" 
-                  value={form.tenured_annual_leaves} 
-                  onChange={e => setForm({...form, tenured_annual_leaves: Number(e.target.value)})} 
+                <Input
+                  type="number"
+                  value={form.tenured_annual_leaves}
+                  onChange={(e) =>
+                    setForm({ ...form, tenured_annual_leaves: Number(e.target.value) })
+                  }
                 />
-                <p className="text-xs text-muted-foreground">Accrual rate: {(form.tenured_annual_leaves / 12).toFixed(2)} leaves per month</p>
+                <p className="text-xs text-muted-foreground">
+                  Accrual rate: {(form.tenured_annual_leaves / 12).toFixed(2)} leaves per month
+                </p>
               </div>
             </div>
           </div>
@@ -1472,37 +2082,47 @@ function LeaveSettingsTab() {
 
         <div className="space-y-6">
           <div className="bg-orange-50/50 p-4 rounded-lg border border-orange-100 space-y-4">
-            <h4 className="font-semibold text-orange-800 flex items-center gap-2"><Info className="h-4 w-4" /> Consecutive Leave Restrictions</h4>
+            <h4 className="font-semibold text-orange-800 flex items-center gap-2">
+              <Info className="h-4 w-4" /> Consecutive Leave Restrictions
+            </h4>
             <div className="space-y-2">
               <Label>Max Consecutive Paid Leaves</Label>
-              <Input 
-                type="number" 
-                value={form.max_consecutive_leaves} 
-                onChange={e => setForm({...form, max_consecutive_leaves: Number(e.target.value)})} 
+              <Input
+                type="number"
+                value={form.max_consecutive_leaves}
+                onChange={(e) =>
+                  setForm({ ...form, max_consecutive_leaves: Number(e.target.value) })
+                }
               />
               <p className="text-[11px] text-muted-foreground leading-tight">
-                If an employee requests more consecutive days than this limit, the remainder is automatically treated as Unpaid Leave and triggers a salary deduction.
+                If an employee requests more consecutive days than this limit, the remainder is
+                automatically treated as Unpaid Leave and triggers a salary deduction.
               </p>
             </div>
           </div>
 
           <div className="bg-muted/30 p-4 rounded-lg border space-y-4">
-            <h4 className="font-semibold flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /> Exception Month</h4>
+            <h4 className="font-semibold flex items-center gap-2">
+              <Check className="h-4 w-4 text-emerald-600" /> Exception Month
+            </h4>
             <p className="text-[11px] text-muted-foreground leading-tight">
-              Select a month where the consecutive limit is lifted, allowing employees to avail all their accumulated leaves at once.
+              Select a month where the consecutive limit is lifted, allowing employees to avail all
+              their accumulated leaves at once.
             </p>
             <div className="space-y-2">
               <Label>Select Month</Label>
-              <Select 
-                value={form.exception_month.toString()} 
-                onValueChange={v => setForm({...form, exception_month: Number(v)})}
+              <Select
+                value={form.exception_month.toString()}
+                onValueChange={(v) => setForm({ ...form, exception_month: Number(v) })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {months.map(m => (
-                    <SelectItem key={m.value} value={m.value.toString()}>{m.label}</SelectItem>
+                  {months.map((m) => (
+                    <SelectItem key={m.value} value={m.value.toString()}>
+                      {m.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -1513,7 +2133,7 @@ function LeaveSettingsTab() {
 
       <div className="flex justify-end pt-4 border-t">
         <Button onClick={handleSave} disabled={saving}>
-          {saving ? 'Saving...' : 'Save Configuration'}
+          {saving ? "Saving..." : "Save Configuration"}
         </Button>
       </div>
     </div>

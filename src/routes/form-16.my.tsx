@@ -15,14 +15,16 @@ export const Route = createFileRoute("/form-16/my")({
     // Regular employees will only get their own docs due to backend filtering
     const documents = await form16Api.getAll();
     return { documents };
-  }
+  },
 });
 
 function MyForm16Page() {
   const { documents } = Route.useLoaderData();
   const { user } = useAuth();
   const u = user as any;
-  const employeeName = `${u?.employeeProfile?.firstName || ""} ${u?.employeeProfile?.lastName || ""}`.trim() || u?.username;
+  const employeeName =
+    `${u?.employeeProfile?.firstName || ""} ${u?.employeeProfile?.lastName || ""}`.trim() ||
+    u?.username;
   const empCode = u?.employeeProfile?.code || u?.employeeProfile?.employeeId || "";
   const designation = u?.employeeProfile?.designation?.title || "Employee";
   const department = u?.employeeProfile?.department?.name || "";
@@ -30,7 +32,7 @@ function MyForm16Page() {
   const [previewDoc, setPreviewDoc] = useState<any | null>(null);
 
   const forceDownload = async (url: string, filename: string) => {
-    const fullUrl = url.startsWith('/') ? `${API_BASE_URL}${url}` : url;
+    const fullUrl = url.startsWith("/") ? `${API_BASE_URL}${url}` : url;
     try {
       const res = await fetch(fullUrl);
       if (!res.ok) throw new Error("Failed to download file");
@@ -44,7 +46,7 @@ function MyForm16Page() {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
-      window.open(fullUrl, '_blank');
+      window.open(fullUrl, "_blank");
     }
   };
 
@@ -57,30 +59,30 @@ function MyForm16Page() {
     {
       key: "version",
       header: "Version",
-      render: (doc: any) => `v${doc.version}`
+      render: (doc: any) => `v${doc.version}`,
     },
     {
       key: "status",
       header: "Status",
       accessor: (doc: any) => doc.status || "—",
-    }
+    },
   ];
 
   return (
     <div className="p-6 max-w-[1200px] mx-auto space-y-8">
-      <PageHeader 
-        title="My Form 16" 
+      <PageHeader
+        title="My Form 16"
         description="Access your annual tax certificates. You'll only ever see documents issued to you."
       />
 
       <div className="bg-white rounded-xl border border-border/50 shadow-sm p-6 flex flex-wrap items-center justify-between gap-6 relative overflow-hidden">
         {/* Subtle background pattern/gradient */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        
+
         <div className="flex items-center gap-4 relative z-10">
           <Avatar className="h-16 w-16 border-2 border-background shadow-sm">
             <AvatarFallback className="text-xl bg-blue-100 text-blue-700">
-              {employeeName?.charAt(0) || 'U'}
+              {employeeName?.charAt(0) || "U"}
             </AvatarFallback>
           </Avatar>
           <div className="space-y-1">
@@ -107,17 +109,32 @@ function MyForm16Page() {
 
       {documents.length > 0 ? (
         <div className="bg-white rounded-xl border border-border/50 shadow-sm overflow-hidden">
-          <DataTable 
-            columns={columns} 
-            rows={documents} 
+          <DataTable
+            columns={columns}
+            rows={documents}
             rowKey={(doc: any) => String(doc.id)}
             actions={(doc: any) => (
               <div className="flex items-center justify-end gap-2 pr-4">
-                <Button variant="outline" size="sm" className="gap-2" onClick={() => setPreviewDoc(doc)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => setPreviewDoc(doc)}
+                >
                   <Eye className="h-4 w-4" />
                   View
                 </Button>
-                <Button variant="outline" size="sm" className="gap-2" onClick={() => forceDownload(doc.file, `Form16_${doc.financialYear || doc.financial_year}.${doc.file?.split('.').pop() || 'pdf'}`)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() =>
+                    forceDownload(
+                      doc.file,
+                      `Form16_${doc.financialYear || doc.financial_year}.${doc.file?.split(".").pop() || "pdf"}`,
+                    )
+                  }
+                >
                   <Download className="h-4 w-4" />
                   Download
                 </Button>
@@ -132,7 +149,8 @@ function MyForm16Page() {
           </div>
           <h3 className="text-xl font-semibold tracking-tight">No Form 16 available yet</h3>
           <p className="text-muted-foreground max-w-md">
-            Once your Form 16 is issued by HR, it will appear here. You'll be notified by email and in-app.
+            Once your Form 16 is issued by HR, it will appear here. You'll be notified by email and
+            in-app.
           </p>
         </div>
       )}
@@ -142,16 +160,26 @@ function MyForm16Page() {
           <DialogHeader className="p-4 border-b border-border bg-muted/30">
             <DialogTitle className="flex items-center justify-between">
               <span>Form 16 ({previewDoc?.financialYear || previewDoc?.financial_year})</span>
-              <Button size="sm" variant="outline" className="gap-2 h-8 mr-6" onClick={() => forceDownload(previewDoc?.file, `Form16_${previewDoc?.financialYear || previewDoc?.financial_year}.${previewDoc?.file?.split('.').pop() || 'pdf'}`)}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-2 h-8 mr-6"
+                onClick={() =>
+                  forceDownload(
+                    previewDoc?.file,
+                    `Form16_${previewDoc?.financialYear || previewDoc?.financial_year}.${previewDoc?.file?.split(".").pop() || "pdf"}`,
+                  )
+                }
+              >
                 <Download className="h-3.5 w-3.5" /> Download
               </Button>
             </DialogTitle>
           </DialogHeader>
           <div className="flex-1 bg-muted/10">
             {previewDoc?.file && (
-              <iframe 
-                src={previewDoc.file} 
-                className="w-full h-full border-0" 
+              <iframe
+                src={previewDoc.file}
+                className="w-full h-full border-0"
                 title="Form 16 Preview"
               />
             )}

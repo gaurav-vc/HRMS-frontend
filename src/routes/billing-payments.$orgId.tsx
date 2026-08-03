@@ -18,7 +18,7 @@ export const Route = createFileRoute("/billing-payments/$orgId")({
 function BillingDetail() {
   const { user } = useAuth();
   const { orgId } = Route.useParams();
-  
+
   const { data: organization, isLoading: isOrgLoading } = useQuery({
     queryKey: ["organization", orgId],
     queryFn: () => organizationsApi.getById(orgId),
@@ -45,9 +45,11 @@ function BillingDetail() {
   };
 
   const allInvoices = invoices || [];
-  
+
   const filteredInvoices = allInvoices.filter((inv: any) => {
-    const matchesSearch = (inv.invoice_number || "").toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (inv.invoice_number || "")
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "All" || inv.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -58,14 +60,20 @@ function BillingDetail() {
       <div className="flex justify-between items-start">
         <div>
           <div className="flex items-center text-sm text-slate-500 mb-1">
-            <Link to="/billing-payments" className="hover:text-purple-600">Organization</Link>
+            <Link to="/billing-payments" className="hover:text-purple-600">
+              Organization
+            </Link>
             <ChevronRight className="w-4 h-4 mx-1" />
             <span>Billing & Subscriptions</span>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">{organization?.name || "Organization"}</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+            {organization?.name || "Organization"}
+          </h1>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" onClick={() => toast.success("Downloading CSV...")}>Download CSV</Button>
+          <Button variant="outline" onClick={() => toast.success("Downloading CSV...")}>
+            Download CSV
+          </Button>
           <Button className="bg-purple-600 hover:bg-purple-700">Pay Now</Button>
         </div>
       </div>
@@ -74,24 +82,46 @@ function BillingDetail() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="bg-slate-50/50 border-slate-200">
           <CardHeader className="pb-2">
-            <Badge variant="secondary" className="w-fit mb-2 text-xs font-semibold bg-blue-100 text-[#1a4cd2] hover:bg-blue-100">NB</Badge>
-            <CardDescription className="font-medium text-slate-600">Next Billing Amount</CardDescription>
-            <CardTitle className="text-4xl font-bold">${Number(organization?.rateOfBilling || 0).toFixed(2)}</CardTitle>
+            <Badge
+              variant="secondary"
+              className="w-fit mb-2 text-xs font-semibold bg-blue-100 text-[#1a4cd2] hover:bg-blue-100"
+            >
+              NB
+            </Badge>
+            <CardDescription className="font-medium text-slate-600">
+              Next Billing Amount
+            </CardDescription>
+            <CardTitle className="text-4xl font-bold">
+              ${Number(organization?.rateOfBilling || 0).toFixed(2)}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-slate-500">Estimated for next cycle • Renews on {organization?.billingDate || "-"}</p>
+            <p className="text-sm text-slate-500">
+              Estimated for next cycle • Renews on {organization?.billingDate || "-"}
+            </p>
           </CardContent>
         </Card>
 
         <Card className="bg-slate-50/50 border-slate-200">
           <CardHeader className="pb-2">
-            <Badge variant="secondary" className="w-fit mb-2 text-xs font-semibold bg-blue-100 text-[#1a4cd2] hover:bg-blue-100">CD</Badge>
-            <CardDescription className="font-medium text-slate-600">Current Balance Due</CardDescription>
-            <CardTitle className="text-4xl font-bold">${Number(organization?.currentDue || 0).toFixed(2)}</CardTitle>
+            <Badge
+              variant="secondary"
+              className="w-fit mb-2 text-xs font-semibold bg-blue-100 text-[#1a4cd2] hover:bg-blue-100"
+            >
+              CD
+            </Badge>
+            <CardDescription className="font-medium text-slate-600">
+              Current Balance Due
+            </CardDescription>
+            <CardTitle className="text-4xl font-bold">
+              ${Number(organization?.currentDue || 0).toFixed(2)}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-slate-500">
-              {Number(organization?.currentDue || 0) === 0 ? "Everything looks good!" : "Payment is required."}
+              {Number(organization?.currentDue || 0) === 0
+                ? "Everything looks good!"
+                : "Payment is required."}
             </p>
           </CardContent>
         </Card>
@@ -102,24 +132,26 @@ function BillingDetail() {
         <div className="flex justify-between items-end">
           <div>
             <h2 className="text-xl font-bold text-slate-900">Invoice History</h2>
-            <p className="text-sm text-slate-500">Review and download your recent billing statements</p>
+            <p className="text-sm text-slate-500">
+              Review and download your recent billing statements
+            </p>
           </div>
           <div className="flex gap-4 items-center">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input 
-                placeholder="Search invoice #" 
+              <Input
+                placeholder="Search invoice #"
                 className="pl-9 w-[250px]"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <div className="flex bg-slate-100 p-1 rounded-md">
-              {["All", "Paid", "Overdue"].map(status => (
+              {["All", "Paid", "Overdue"].map((status) => (
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${statusFilter === status ? 'bg-[#1a4cd2] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${statusFilter === status ? "bg-[#1a4cd2] text-white shadow-sm" : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"}`}
                 >
                   {status}
                 </button>
@@ -133,39 +165,51 @@ function BillingDetail() {
             rows={filteredInvoices}
             rowKey={(r: any) => r.id}
             columns={[
-              { 
-                key: "invoice", 
-                header: "Invoice #", 
-                render: (r: any) => <span className="font-medium">{r.invoiceNumber}</span> 
+              {
+                key: "invoice",
+                header: "Invoice #",
+                render: (r: any) => <span className="font-medium">{r.invoiceNumber}</span>,
               },
-              { 
-                key: "billing_date", 
-                header: "Billing Date", 
-                render: (r: any) => <span>{r.billingDate}</span> 
+              {
+                key: "billing_date",
+                header: "Billing Date",
+                render: (r: any) => <span>{r.billingDate}</span>,
               },
-              { 
-                key: "due_date", 
-                header: "Due Date", 
-                render: (r: any) => <span>{r.dueDate}</span> 
+              {
+                key: "due_date",
+                header: "Due Date",
+                render: (r: any) => <span>{r.dueDate}</span>,
               },
-              { 
-                key: "amount", 
-                header: "Amount", 
-                render: (r: any) => <span>${Number(r.amount).toFixed(2)}</span> 
+              {
+                key: "amount",
+                header: "Amount",
+                render: (r: any) => <span>${Number(r.amount).toFixed(2)}</span>,
               },
-              { 
-                key: "status", 
-                header: "Status", 
+              {
+                key: "status",
+                header: "Status",
                 render: (r: any) => (
-                  <Badge variant="outline" className={r.status === 'Paid' ? 'text-purple-600 border-purple-200 bg-purple-50' : 'text-slate-600 border-slate-200 bg-slate-50'}>
+                  <Badge
+                    variant="outline"
+                    className={
+                      r.status === "Paid"
+                        ? "text-purple-600 border-purple-200 bg-purple-50"
+                        : "text-slate-600 border-slate-200 bg-slate-50"
+                    }
+                  >
                     {r.status}
                   </Badge>
-                )
+                ),
               },
             ]}
             actions={(r: any) => (
               <div className="flex gap-2 justify-end">
-                <Button size="sm" variant="ghost" className="text-purple-600 hover:text-purple-700 hover:bg-purple-50" onClick={() => handleDownload(r.invoice_number)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                  onClick={() => handleDownload(r.invoice_number)}
+                >
                   Download
                 </Button>
               </div>
@@ -183,7 +227,9 @@ function BillingDetail() {
             <div className="space-y-4">
               <div>
                 <h4 className="text-sm font-semibold text-slate-900">Billing Contact</h4>
-                <p className="text-sm text-slate-600">{organization?.billing_contact_email || "billing@example.com"}</p>
+                <p className="text-sm text-slate-600">
+                  {organization?.billing_contact_email || "billing@example.com"}
+                </p>
               </div>
               <div>
                 <h4 className="text-sm font-semibold text-slate-900">Tax ID / VAT</h4>
@@ -192,8 +238,12 @@ function BillingDetail() {
             </div>
             <div>
               <h4 className="text-sm font-semibold text-slate-900">Billing Address</h4>
-              <p className="text-sm text-slate-600 whitespace-pre-wrap">{organization?.billing_address || "No address provided."}</p>
-              <Button variant="link" className="px-0 mt-2 text-purple-600 h-auto">Edit Billing Details</Button>
+              <p className="text-sm text-slate-600 whitespace-pre-wrap">
+                {organization?.billing_address || "No address provided."}
+              </p>
+              <Button variant="link" className="px-0 mt-2 text-purple-600 h-auto">
+                Edit Billing Details
+              </Button>
             </div>
           </div>
         </div>
@@ -201,22 +251,32 @@ function BillingDetail() {
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-slate-900">Billing Help</h2>
           <div className="bg-white p-2 rounded-lg border shadow-sm space-y-1">
-            <Button variant="ghost" className="w-full justify-between font-normal text-slate-600 hover:text-slate-900">
+            <Button
+              variant="ghost"
+              className="w-full justify-between font-normal text-slate-600 hover:text-slate-900"
+            >
               How do I change my billing cycle?
             </Button>
-            <Button variant="ghost" className="w-full justify-between font-normal text-slate-600 hover:text-slate-900">
+            <Button
+              variant="ghost"
+              className="w-full justify-between font-normal text-slate-600 hover:text-slate-900"
+            >
               When are invoices generated?
             </Button>
-            <Button variant="ghost" className="w-full justify-between font-normal text-slate-600 hover:text-slate-900">
+            <Button
+              variant="ghost"
+              className="w-full justify-between font-normal text-slate-600 hover:text-slate-900"
+            >
               Accepted payment methods?
             </Button>
             <div className="p-2 pt-4 border-t mt-2">
-              <Button variant="outline" className="w-full bg-slate-50">Visit Help Center</Button>
+              <Button variant="outline" className="w-full bg-slate-50">
+                Visit Help Center
+              </Button>
             </div>
           </div>
         </div>
       </div>
-
     </div>
   );
 }

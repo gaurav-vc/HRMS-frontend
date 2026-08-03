@@ -10,10 +10,26 @@ import { api, employeesApi, attendanceApi, payrollApi } from "@/api";
 export const Route = createFileRoute("/reports")({ component: ReportsPage });
 
 const CATS = [
-  { name: "People", items: ["Headcount Snapshot","Attrition Analysis","Diversity Report","New Joiners","Exits"] },
-  { name: "Attendance", items: ["Daily Attendance","Monthly Summary","Late Marks","Geofence Violations","Overtime"] },
-  { name: "Payroll", items: ["Payroll with Attendance", "Monthly Payroll Register","CTC Distribution","Cost by Department","Variable Pay","Bonus Provision"] },
-  { name: "Compliance", items: ["PF ECR","ESI Return","PT State-wise","TDS 24Q","Form 16"] },
+  {
+    name: "People",
+    items: ["Headcount Snapshot", "Attrition Analysis", "Diversity Report", "New Joiners", "Exits"],
+  },
+  {
+    name: "Attendance",
+    items: ["Daily Attendance", "Monthly Summary", "Late Marks", "Geofence Violations", "Overtime"],
+  },
+  {
+    name: "Payroll",
+    items: [
+      "Payroll with Attendance",
+      "Monthly Payroll Register",
+      "CTC Distribution",
+      "Cost by Department",
+      "Variable Pay",
+      "Bonus Provision",
+    ],
+  },
+  { name: "Compliance", items: ["PF ECR", "ESI Return", "PT State-wise", "TDS 24Q", "Form 16"] },
 ];
 
 function downloadCSV(filename: string, rows: object[]) {
@@ -24,20 +40,27 @@ function downloadCSV(filename: string, rows: object[]) {
   const headers = Object.keys(rows[0]);
   const csvContent = [
     headers.join(","),
-    ...rows.map(row => headers.map(header => {
-      let cell = (row as any)[header] === null || (row as any)[header] === undefined ? '' : String((row as any)[header]);
-      cell = cell.replace(/"/g, '""');
-      if (cell.search(/("|,|\n)/g) >= 0) cell = `"${cell}"`;
-      return cell;
-    }).join(","))
+    ...rows.map((row) =>
+      headers
+        .map((header) => {
+          let cell =
+            (row as any)[header] === null || (row as any)[header] === undefined
+              ? ""
+              : String((row as any)[header]);
+          cell = cell.replace(/"/g, '""');
+          if (cell.search(/("|,|\n)/g) >= 0) cell = `"${cell}"`;
+          return cell;
+        })
+        .join(","),
+    ),
   ].join("\n");
-  
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.setAttribute("href", url);
-  link.setAttribute("download", `${filename}_${new Date().toISOString().split('T')[0]}.csv`);
-  link.style.visibility = 'hidden';
+  link.setAttribute("download", `${filename}_${new Date().toISOString().split("T")[0]}.csv`);
+  link.style.visibility = "hidden";
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -50,32 +73,37 @@ function ReportsPage() {
     try {
       setDownloading(reportName);
       let data: any[] = [];
-      
+
       if (reportName === "Headcount Snapshot") {
         const emps = await employeesApi.getAll();
-        data = emps.map(e => ({
+        data = emps.map((e) => ({
           "Employee ID": e.code,
           "First Name": e.firstName,
           "Last Name": e.lastName,
-          "Email": e.email,
-          "Status": e.status,
-          "Date of Joining": e.doj || '',
-          "Gender": e.gender,
-          "Location": e.address || '',
+          Email: e.email,
+          Status: e.status,
+          "Date of Joining": e.doj || "",
+          Gender: e.gender,
+          Location: e.address || "",
         }));
-      } else if (reportName === "Daily Attendance" || reportName === "Late Marks" || reportName === "Geofence Violations") {
+      } else if (
+        reportName === "Daily Attendance" ||
+        reportName === "Late Marks" ||
+        reportName === "Geofence Violations"
+      ) {
         const hist = await attendanceApi.getHistory();
-        data = hist.map(h => ({
+        data = hist.map((h) => ({
           "Employee ID": h.employeeId,
-          "Date": h.date,
+          Date: h.date,
           "Check In": h.checkIn,
-          "Check Out": h.checkOut || '',
-          "Status": h.status,
-          "Location": h.location,
+          "Check Out": h.checkOut || "",
+          Status: h.status,
+          Location: h.location,
           "Geofence Verification": h.qrStatus,
         }));
-        if (reportName === "Late Marks") data = data.filter(d => d.Status === "Late");
-        if (reportName === "Geofence Violations") data = data.filter(d => d["Geofence Verification"] === "Failed");
+        if (reportName === "Late Marks") data = data.filter((d) => d.Status === "Late");
+        if (reportName === "Geofence Violations")
+          data = data.filter((d) => d["Geofence Verification"] === "Failed");
       } else if (reportName === "Payroll with Attendance") {
         data = await api.getPayrollAttendanceReport();
       } else if (reportName === "Monthly Payroll Register") {
@@ -87,15 +115,17 @@ function ReportsPage() {
           "Net Pay": s.net,
           "PF Deduction": s.pf,
           "PT Deduction": s.pt,
-          "TDS": s.tds,
+          TDS: s.tds,
         }));
       } else {
-        toast.error(`The "${reportName}" report is currently under development and not yet available.`);
+        toast.error(
+          `The "${reportName}" report is currently under development and not yet available.`,
+        );
         setDownloading(null);
         return;
       }
-      
-      downloadCSV(reportName.replace(/\s+/g, '_').toLowerCase(), data);
+
+      downloadCSV(reportName.replace(/\s+/g, "_").toLowerCase(), data);
       toast.success(`${reportName} downloaded successfully!`);
     } catch (err: any) {
       toast.error(`Failed to export ${reportName}`);
@@ -106,19 +136,34 @@ function ReportsPage() {
 
   return (
     <>
-      <PageHeader title="Reports" description="Configurable reports across HR, attendance, payroll and compliance" />
+      <PageHeader
+        title="Reports"
+        description="Configurable reports across HR, attendance, payroll and compliance"
+      />
       <div className="grid gap-4 lg:grid-cols-2">
-        {CATS.map(c => (
-          <Card key={c.name} className="p-5"><h3 className="font-semibold mb-3 flex items-center gap-2"><FileBarChart2 className="h-4 w-4 text-primary" />{c.name}</h3>
-            <ul className="divide-y">{c.items.map(i => (
-              <li key={i} className="py-2.5 flex items-center justify-between">
-                <span className="text-sm">{i}</span>
-                <Button size="sm" variant="outline" disabled={downloading === i} onClick={() => handleExport(i)}>
-                  <Download className="h-4 w-4 mr-1" />
-                  {downloading === i ? "Exporting..." : "Export"}
-                </Button>
-              </li>
-            ))}</ul></Card>
+        {CATS.map((c) => (
+          <Card key={c.name} className="p-5">
+            <h3 className="font-semibold mb-3 flex items-center gap-2">
+              <FileBarChart2 className="h-4 w-4 text-primary" />
+              {c.name}
+            </h3>
+            <ul className="divide-y">
+              {c.items.map((i) => (
+                <li key={i} className="py-2.5 flex items-center justify-between">
+                  <span className="text-sm">{i}</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={downloading === i}
+                    onClick={() => handleExport(i)}
+                  >
+                    <Download className="h-4 w-4 mr-1" />
+                    {downloading === i ? "Exporting..." : "Export"}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </Card>
         ))}
       </div>
     </>

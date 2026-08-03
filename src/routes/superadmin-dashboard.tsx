@@ -3,7 +3,18 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, Building2, Users, Briefcase, Activity } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, Legend } from "recharts";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  Legend,
+} from "recharts";
 import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth-context";
 
@@ -13,23 +24,24 @@ export const Route = createFileRoute("/superadmin-dashboard")({
 
 function SuperAdminDashboard() {
   const { user } = useAuth();
-  if (user?.username !== "Vibe_admin") {
-    return <Navigate to="/" />;
-  }
-
   const { data: rawData, isLoading } = useQuery({
     queryKey: ["superadmin_dashboard_stats"],
     queryFn: () => api.getDashboardStats(),
   });
 
-  const stats = rawData?.superAdmin || rawData?.super_admin || {
-    totalRevenue: 0,
-    activeSites: 0,
-    totalCompany: 0,
-    moduleWiseRevenue: [],
-    companyWiseSite: [],
-    moduleWiseSite: [],
-  };
+  if (user?.username !== "Vibe_admin") {
+    return <Navigate to="/" />;
+  }
+
+  const stats = rawData?.superAdmin ||
+    rawData?.super_admin || {
+      totalRevenue: 0,
+      activeSites: 0,
+      totalCompany: 0,
+      moduleWiseRevenue: [],
+      companyWiseSite: [],
+      moduleWiseSite: [],
+    };
 
   if (isLoading) return <div className="p-8 text-center animate-pulse">Loading dashboard...</div>;
 
@@ -38,7 +50,9 @@ function SuperAdminDashboard() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-[28px] font-bold tracking-tight text-slate-900">Dashboard</h1>
-          <p className="text-[15px] text-slate-500 mt-1">Optimize revenue and track sales performance</p>
+          <p className="text-[15px] text-slate-500 mt-1">
+            Optimize revenue and track sales performance
+          </p>
         </div>
       </div>
 
@@ -53,7 +67,9 @@ function SuperAdminDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-semibold text-slate-800">Rs. {stats.totalRevenue.toLocaleString()}</div>
+              <div className="text-2xl font-semibold text-slate-800">
+                Rs. {stats.totalRevenue.toLocaleString()}
+              </div>
             </CardContent>
           </Card>
         </Link>
@@ -75,7 +91,9 @@ function SuperAdminDashboard() {
         <Link to="/organizations" className="block outline-none">
           <Card className="shadow-sm border-slate-200 bg-white hover:shadow-md hover:border-slate-300 transition-all cursor-pointer h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-500">Total Organizations</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-500">
+                Total Organizations
+              </CardTitle>
               <div className="p-2 bg-indigo-50 rounded-md">
                 <Briefcase className="w-4 h-4 text-indigo-600" />
               </div>
@@ -88,7 +106,6 @@ function SuperAdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
           <Card className="shadow-sm h-[400px]">
@@ -106,15 +123,15 @@ function SuperAdminDashboard() {
                   {(stats.topOrgs || []).map((orgName: string, index: number) => {
                     const colors = ["#4f46e5", "#10b981", "#f59e0b"];
                     return (
-                      <Line 
+                      <Line
                         key={orgName}
-                        type="monotone" 
-                        dataKey={orgName} 
-                        stroke={colors[index % colors.length]} 
-                        strokeWidth={2} 
+                        type="monotone"
+                        dataKey={orgName}
+                        stroke={colors[index % colors.length]}
+                        strokeWidth={2}
                         dot={{ r: 4 }}
                       />
-                    )
+                    );
                   })}
                 </LineChart>
               </ResponsiveContainer>
@@ -146,8 +163,8 @@ function SuperAdminDashboard() {
               <CardTitle className="text-lg">Today's Upsale</CardTitle>
             </CardHeader>
             <CardContent className="p-6 text-center text-muted-foreground flex flex-col items-center justify-center min-h-[150px]">
-               <Activity className="w-12 h-12 text-slate-200 mb-2" />
-               No data found
+              <Activity className="w-12 h-12 text-slate-200 mb-2" />
+              No data found
             </CardContent>
           </Card>
 
@@ -158,7 +175,10 @@ function SuperAdminDashboard() {
             <CardContent className="p-0">
               <ul className="divide-y">
                 {stats.moduleWiseRevenue.map((item: any, idx: number) => (
-                  <li key={idx} className="flex justify-between items-center p-4 hover:bg-slate-50 transition-colors">
+                  <li
+                    key={idx}
+                    className="flex justify-between items-center p-4 hover:bg-slate-50 transition-colors"
+                  >
                     <span className="font-medium text-slate-700 capitalize">{item.module}</span>
                     <span className="text-slate-900 font-semibold">Rs. {item.revenue}</span>
                   </li>

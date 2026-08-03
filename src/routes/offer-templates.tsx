@@ -5,7 +5,13 @@ import { offerTemplatesApi } from "@/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FilePlus, FileText, Trash2, X } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,16 +27,18 @@ function OfferTemplatesPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<any | null>(null);
   const [openCreate, setOpenCreate] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
+
   const [newTemplate, setNewTemplate] = useState({
     name: "",
     category: "",
-    body_html: "<h2>Offer of Employment</h2><p>Dear {{candidate_name}},</p><p>We are pleased to offer you the position of {{designation}} at {{entity_name}}.</p>",
-    placeholders: ["candidate_name", "designation", "entity_name"]
+    body_html:
+      "<h2>Offer of Employment</h2><p>Dear {{candidate_name}},</p><p>We are pleased to offer you the position of {{designation}} at {{entity_name}}.</p>",
+    placeholders: ["candidate_name", "designation", "entity_name"],
   });
 
   const fetchData = () => {
-    offerTemplatesApi.getAll()
+    offerTemplatesApi
+      .getAll()
       .then((res: any) => setData(res))
       .catch(() => setData([]))
       .finally(() => setLoading(false));
@@ -51,8 +59,9 @@ function OfferTemplatesPage() {
       setNewTemplate({
         name: "",
         category: "",
-        body_html: "<h2>Offer of Employment</h2><p>Dear {{candidate_name}},</p><p>We are pleased to offer you the position of {{designation}} at {{entity_name}}.</p>",
-        placeholders: ["candidate_name", "designation", "entity_name"]
+        body_html:
+          "<h2>Offer of Employment</h2><p>Dear {{candidate_name}},</p><p>We are pleased to offer you the position of {{designation}} at {{entity_name}}.</p>",
+        placeholders: ["candidate_name", "designation", "entity_name"],
       });
     } catch (err: any) {
       toast.error(`Error: ${err.message || "Failed to create"}`);
@@ -76,23 +85,36 @@ function OfferTemplatesPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-end">
-        <PageHeader title="Offer Templates" description="Reusable templates with dynamic placeholders. HR can add custom ones per role and entity." />
-        <Button onClick={() => setOpenCreate(true)} className="bg-[#0b646c] hover:bg-[#0b646c]/90 text-white flex gap-2 h-10 px-4">
+        <PageHeader
+          title="Offer Templates"
+          description="Reusable templates with dynamic placeholders. HR can add custom ones per role and entity."
+        />
+        <Button
+          onClick={() => setOpenCreate(true)}
+          className="bg-[#0b646c] hover:bg-[#0b646c]/90 text-white flex gap-2 h-10 px-4"
+        >
           <FilePlus className="w-4 h-4" /> New Template
         </Button>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-64 text-muted-foreground">Loading templates...</div>
+        <div className="flex items-center justify-center h-64 text-muted-foreground">
+          Loading templates...
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {data.map(template => (
-            <Card 
-              key={template.id} 
+          {data.map((template) => (
+            <Card
+              key={template.id}
               className="p-5 flex flex-col hover:border-[#0b646c]/50 transition-colors cursor-pointer group shadow-sm hover:shadow-md relative"
               onClick={() => setSelectedTemplate(template)}
             >
-              <Button size="icon" variant="ghost" className="absolute top-2 right-2 h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => handleDelete(template.id, e)}>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="absolute top-2 right-2 h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => handleDelete(template.id, e)}
+              >
                 <Trash2 className="h-4 w-4" />
               </Button>
               <div className="flex justify-between items-start mb-4">
@@ -100,18 +122,21 @@ function OfferTemplatesPage() {
                   <FileText className="h-5 w-5" />
                 </div>
                 <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/50 px-2 py-0.5 rounded">
-                  {template.category || 'General'}
+                  {template.category || "General"}
                 </div>
               </div>
-              
+
               <h3 className="font-semibold text-base text-foreground pr-6">{template.name}</h3>
               <p className="text-xs text-muted-foreground mt-1 mb-4">
                 Updated {new Date(template.updatedAt || template.updated_at).toLocaleDateString()}
               </p>
-              
+
               <div className="flex flex-wrap gap-2 mt-auto pt-4 border-t border-dashed">
                 {(template.placeholders || []).slice(0, 4).map((p: string, i: number) => (
-                  <span key={i} className="px-2 py-1 bg-muted/30 border border-muted/60 rounded text-[10px] font-mono text-muted-foreground whitespace-nowrap">
+                  <span
+                    key={i}
+                    className="px-2 py-1 bg-muted/30 border border-muted/60 rounded text-[10px] font-mono text-muted-foreground whitespace-nowrap"
+                  >
                     {`{{${p}}}`}
                   </span>
                 ))}
@@ -123,10 +148,12 @@ function OfferTemplatesPage() {
               </div>
             </Card>
           ))}
-          
+
           {data.length === 0 && (
             <div className="col-span-full p-12 text-center border-2 border-dashed rounded-lg text-muted-foreground">
-              <div className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50 flex items-center justify-center rounded-full bg-muted"><FileText className="h-6 w-6" /></div>
+              <div className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50 flex items-center justify-center rounded-full bg-muted">
+                <FileText className="h-6 w-6" />
+              </div>
               <p className="text-sm font-medium">No templates created yet.</p>
               <p className="text-xs mt-1">Click "New Template" to get started.</p>
             </div>
@@ -139,19 +166,28 @@ function OfferTemplatesPage() {
         <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 gap-0 overflow-hidden bg-slate-50">
           <DialogHeader className="p-4 border-b bg-white flex flex-row items-center justify-between shrink-0">
             <div>
-              <DialogTitle className="text-lg font-semibold text-slate-800">{selectedTemplate?.name}</DialogTitle>
-              <p className="text-xs text-slate-500 mt-1">Preview of the offer letter template structure.</p>
+              <DialogTitle className="text-lg font-semibold text-slate-800">
+                {selectedTemplate?.name}
+              </DialogTitle>
+              <p className="text-xs text-slate-500 mt-1">
+                Preview of the offer letter template structure.
+              </p>
             </div>
           </DialogHeader>
           <div className="flex-1 overflow-auto p-8 bg-slate-100 flex justify-center">
-            <div 
+            <div
               className="bg-white shadow-lg p-10 max-w-3xl w-full min-h-full rounded border prose prose-sm prose-slate"
-              dangerouslySetInnerHTML={{ __html: selectedTemplate?.bodyHtml || selectedTemplate?.body_html || '<p class="text-muted-foreground italic text-center mt-10">No content available for this template.</p>' }}
+              dangerouslySetInnerHTML={{
+                __html:
+                  selectedTemplate?.bodyHtml ||
+                  selectedTemplate?.body_html ||
+                  '<p class="text-muted-foreground italic text-center mt-10">No content available for this template.</p>',
+              }}
             />
           </div>
         </DialogContent>
       </Dialog>
-      
+
       {/* Create Dialog */}
       <Dialog open={openCreate} onOpenChange={setOpenCreate}>
         <DialogContent className="max-w-2xl">
@@ -162,30 +198,45 @@ function OfferTemplatesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Template Name</Label>
-                <Input value={newTemplate.name} onChange={e => setNewTemplate({...newTemplate, name: e.target.value})} placeholder="e.g. Standard Developer Offer" />
+                <Input
+                  value={newTemplate.name}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, name: e.target.value })}
+                  placeholder="e.g. Standard Developer Offer"
+                />
               </div>
               <div className="space-y-2">
                 <Label>Category</Label>
-                <Input value={newTemplate.category} onChange={e => setNewTemplate({...newTemplate, category: e.target.value})} placeholder="e.g. IT Department" />
+                <Input
+                  value={newTemplate.category}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, category: e.target.value })}
+                  placeholder="e.g. IT Department"
+                />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label>Template Body (HTML)</Label>
-              <Textarea 
-                value={newTemplate.body_html} 
-                onChange={e => setNewTemplate({...newTemplate, body_html: e.target.value})} 
+              <Textarea
+                value={newTemplate.body_html}
+                onChange={(e) => setNewTemplate({ ...newTemplate, body_html: e.target.value })}
                 className="h-64 font-mono text-sm"
                 placeholder="<p>Dear {{candidate_name}},</p>..."
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Use {'{{placeholder_name}}'} syntax for dynamic fields. Common placeholders: candidate_name, designation, entity_name, joining_date, ctc.
+                Use {"{{placeholder_name}}"} syntax for dynamic fields. Common placeholders:
+                candidate_name, designation, entity_name, joining_date, ctc.
               </p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenCreate(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={isSaving} className="bg-[#0b646c] hover:bg-[#0b646c]/90 text-white">
+            <Button variant="outline" onClick={() => setOpenCreate(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreate}
+              disabled={isSaving}
+              className="bg-[#0b646c] hover:bg-[#0b646c]/90 text-white"
+            >
               {isSaving ? "Saving..." : "Save Template"}
             </Button>
           </DialogFooter>
@@ -216,6 +267,5 @@ function FileTemplateIcon(props: any) {
       <path d="M14 13h2" />
       <path d="M14 17h2" />
     </svg>
-  )
+  );
 }
-
