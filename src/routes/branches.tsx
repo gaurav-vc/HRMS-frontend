@@ -21,20 +21,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { branchesApi, entitiesApi } from "@/api";
-import type { Branch, Entity } from "@/lib/mock-data";
+import { branchesApi, entitiesApi, employeesApi } from "@/api";
+import type { Branch, Entity, Employee } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/branches")({
   loader: async () => {
-    const [branches, entities] = await Promise.all([branchesApi.getAll(), entitiesApi.getAll()]);
-    return { branches, entities };
+    const [branches, entities, employees] = await Promise.all([
+      branchesApi.getAll(),
+      entitiesApi.getAll(),
+      employeesApi.getAll(),
+    ]);
+    return { branches, entities, employees };
   },
   component: BranchesPage,
 });
 
 function BranchesPage() {
   const router = useRouter();
-  const { branches: initial, entities } = Route.useLoaderData();
+  const { branches: initial, entities, employees } = Route.useLoaderData();
   const [rows, setRows] = useState<Branch[]>(initial);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Branch | null>(null);
@@ -164,6 +168,7 @@ function BranchesPage() {
         branch={editing}
         onSave={save}
         entities={entities}
+        employees={employees}
         mode={mode}
       />
     </>
@@ -176,6 +181,7 @@ function BranchDialog({
   branch,
   onSave,
   entities,
+  employees,
   mode,
 }: {
   open: boolean;
@@ -183,6 +189,7 @@ function BranchDialog({
   branch: Branch | null;
   onSave: (b: Branch) => void;
   entities: Entity[];
+  employees: Employee[];
   mode: "create" | "edit" | "view";
 }) {
   const defaultForm = {
@@ -263,11 +270,22 @@ function BranchDialog({
             </Field>
           </div>
           <Field label="Head">
-            <Input
-              value={form.head}
-              onChange={(e) => setForm({ ...form, head: e.target.value })}
+            <Select
+              value={String(form.head || "")}
+              onValueChange={(v) => setForm({ ...form, head: v } as any)}
               disabled={mode === "view"}
-            />
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select branch head" />
+              </SelectTrigger>
+              <SelectContent>
+                {employees.map((e) => (
+                  <SelectItem key={e.id} value={String(e.id)}>
+                    {(e as any).first_name || e.firstName} {(e as any).last_name || e.lastName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
         </div>
         <DialogFooter>

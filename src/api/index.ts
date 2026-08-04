@@ -20,7 +20,9 @@ import { redirect } from "@tanstack/react-router";
 const delay = (ms: number = 300) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const API_BASE_URL = import.meta.env.PROD
-  ? "https://hrms.vibecopilot.ai"
+  ? (typeof window !== 'undefined' && window.location.hostname.includes('vibesandbox')
+      ? "https://hrms.vibesandbox.live"
+      : "https://hrms.vibecopilot.ai")
   : "http://127.0.0.1:8000";
 
 let isRefreshing = false;
@@ -425,7 +427,7 @@ export const payrollApi = {
     try {
       return await apiCall("/payroll/structures/");
     } catch (e: any) {
-      if (e.message && e.message.includes("Forbidden")) return [];
+      if (e.message && (e.message.includes("Forbidden") || e.message.includes("permission"))) return [];
       throw e;
     }
   },

@@ -62,9 +62,9 @@ import { useAuth } from "@/lib/auth-context";
 export const Route = createFileRoute("/payroll/run")({
   loader: async () => {
     const [employees, payrollRuns, entities] = await Promise.all([
-      employeesApi.getAll(),
-      payrollApi.getRuns(),
-      entitiesApi.getAll(),
+      employeesApi.getAll().catch(() => []),
+      payrollApi.getRuns().catch(() => []),
+      entitiesApi.getAll().catch(() => []),
     ]);
     return { employees, payrollRuns, entities };
   },

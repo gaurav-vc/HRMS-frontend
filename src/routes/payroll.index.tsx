@@ -23,10 +23,10 @@ import { payrollApi, loansApi, reimbursementsApi, employeesApi } from "@/api";
 export const Route = createFileRoute("/payroll/")({
   loader: async () => {
     const [payrollRuns, employees, loans, reimbursements] = await Promise.all([
-      payrollApi.getRuns(),
-      employeesApi.getAll(),
-      loansApi.getAll(),
-      reimbursementsApi.getAll(),
+      payrollApi.getRuns().catch(() => []),
+      employeesApi.getAll().catch(() => []),
+      loansApi.getAll().catch(() => []),
+      reimbursementsApi.getAll().catch(() => []),
     ]);
     return { payrollRuns, employees, loans, reimbursements };
   },
