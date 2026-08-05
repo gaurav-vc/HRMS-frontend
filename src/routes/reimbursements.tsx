@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { fmtINR } from "@/lib/mock-data";
 import { reimbursementsApi, employeesApi } from "@/api";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/reimbursements")({
   loader: async () => {
@@ -39,6 +40,7 @@ export const Route = createFileRoute("/reimbursements")({
 function ReimbPage() {
   const { reimbursements, employees } = Route.useLoaderData();
   const [rows, setRows] = useState<any[]>(reimbursements);
+  const { user } = useAuth();
 
   // Dialog State
   const [open, setOpen] = useState(false);
@@ -54,9 +56,14 @@ function ReimbPage() {
     const emp = employees.find((e: any) => e.id == id);
     return emp ? `${emp.firstName} ${emp.lastName}` : "—";
   };
-  const act = (id: string, s: any) => {
-    setRows((r) => r.map((x) => (x.id === id ? { ...x, status: s } : x)));
-    toast.success(`Marked ${s}`);
+  const act = async (id: string, s: any) => {
+    try {
+      await reimbursementsApi.updateReimbursement(id, { status: s });
+      setRows((r) => r.map((x) => (x.id === id ? { ...x, status: s } : x)));
+      toast.success(`Marked ${s}`);
+    } catch (e: any) {
+      toast.error(`Failed to update status: ${e.message}`);
+    }
   };
 
   const handleCreate = async () => {
@@ -156,32 +163,44 @@ function ReimbPage() {
             ),
           },
         ]}
-        actions={(r) =>
-          r.status === "Pending" ? (
-            <div className="flex justify-end gap-1">
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-success border-success/40"
-                onClick={() => act(r.id, "Approved")}
-              >
-                <Check className="h-4 w-4" />
+        actions={(r) => {
+          const empId = r.employee || r.employeeId || r.employee_id;
+          const emp = employees.find((e: any) => e.id == empId);
+          const isManager = emp?.manager === user?.employee_id;
+          const isHR = ["super_admin", "group_hr", "entity_hr", "site_admin", "manager"].includes(user?.role || "");
+          const canApprove = (isManager || isHR) && user?.employee_id !== empId;
+
+          return r.status === "Pending" ? (
+            canApprove ? (
+              <div className="flex justify-end gap-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-success border-success/40"
+                  onClick={() => act(r.id, "Approved")}
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-destructive border-destructive/40"
+                  onClick={() => act(r.id, "Rejected")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <Button size="sm" variant="ghost" disabled>
+                Pending Review
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-destructive border-destructive/40"
-                onClick={() => act(r.id, "Rejected")}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+            )
           ) : (
             <Button size="sm" variant="ghost" disabled>
               —
             </Button>
           )
-        }
+        }}
       />
 
       <Dialog open={open} onOpenChange={setOpen}>

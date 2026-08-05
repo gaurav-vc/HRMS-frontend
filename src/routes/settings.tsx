@@ -131,6 +131,7 @@ function UsersAndRolesTab() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [nodeTypes, setNodeTypes] = useState<any[]>([]);
+  const [sites, setSites] = useState<any[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("roles");
@@ -158,16 +159,18 @@ function UsersAndRolesTab() {
   const fetchAll = async () => {
     try {
       setLoading(true);
-      const [r, e, d, nt] = await Promise.all([
+      const [r, e, d, nt, s] = await Promise.all([
         rolesApi.getAll(),
         employeesApi.getAll(),
         departmentsApi.getAll(),
         orgEngineApi.getNodeTypes(),
+        sitesApi.getAll().catch(() => []),
       ]);
       setRoles(r);
       setEmployees(e);
       setDepartments(d);
       setNodeTypes(nt);
+      setSites(s);
     } catch (e) {
       toast.error("Failed to load setup data");
     } finally {
@@ -351,6 +354,7 @@ function UsersAndRolesTab() {
                   roles={roles}
                   nodeTypes={nodeTypes}
                   employees={employees}
+                  sites={sites}
                   initialData={editingUser}
                   onClose={() => {
                     setUserModalOpen(false);
@@ -650,15 +654,15 @@ function RoleForm({
           name: initialData.name || "",
           code: initialData.code || "",
           department: initialData.department ? String(initialData.department) : "",
-          accessScope: initialData.accessScope || "Self",
-          dashboardType: initialData.dashboardType || "Employee",
-          hierarchyLevel: initialData.hierarchyLevel || "",
-          reportingTo: initialData.reportingTo ? String(initialData.reportingTo) : "",
-          canManageUsers: initialData.canManageUsers || false,
-          canApprove: initialData.canApprove || false,
-          crossDepartmentAccess: initialData.crossDepartmentAccess || false,
-          permissions: initialData.permissions || {},
-          allowedEntities: initialData.permissions?.allowed_entities || [],
+          reportingTo: initialData?.reporting_to?.id || initialData?.reporting_to || initialData?.reportingTo || "",
+          hierarchyLevel: initialData?.hierarchy_level || initialData?.hierarchyLevel || "",
+          permissions: initialData?.permissions || {},
+          accessScope: initialData?.access_scope || (initialData?.permissions?.allowed_entities ? "Custom" : "Corporate"),
+          allowedEntities: initialData?.permissions?.allowed_entities || [],
+          dashboardType: initialData?.dashboard_type || initialData?.dashboardType || "Employee",
+          canManageUsers: initialData?.can_manage_users ?? initialData?.canManageUsers ?? false,
+          canApprove: initialData?.can_approve ?? initialData?.canApprove ?? false,
+          crossDepartmentAccess: initialData?.cross_department_access ?? initialData?.crossDepartmentAccess ?? false,
         }
       : {
           name: "",
@@ -713,6 +717,23 @@ function RoleForm({
         delete payload.permissions.allowed_entities;
       }
       delete payload.allowedEntities;
+
+      // Map camelCase to snake_case for backend
+      payload.dashboard_type = payload.dashboardType;
+      payload.can_manage_users = payload.canManageUsers;
+      payload.can_approve = payload.canApprove;
+      payload.cross_department_access = payload.crossDepartmentAccess;
+      payload.access_scope = payload.accessScope;
+      payload.reporting_to = payload.reportingTo;
+      payload.hierarchy_level = payload.hierarchyLevel;
+
+      delete payload.dashboardType;
+      delete payload.canManageUsers;
+      delete payload.canApprove;
+      delete payload.crossDepartmentAccess;
+      delete payload.accessScope;
+      delete payload.reportingTo;
+      delete payload.hierarchyLevel;
 
       if (initialData && initialData.id) {
         await rolesApi.update(initialData.id, payload);
@@ -996,6 +1017,7 @@ function UserForm({
   roles,
   nodeTypes,
   employees,
+  sites,
   initialData,
   onClose,
 }: {
@@ -1003,6 +1025,7 @@ function UserForm({
   roles: any[];
   nodeTypes: any[];
   employees: any[];
+  sites: any[];
   initialData?: any;
   onClose: () => void;
 }) {
@@ -1195,6 +1218,21 @@ function UserForm({
             {employees.map((emp) => (
               <option key={emp.id} value={String(emp.id)}>
                 {emp.firstName} {emp.lastName}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-2">
+          <Label>Site</Label>
+          <select
+            className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring"
+            value={form.site || ""}
+            onChange={(e) => setForm({ ...form, site: e.target.value })}
+          >
+            <option value="">None</option>
+            {sites.map((site) => (
+              <option key={site.id} value={String(site.id)}>
+                {site.name}
               </option>
             ))}
           </select>

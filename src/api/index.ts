@@ -476,6 +476,8 @@ export const reimbursementsApi = {
   getAll: async (): Promise<Reimbursement[]> => apiCall("/payroll/reimbursements/"),
   createReimbursement: async (data: any): Promise<Reimbursement> =>
     apiCall("/payroll/reimbursements/", "POST", data),
+  updateReimbursement: async (id: string | number, data: any): Promise<Reimbursement> =>
+    apiCall(`/payroll/reimbursements/${id}/`, "PATCH", data),
 };
 
 export const regularizationsApi = {

@@ -27,6 +27,7 @@ function ManageRequestsPage() {
   const [requests, setRequests] = useState<any[]>([]);
   const [employees, setEmployees] = useState<Record<number, any>>({});
   const [loading, setLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -109,16 +110,22 @@ function ManageRequestsPage() {
           label="OPEN REQUESTS"
           value={openRequests.toString()}
           icon={<Clock className="w-5 h-5 text-slate-600" />}
+          isActive={statusFilter === "Pending"}
+          onClick={() => setStatusFilter(statusFilter === "Pending" ? null : "Pending")}
         />
         <StatCard
           label="APPROVED"
           value={approvedRequests.toString()}
           icon={<CheckCircle2 className="w-5 h-5 text-blue-600" />}
+          isActive={statusFilter === "Approved"}
+          onClick={() => setStatusFilter(statusFilter === "Approved" ? null : "Approved")}
         />
         <StatCard
           label="DEACTIVATED"
           value={deactivatedRequests.toString()}
           icon={<UserMinus className="w-5 h-5 text-slate-600" />}
+          isActive={statusFilter === "Deactivated"}
+          onClick={() => setStatusFilter(statusFilter === "Deactivated" ? null : "Deactivated")}
         />
       </div>
 
@@ -133,16 +140,18 @@ function ManageRequestsPage() {
           </div>
 
           <div className="space-y-6">
-            {requests.length === 0 ? (
+            {requests.filter(r => !statusFilter || r.status === statusFilter).length === 0 ? (
               <div className="m-auto text-center py-12 bg-slate-50 border border-dashed rounded-xl w-full">
                 <Clock className="w-10 h-10 text-slate-400 mx-auto mb-4" />
-                <h4 className="text-lg font-semibold text-slate-900 mb-2">No requests yet</h4>
+                <h4 className="text-lg font-semibold text-slate-900 mb-2">No requests found</h4>
                 <p className="text-sm text-slate-500 max-w-sm mx-auto">
-                  Submitted separation requests will appear here for HR review.
+                  {statusFilter ? `No ${statusFilter.toLowerCase()} requests currently.` : "Submitted separation requests will appear here for HR review."}
                 </p>
               </div>
             ) : (
-              requests.map((req) => {
+              requests
+                .filter(r => !statusFilter || r.status === statusFilter)
+                .map((req) => {
                 const emp = employees[req.employee];
                 const initials = emp
                   ? `${emp.firstName?.[0] || emp.first_name?.[0] || ""}${emp.lastName?.[0] || emp.last_name?.[0] || ""}`.toUpperCase()
@@ -171,9 +180,7 @@ function ManageRequestsPage() {
                           LWD: {req.last_working_day} • Reason: {req.reason || req.exit_type}
                         </p>
                         {req.status === "Pending" &&
-                          (user?.role === "super_admin" ||
-                            user?.role === "group_hr" ||
-                            user?.role === "entity_hr") && (
+                          ((["super_admin", "group_hr", "entity_hr", "site_admin", "manager"].includes(user?.role || "")) || (emp?.manager === user?.employee_id)) && (
                             <div className="flex gap-2 mt-3">
                               <Button
                                 size="sm"
@@ -219,9 +226,28 @@ function ManageRequestsPage() {
   );
 }
 
-function StatCard({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
+function StatCard({ 
+  label, 
+  value, 
+  icon, 
+  onClick, 
+  isActive 
+}: { 
+  label: string; 
+  value: string; 
+  icon: React.ReactNode;
+  onClick?: () => void;
+  isActive?: boolean;
+}) {
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col h-full">
+    <div 
+      onClick={onClick}
+      className={cn(
+        "bg-white p-6 rounded-xl shadow-sm border flex flex-col h-full transition-all",
+        onClick ? "cursor-pointer hover:shadow-md hover:border-blue-200" : "",
+        isActive ? "ring-2 ring-[#1a4cd2] border-transparent shadow-md" : "border-slate-200"
+      )}
+    >
       <div className="flex justify-between items-start mb-4">
         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
           {label}
