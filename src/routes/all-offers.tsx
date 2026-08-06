@@ -8,6 +8,7 @@ import { Search, Check, MailPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -47,6 +48,9 @@ function AllOffersPage() {
   const [selectedEmp, setSelectedEmp] = useState<any>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [isSending, setIsSending] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string>("");
+  const [isPreviewMode, setIsPreviewMode] = useState<boolean>(false);
+  const [emailBodyText, setEmailBodyText] = useState<string>("");
 
   const tabs = ["All", "No Offer", "Pending Approval", "Awaiting Acceptance", "Completed"];
 
@@ -110,25 +114,35 @@ function AllOffersPage() {
     }
   };
 
-  const handleSendOffer = async () => {
+  const handlePreviewOffer = async () => {
     if (!selectedTemplate) return toast.error("Please select a template");
     setIsSending(true);
     try {
-      if (selectedEmp.isGenerated) {
-        await offersApi.update(selectedEmp.id, {
-          status: "Awaiting Acceptance",
-          template_id: selectedTemplate,
-        });
-      } else {
-        await offersApi.create({
-          employee: selectedEmp.employeeId,
-          offer_number: `OFF-${Date.now()}`,
-          status: "Awaiting Acceptance",
-          template_id: selectedTemplate,
-        });
-      }
+      const res = await offersApi.previewOffer({
+        employee_id: selectedEmp.employeeId,
+        template_id: selectedTemplate,
+      });
+      setPreviewHtml(res.html);
+      setIsPreviewMode(true);
+    } catch (err: any) {
+      toast.error(`Failed to generate preview: ${err.message || String(err)}`);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleSendCustomOffer = async () => {
+    setIsSending(true);
+    try {
+      await offersApi.sendCustomOffer({
+        employee_id: selectedEmp.employeeId,
+        template_id: selectedTemplate,
+        html_content: previewHtml,
+        email_body_text: emailBodyText,
+      });
       toast.success(`Offer sent to ${selectedEmp.candidateEmail}`);
       setOpen(false);
+      setIsPreviewMode(false);
       fetchData();
     } catch (err: any) {
       toast.error(`Failed to send offer: ${err.message || String(err)}`);
@@ -296,6 +310,7 @@ function AllOffersPage() {
                     size="sm"
                     onClick={() => {
                       setSelectedEmp(offer);
+                      setEmailBodyText(`Dear ${offer.candidateName},\n\nCongratulations!\n\nWe are thrilled to extend an offer for the position of ${offer.designationName || 'Employee'} at ${offer.entityName || 'the company'}.\n\nPlease find your detailed offer letter attached to this email. Kindly review the document, and if you choose to accept, follow the instructions provided within the attachment.\n\nIf you have any questions or need further clarification, please feel free to reach out.\n\nBest regards,\nHR Department\n${offer.entityName || 'the company'}`);
                       setOpen(true);
                     }}
                     className="h-8 text-xs px-2 whitespace-nowrap"
@@ -329,41 +344,98 @@ function AllOffersPage() {
         </div>
       </Card>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+      <Dialog 
+        open={open} 
+        onOpenChange={(val) => {
+          setOpen(val);
+          if (!val) {
+            setIsPreviewMode(false);
+            setEmailBodyText("");
+          }
+        }}
+      >
+        <DialogContent className={isPreviewMode ? "max-w-5xl" : "max-w-md"}>
           <DialogHeader>
-            <DialogTitle>Send Offer Letter</DialogTitle>
+            <DialogTitle>{isPreviewMode ? "Preview & Edit Offer Letter" : "Send Offer Letter"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label>Candidate</Label>
-              <div className="font-medium mt-1">
-                {selectedEmp?.candidateName} ({selectedEmp?.candidateEmail})
+          
+          {!isPreviewMode ? (
+              <div className="space-y-4 py-4">
+                <div>
+                  <Label>Candidate</Label>
+                  <div className="font-medium mt-1">
+                    {selectedEmp?.candidateName} ({selectedEmp?.candidateEmail})
+                  </div>
+                </div>
+                <div>
+                  <Label>Select Template</Label>
+                  <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select an offer template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(templates || []).map((t: any) => (
+                        <SelectItem key={t.id} value={String(t.id)}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </div>
-            <div>
-              <Label>Select Template</Label>
-              <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select an offer template" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(templates || []).map((t: any) => (
-                    <SelectItem key={t.id} value={String(t.id)}>
-                      {t.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          ) : (
+              <div className="space-y-4 pt-1 pb-4">
+                 <div className="text-sm text-muted-foreground -mt-2">
+                    Review the generated offer letter. You can manually edit any missing fields (highlighted in red) or customize the message below before sending.
+                 </div>
+                 
+                 <div className="space-y-2">
+                    <Label>Custom Email Message (Optional)</Label>
+                    <Textarea 
+                       placeholder="e.g. Please find your detailed offer letter attached. We are looking forward to welcoming you to the team!"
+                       value={emailBodyText}
+                       onChange={(e) => setEmailBodyText(e.target.value)}
+                       className="h-48 text-sm"
+                    />
+                    <p className="text-[10px] text-muted-foreground">This text will be the entire body of the email. Feel free to format with new lines, they will be preserved.</p>
+                 </div>
+
+                 <div className="flex flex-col gap-2 overflow-hidden relative group h-[45vh]">
+                    <Label>PDF Attachment Preview (Visual Editor)</Label>
+                    <div 
+                      className="flex-1 overflow-auto border rounded-md bg-white shadow-inner p-6 focus:outline-none focus:ring-2 focus:ring-[#0b646c]/50 transition-shadow" 
+                      contentEditable
+                      suppressContentEditableWarning={true}
+                      dangerouslySetInnerHTML={{ __html: previewHtml }}
+                      onBlur={(e) => setPreviewHtml(e.currentTarget.innerHTML)}
+                    />
+                    <div className="absolute top-10 right-6 text-[10px] bg-[#0b646c]/10 text-[#0b646c] px-2 py-0.5 rounded shadow-sm font-semibold pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity">
+                      EDITABLE
+                    </div>
+                 </div>
+              </div>
+          )}
+          
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              Cancel
+            <Button variant="outline" onClick={() => {
+                if (isPreviewMode) {
+                    setIsPreviewMode(false);
+                } else {
+                    setOpen(false);
+                }
+            }}>
+              {isPreviewMode ? "Back" : "Cancel"}
             </Button>
-            <Button onClick={handleSendOffer} disabled={isSending}>
-              {isSending ? "Sending..." : "Send via Email"}
-            </Button>
+            
+            {!isPreviewMode ? (
+                <Button onClick={handlePreviewOffer} disabled={isSending}>
+                  {isSending ? "Generating..." : "Preview Offer"}
+                </Button>
+            ) : (
+                <Button onClick={handleSendCustomOffer} disabled={isSending} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                  {isSending ? "Sending..." : "Finalize & Send Email"}
+                </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>

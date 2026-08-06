@@ -512,14 +512,51 @@ export const offersApi = {
   update: async (id: string | number, data: any): Promise<any> =>
     apiCall(`/offer-letters/${id}/`, "PATCH", data),
   delete: async (id: string | number): Promise<void> => apiCall(`/offer-letters/${id}/`, "DELETE"),
+  previewOffer: async (data: { employee_id: number; template_id: number | string }): Promise<any> =>
+    apiCall("/offer-letters/preview_email/", "POST", data),
+  sendCustomOffer: async (data: { employee_id: number; template_id: number | string; html_content: string; email_body_text?: string }): Promise<any> =>
+    apiCall("/offer-letters/send_custom_email/", "POST", data),
 };
 
 export const offerTemplatesApi = {
   getAll: async (): Promise<any[]> => apiCall("/offer-templates/"),
   getById: async (id: string | number): Promise<any> => apiCall(`/offer-templates/${id}/`),
-  create: async (data: any): Promise<any> => apiCall("/offer-templates/", "POST", data),
-  update: async (id: string | number, data: any): Promise<any> =>
-    apiCall(`/offer-templates/${id}/`, "PATCH", data),
+  create: async (data: any): Promise<any> => {
+    const formData = new FormData();
+    for (const key in data) {
+      if (data[key] !== null && data[key] !== undefined) {
+        if (key === 'placeholders') {
+          formData.append(key, JSON.stringify(data[key]));
+        } else {
+          formData.append(key, data[key]);
+        }
+      }
+    }
+    const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/api/offer-templates/`, { method: "POST", headers, body: formData });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+  update: async (id: string | number, data: any): Promise<any> => {
+    const formData = new FormData();
+    for (const key in data) {
+      if (data[key] !== null && data[key] !== undefined) {
+        if (key === 'placeholders') {
+          formData.append(key, JSON.stringify(data[key]));
+        } else {
+          formData.append(key, data[key]);
+        }
+      }
+    }
+    const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/api/offer-templates/${id}/`, { method: "PATCH", headers, body: formData });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
   delete: async (id: string | number): Promise<void> =>
     apiCall(`/offer-templates/${id}/`, "DELETE"),
 };

@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, MoreHorizontal, ChevronDown, Check, Info } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 import {
   rolesApi,
   employeesApi,
@@ -54,6 +55,7 @@ function SettingsPage() {
           <TabsTrigger value="notif">Notifications</TabsTrigger>
           <TabsTrigger value="roles">Roles & Users</TabsTrigger>
           <TabsTrigger value="permissions">Role Permissions</TabsTrigger>
+          <TabsTrigger value="branding">Branding</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pay">
@@ -97,6 +99,12 @@ function SettingsPage() {
         <TabsContent value="permissions">
           <Card className="p-6 mt-4 border shadow-sm rounded-lg">
             <RolePermissionsTab />
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="branding">
+          <Card className="p-6 mt-4 border shadow-sm rounded-lg">
+            <BrandingTab />
           </Card>
         </TabsContent>
       </Tabs>
@@ -2172,6 +2180,124 @@ function LeaveSettingsTab() {
       <div className="flex justify-end pt-4 border-t">
         <Button onClick={handleSave} disabled={saving}>
           {saving ? "Saving..." : "Save Configuration"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function BrandingTab() {
+  const { user } = useAuth();
+  const [site, setSite] = useState<any>(null);
+  const [brandingText, setBrandingText] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    sitesApi.getAll().then((sites) => {
+      // Find site where this user is contact_email or matching their employee site
+      const mySite = sites.find(
+        (s: any) =>
+          (s.contactEmail && s.contactEmail.toLowerCase() === user.email.toLowerCase()) ||
+          (s.contact_email && s.contact_email.toLowerCase() === user.email.toLowerCase())
+      );
+      if (mySite) {
+        setSite(mySite);
+        setBrandingText(mySite.branding_text || "");
+        if (mySite.logo) setPreview(mySite.logo);
+      }
+      setLoading(false);
+    }).catch(() => {
+      setLoading(false);
+    });
+  }, [user]);
+
+  const handleSave = async () => {
+    if (!site) return;
+    setSaving(true);
+    try {
+      const formData = new FormData();
+      formData.append("branding_text", brandingText);
+      if (logoFile) {
+        formData.append("logo", logoFile);
+      }
+      
+      const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
+      const API_BASE_URL = import.meta.env.PROD
+        ? (typeof window !== 'undefined' && window.location.hostname.includes('vibesandbox')
+            ? "https://hrms.vibesandbox.live"
+            : "https://hrms.vibecopilot.ai")
+        : "http://127.0.0.1:8000";
+
+      const res = await fetch(`${API_BASE_URL}/api/organisation/sites/${site.id}/`, {
+        method: "PATCH",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error("Failed to update branding");
+      const data = await res.json();
+      toast.success("Branding updated successfully!");
+      if (data.logo) setPreview(data.logo);
+      
+      // Reload to update sidebar logo
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div className="text-slate-500">Loading your site settings...</div>;
+  if (!site) return <div className="text-slate-500">No site associated with your account. Only Site Admins can configure branding.</div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h3 className="text-lg font-medium text-slate-900">Site Branding</h3>
+        <p className="text-sm text-slate-500">Personalize your site's logo and title. These changes will reflect across your site's emails and dashboard.</p>
+      </div>
+      <div className="space-y-4 max-w-md">
+        <div className="space-y-2">
+          <Label>Site Title</Label>
+          <Input 
+            value={brandingText} 
+            onChange={(e) => setBrandingText(e.target.value)} 
+            placeholder="e.g. PeoplePulse HRMS" 
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Logo</Label>
+          <Input 
+            type="file" 
+            accept="image/*" 
+            onChange={(e) => {
+              if (e.target.files && e.target.files[0]) {
+                setLogoFile(e.target.files[0]);
+                setPreview(URL.createObjectURL(e.target.files[0]));
+              }
+            }} 
+          />
+          {preview && (
+            <div className="mt-4 p-4 border rounded bg-slate-50 flex items-center justify-center min-h-[100px]">
+              <img 
+                src={preview} 
+                alt="Logo" 
+                className="max-h-24 object-contain" 
+              />
+            </div>
+          )}
+        </div>
+        <Button 
+          onClick={handleSave} 
+          disabled={saving}
+          className="w-full bg-[#1a4cd2] hover:bg-[#1641b4] text-white"
+        >
+          {saving ? "Saving..." : "Save Branding"}
         </Button>
       </div>
     </div>

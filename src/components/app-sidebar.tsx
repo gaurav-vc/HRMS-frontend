@@ -1,4 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { sitesApi } from "@/api";
 import {
   LayoutDashboard,
   Building2,
@@ -165,6 +167,28 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user } = useAuth();
   const role = user?.role ?? "employee";
+  const [branding, setBranding] = useState<{ text: string; logo: string | null }>({
+    text: "PeoplePulse",
+    logo: null,
+  });
+
+  useEffect(() => {
+    if (!user) return;
+    sitesApi.getAll().then((sites) => {
+      const mySite = sites.find(
+        (s: any) =>
+          (s.contactEmail && s.contactEmail.toLowerCase() === user.email.toLowerCase()) ||
+          (s.contact_email && s.contact_email.toLowerCase() === user.email.toLowerCase())
+      );
+      if (mySite) {
+        const text = mySite.branding_text ?? mySite.brandingText ?? "PeoplePulse";
+        setBranding({
+          text: text,
+          logo: mySite.logo || null,
+        });
+      }
+    }).catch(() => {});
+  }, [user]);
 
   const can = (it: Item) => canAccessRoute(it, user);
   const isActive = (url: string) =>
@@ -176,15 +200,23 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-4 py-4 border-b border-sidebar-border">
         <Link to="/" className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-md bg-sidebar-primary grid place-items-center text-sidebar-primary-foreground font-bold">
-            P
-          </div>
-          {!collapsed && (
-            <div className="leading-tight">
-              <div className="text-sm font-semibold text-sidebar-foreground">PeoplePulse</div>
-              <div className="text-[10px] text-sidebar-foreground/60 uppercase tracking-wider">
-                HRMS & Payroll
-              </div>
+          {branding.logo ? (
+            <div className="h-10 w-auto flex items-center justify-center overflow-hidden shrink-0">
+              <img src={branding.logo} alt="Logo" className="max-h-full max-w-[80px] object-contain" />
+            </div>
+          ) : (
+            <div className="h-8 w-8 rounded-md bg-sidebar-primary grid place-items-center text-sidebar-primary-foreground font-bold">
+              {branding.text ? branding.text[0].toUpperCase() : 'P'}
+            </div>
+          )}
+          {!collapsed && branding.text && (
+            <div className="leading-tight overflow-hidden">
+              <div className="text-sm font-semibold text-sidebar-foreground truncate">{branding.text}</div>
+              {branding.text === "PeoplePulse" && (
+                <div className="text-[10px] text-sidebar-foreground/60 uppercase tracking-wider truncate">
+                  HRMS & Payroll
+                </div>
+              )}
             </div>
           )}
         </Link>

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { offerTemplatesApi } from "@/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FilePlus, FileText, Trash2, X } from "lucide-react";
+import { FilePlus, FileText, Trash2, X, Edit2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,8 @@ function OfferTemplatesPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<any | null>(null);
   const [openCreate, setOpenCreate] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [openEdit, setOpenEdit] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<any | null>(null);
 
   const [newTemplate, setNewTemplate] = useState({
     name: "",
@@ -34,6 +36,14 @@ function OfferTemplatesPage() {
     body_html:
       "<h2>Offer of Employment</h2><p>Dear {{candidate_name}},</p><p>We are pleased to offer you the position of {{designation}} at {{entity_name}}.</p>",
     placeholders: ["candidate_name", "designation", "entity_name"],
+    header_html: "",
+    footer_html: "",
+    header_image: null as File | null,
+    footer_image: null as File | null,
+    header_image_width: "535",
+    header_image_align: "center",
+    footer_image_width: "535",
+    footer_image_align: "center",
   });
 
   const fetchData = () => {
@@ -62,9 +72,65 @@ function OfferTemplatesPage() {
         body_html:
           "<h2>Offer of Employment</h2><p>Dear {{candidate_name}},</p><p>We are pleased to offer you the position of {{designation}} at {{entity_name}}.</p>",
         placeholders: ["candidate_name", "designation", "entity_name"],
+        header_html: "",
+        footer_html: "",
+        header_image: null,
+        footer_image: null,
+        header_image_width: "535",
+        header_image_align: "center",
+        footer_image_width: "535",
+        footer_image_align: "center",
       });
     } catch (err: any) {
       toast.error(`Error: ${err.message || "Failed to create"}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleEditOpen = (template: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingTemplate({
+      id: template.id,
+      name: template.name || "",
+      category: template.category || "",
+      body_html: template.body_html || template.bodyHtml || "",
+      header_html: template.header_html || template.headerHtml || "",
+      footer_html: template.footer_html || template.footerHtml || "",
+      header_image: null,
+      footer_image: null,
+      header_image_width: template.header_image_width || "535",
+      header_image_align: template.header_image_align || "center",
+      footer_image_width: template.footer_image_width || "535",
+      footer_image_align: template.footer_image_align || "center",
+    });
+    setOpenEdit(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingTemplate.name) return toast.error("Name is required");
+    setIsSaving(true);
+    try {
+      const updateData: any = {
+        name: editingTemplate.name,
+        category: editingTemplate.category,
+        body_html: editingTemplate.body_html,
+        header_html: editingTemplate.header_html,
+        footer_html: editingTemplate.footer_html,
+        header_image_width: editingTemplate.header_image_width,
+        header_image_align: editingTemplate.header_image_align,
+        footer_image_width: editingTemplate.footer_image_width,
+        footer_image_align: editingTemplate.footer_image_align,
+      };
+      if (editingTemplate.header_image) updateData.header_image = editingTemplate.header_image;
+      if (editingTemplate.footer_image) updateData.footer_image = editingTemplate.footer_image;
+
+      await offerTemplatesApi.update(editingTemplate.id, updateData);
+      toast.success("Template updated successfully");
+      setOpenEdit(false);
+      fetchData();
+    } catch (err: any) {
+      toast.error(`Error: ${err.message || "Failed to update"}`);
     } finally {
       setIsSaving(false);
     }
@@ -109,20 +175,36 @@ function OfferTemplatesPage() {
               className="p-5 flex flex-col hover:border-[#0b646c]/50 transition-colors cursor-pointer group shadow-sm hover:shadow-md relative"
               onClick={() => setSelectedTemplate(template)}
             >
-              <Button
-                size="icon"
-                variant="ghost"
-                className="absolute top-2 right-2 h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={(e) => handleDelete(template.id, e)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
               <div className="flex justify-between items-start mb-4">
                 <div className="h-10 w-10 bg-[#0b646c]/10 text-[#0b646c] rounded-lg flex items-center justify-center group-hover:bg-[#0b646c]/20 transition-colors">
                   <FileText className="h-5 w-5" />
                 </div>
-                <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/50 px-2 py-0.5 rounded">
-                  {template.category || "General"}
+                
+                <div className="relative h-8 w-16 flex justify-end">
+                  {/* Badge visible by default, fades out on hover */}
+                  <div className="absolute top-0 right-0 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/50 px-2 py-1 rounded transition-opacity duration-200 group-hover:opacity-0">
+                    {template.category || "General"}
+                  </div>
+                  
+                  {/* Buttons hidden by default, fade in on hover */}
+                  <div className="absolute -top-1 -right-1 flex gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-muted-foreground hover:text-[#0b646c] hover:bg-[#0b646c]/10"
+                      onClick={(e) => handleEditOpen(template, e)}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      onClick={(e) => handleDelete(template.id, e)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
 
@@ -175,15 +257,38 @@ function OfferTemplatesPage() {
             </div>
           </DialogHeader>
           <div className="flex-1 overflow-auto p-8 bg-slate-100 flex justify-center">
-            <div
-              className="bg-white shadow-lg p-10 max-w-3xl w-full min-h-full rounded border prose prose-sm prose-slate"
-              dangerouslySetInnerHTML={{
-                __html:
-                  selectedTemplate?.bodyHtml ||
-                  selectedTemplate?.body_html ||
-                  '<p class="text-muted-foreground italic text-center mt-10">No content available for this template.</p>',
-              }}
-            />
+            <div className="bg-white shadow-lg p-10 max-w-3xl w-full min-h-full rounded border flex flex-col">
+              
+              {/* Header */}
+              <div className="mb-6 pb-4 border-b border-dashed flex w-full" style={{ justifyContent: (selectedTemplate?.header_image_align || 'center') === 'left' ? 'flex-start' : (selectedTemplate?.header_image_align === 'right' ? 'flex-end' : 'center') }}>
+                {selectedTemplate?.header_html || selectedTemplate?.headerHtml ? (
+                  <div dangerouslySetInnerHTML={{ __html: selectedTemplate?.header_html || selectedTemplate?.headerHtml || '' }} />
+                ) : (selectedTemplate?.header_image || selectedTemplate?.headerImage) ? (
+                  <img src={(selectedTemplate?.header_image || selectedTemplate?.headerImage) as string} alt="Header" className="object-contain" style={{ width: `${(Number(selectedTemplate?.header_image_width || 535) / 535) * 100}%` }} />
+                ) : null}
+              </div>
+              
+              {/* Body */}
+              <div
+                className="prose prose-sm prose-slate max-w-none flex-1"
+                dangerouslySetInnerHTML={{
+                  __html:
+                    selectedTemplate?.bodyHtml ||
+                    selectedTemplate?.body_html ||
+                    '<p class="text-muted-foreground italic text-center mt-10">No content available for this template.</p>',
+                }}
+              />
+              
+              {/* Footer */}
+              <div className="mt-8 pt-4 border-t border-dashed flex w-full" style={{ justifyContent: (selectedTemplate?.footer_image_align || 'center') === 'left' ? 'flex-start' : (selectedTemplate?.footer_image_align === 'right' ? 'flex-end' : 'center') }}>
+                {selectedTemplate?.footer_html || selectedTemplate?.footerHtml ? (
+                  <div dangerouslySetInnerHTML={{ __html: selectedTemplate?.footer_html || selectedTemplate?.footerHtml || '' }} />
+                ) : (selectedTemplate?.footer_image || selectedTemplate?.footerImage) ? (
+                  <img src={(selectedTemplate?.footer_image || selectedTemplate?.footerImage) as string} alt="Footer" className="object-contain" style={{ width: `${(Number(selectedTemplate?.footer_image_width || 535) / 535) * 100}%` }} />
+                ) : null}
+              </div>
+
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -214,6 +319,29 @@ function OfferTemplatesPage() {
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Header HTML (Optional)</Label>
+                <Textarea
+                  value={newTemplate.header_html}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, header_html: e.target.value })}
+                  className="font-mono text-xs h-20"
+                  placeholder="<div>Custom Header...</div>"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Footer HTML (Optional)</Label>
+                <Textarea
+                  value={newTemplate.footer_html}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, footer_html: e.target.value })}
+                  className="font-mono text-xs h-20"
+                  placeholder="<div>Custom Footer...</div>"
+                />
+              </div>
+            </div>
+
+
+
             <div className="space-y-2">
               <Label>Template Body (HTML)</Label>
               <Textarea
@@ -238,6 +366,74 @@ function OfferTemplatesPage() {
               className="bg-[#0b646c] hover:bg-[#0b646c]/90 text-white"
             >
               {isSaving ? "Saving..." : "Save Template"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={openEdit} onOpenChange={setOpenEdit}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Offer Template</DialogTitle>
+          </DialogHeader>
+          {editingTemplate && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Template Name</Label>
+                  <Input
+                    value={editingTemplate.name}
+                    onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <Input
+                    value={editingTemplate.category}
+                    onChange={(e) => setEditingTemplate({ ...editingTemplate, category: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Header HTML (Optional)</Label>
+                  <Textarea
+                    value={editingTemplate.header_html}
+                    onChange={(e) => setEditingTemplate({ ...editingTemplate, header_html: e.target.value })}
+                    className="font-mono text-xs h-20"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Footer HTML (Optional)</Label>
+                  <Textarea
+                    value={editingTemplate.footer_html}
+                    onChange={(e) => setEditingTemplate({ ...editingTemplate, footer_html: e.target.value })}
+                    className="font-mono text-xs h-20"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Template Body (HTML)</Label>
+                <Textarea
+                  value={editingTemplate.body_html}
+                  onChange={(e) => setEditingTemplate({ ...editingTemplate, body_html: e.target.value })}
+                  className="h-64 font-mono text-sm"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenEdit(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdate}
+              disabled={isSaving}
+              className="bg-[#0b646c] hover:bg-[#0b646c]/90 text-white"
+            >
+              {isSaving ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
