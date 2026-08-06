@@ -2284,12 +2284,13 @@ function BrandingTab() {
             }} 
           />
           {preview && (
-            <div className="mt-4 p-4 border rounded bg-slate-50 flex items-center justify-center min-h-[100px]">
+            <div className="mt-4 p-4 border rounded bg-slate-50 flex flex-col items-center justify-center min-h-[100px]">
               <img 
                 src={preview} 
                 alt="Logo" 
                 className="max-h-24 object-contain" 
               />
+              <p className="text-xs text-red-500 mt-2 break-all">DEBUG URL: {preview}</p>
             </div>
           )}
         </div>
