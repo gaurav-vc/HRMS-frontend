@@ -44,6 +44,11 @@ export interface Site {
   radius: number;
   qrEnabled: boolean;
   faceEnabled: boolean;
+  contactEmail?: string;
+  contact_email?: string;
+  branding_text?: string;
+  brandingText?: string;
+  logo?: string;
 }
 export interface Department {
   id: string;

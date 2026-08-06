@@ -18,6 +18,7 @@ import {
   orgEngineApi,
   entitiesApi,
   sitesApi,
+  API_BASE_URL,
   attendancePoliciesApi,
   leavesConfigApi,
 } from "@/api";
@@ -2207,7 +2208,9 @@ function BrandingTab() {
       if (mySite) {
         setSite(mySite);
         setBrandingText(mySite.branding_text || "");
-        if (mySite.logo) setPreview(mySite.logo);
+        if (mySite.logo) {
+          setPreview(mySite.logo.startsWith('/') ? `${API_BASE_URL}${mySite.logo}` : mySite.logo);
+        }
       }
       setLoading(false);
     }).catch(() => {
@@ -2226,11 +2229,6 @@ function BrandingTab() {
       }
       
       const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
-      const API_BASE_URL = import.meta.env.PROD
-        ? (typeof window !== 'undefined' && window.location.hostname.includes('vibesandbox')
-            ? "https://hrms.vibesandbox.live"
-            : "https://hrms.vibecopilot.ai")
-        : "http://127.0.0.1:8000";
 
       const res = await fetch(`${API_BASE_URL}/api/organisation/sites/${site.id}/`, {
         method: "PATCH",
@@ -2241,7 +2239,9 @@ function BrandingTab() {
       if (!res.ok) throw new Error("Failed to update branding");
       const data = await res.json();
       toast.success("Branding updated successfully!");
-      if (data.logo) setPreview(data.logo);
+      if (data.logo) {
+        setPreview(data.logo.startsWith('/') ? `${API_BASE_URL}${data.logo}` : data.logo);
+      }
       
       // Reload to update sidebar logo
       setTimeout(() => window.location.reload(), 1000);
