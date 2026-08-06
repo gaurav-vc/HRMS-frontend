@@ -25,6 +25,18 @@ export const API_BASE_URL = import.meta.env.PROD
       : "https://hrms.vibecopilot.ai")
   : "http://127.0.0.1:8000";
 
+export const getMediaUrl = (url: string | null | undefined): string => {
+  if (!url) return "";
+  try {
+    if (url.startsWith('http')) {
+      return `${API_BASE_URL}${new URL(url).pathname}`;
+    }
+    return url.startsWith('/') ? `${API_BASE_URL}${url}` : `${API_BASE_URL}/${url}`;
+  } catch (e) {
+    return url;
+  }
+};
+
 let isRefreshing = false;
 let refreshSubscribers: ((token: string) => void)[] = [];
 

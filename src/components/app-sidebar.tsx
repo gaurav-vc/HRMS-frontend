@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { sitesApi, API_BASE_URL } from "@/api";
+import { sitesApi, getMediaUrl } from "@/api";
 import {
   LayoutDashboard,
   Building2,
@@ -202,7 +202,7 @@ export function AppSidebar() {
         <Link to="/" className="flex items-center gap-2">
           {branding.logo ? (
             <div className="h-10 w-auto flex items-center justify-center overflow-hidden shrink-0">
-              <img src={branding.logo.startsWith('/') ? `${API_BASE_URL}${branding.logo}` : branding.logo} alt="Logo" className="max-h-full max-w-[80px] object-contain" />
+              <img src={getMediaUrl(branding.logo)} alt="Logo" className="max-h-full max-w-[80px] object-contain" />
             </div>
           ) : (
             <div className="h-8 w-8 rounded-md bg-sidebar-primary grid place-items-center text-sidebar-primary-foreground font-bold">

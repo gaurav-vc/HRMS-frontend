@@ -19,6 +19,7 @@ import {
   entitiesApi,
   sitesApi,
   API_BASE_URL,
+  getMediaUrl,
   attendancePoliciesApi,
   leavesConfigApi,
 } from "@/api";
@@ -2209,7 +2210,7 @@ function BrandingTab() {
         setSite(mySite);
         setBrandingText(mySite.branding_text || "");
         if (mySite.logo) {
-          setPreview(mySite.logo.startsWith('/') ? `${API_BASE_URL}${mySite.logo}` : mySite.logo);
+          setPreview(getMediaUrl(mySite.logo));
         }
       }
       setLoading(false);
@@ -2240,7 +2241,7 @@ function BrandingTab() {
       const data = await res.json();
       toast.success("Branding updated successfully!");
       if (data.logo) {
-        setPreview(data.logo.startsWith('/') ? `${API_BASE_URL}${data.logo}` : data.logo);
+        setPreview(getMediaUrl(data.logo));
       }
       
       // Reload to update sidebar logo
