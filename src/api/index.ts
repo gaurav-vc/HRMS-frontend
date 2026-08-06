@@ -28,10 +28,15 @@ export const API_BASE_URL = import.meta.env.PROD
 export const getMediaUrl = (url: string | null | undefined): string => {
   if (!url) return "";
   try {
+    let path = url;
     if (url.startsWith('http')) {
-      return `${API_BASE_URL}${new URL(url).pathname}`;
+      path = new URL(url).pathname;
     }
-    return url.startsWith('/') ? `${API_BASE_URL}${url}` : `${API_BASE_URL}/${url}`;
+    // Force the path to go through the /api/ namespace so the Sandbox proxy catches it
+    if (path.startsWith('/media/')) {
+      path = path.replace('/media/', '/api/media/');
+    }
+    return path.startsWith('/') ? `${API_BASE_URL}${path}` : `${API_BASE_URL}/${path}`;
   } catch (e) {
     return url;
   }
