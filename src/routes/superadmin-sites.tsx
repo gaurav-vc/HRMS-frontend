@@ -111,8 +111,6 @@ function SitesPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [mode, setMode] = useState<"create" | "edit" | "view">("create");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [productTypeFilter, setProductTypeFilter] = useState("all");
 
   useEffect(() => {
     setRows(initial || []);
@@ -147,11 +145,7 @@ function SitesPage() {
 
     if (search.orgId && r.organization !== Number(search.orgId)) return false;
 
-    const matchesSearch =
-      (r.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (r.address || "").toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesProduct = productTypeFilter === "all" || r.productType === productTypeFilter;
-    return matchesSearch && matchesProduct;
+    return true;
   });
 
   const save = async (s: any) => {
@@ -232,42 +226,22 @@ function SitesPage() {
         </Button>
       </div>
 
-      <div className="bg-white p-4 rounded-lg border shadow-sm space-y-4">
-        <h3 className="font-medium text-sm text-slate-700">Filters</h3>
-        <div className="flex gap-4 items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input
-              placeholder="Search site..."
-              className="pl-9"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <Select value={productTypeFilter} onValueChange={setProductTypeFilter}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Product Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Products</SelectItem>
-              <SelectItem value="Vibecopilot">Vibecopilot</SelectItem>
-              <SelectItem value="Other">Other</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setSearchTerm("");
-              setProductTypeFilter("all");
-            }}
-          >
-            Clear Filters
-          </Button>
-        </div>
-      </div>
 
       <div className="bg-white rounded-lg border shadow-sm">
         <DataTable
+          searchPlaceholder="Search sites..."
+          searchKeys={["name", "address"]}
+          filters={[
+            {
+              label: "Product Type",
+              key: "productType",
+              options: [
+                { value: "Vibecopilot", label: "Vibecopilot" },
+                { value: "Other", label: "Other" },
+              ],
+              predicate: (row: any, v: string) => row.productType === v,
+            }
+          ]}
           rows={filteredRows}
           rowKey={(r: any) => r.id}
           columns={[

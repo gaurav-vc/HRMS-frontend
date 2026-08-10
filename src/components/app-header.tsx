@@ -34,6 +34,7 @@ import { useAuth, roleLabel } from "@/lib/auth-context";
 import { ROLES, type Role } from "@/lib/mock-data";
 import { notificationsApi, searchApi } from "@/api";
 import { NAV, SUPER_ADMIN_NAV, canAccessRoute } from "@/components/app-sidebar";
+import { ProfileModal } from "./profile-modal";
 
 const LABELS: Record<string, string> = {
   "": "Dashboard",
@@ -342,6 +343,7 @@ function NotificationBell() {
 export function AppHeader() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, logout, setRole } = useAuth();
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const parts = pathname.split("/").filter(Boolean);
   const crumbs = [
     { href: "/", label: "Home" },
@@ -395,7 +397,7 @@ export function AppHeader() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
-          <DropdownMenuItem>Profile</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setIsProfileOpen(true)}>Profile</DropdownMenuItem>
           <DropdownMenuItem>My Payslips</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={logout}>
@@ -404,6 +406,8 @@ export function AppHeader() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <ProfileModal open={isProfileOpen} onOpenChange={setIsProfileOpen} />
     </header>
   );
 }

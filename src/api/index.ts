@@ -56,7 +56,7 @@ const onRefreshed = (token: string) => {
 
 // Example API services that currently use the mock-data DB but return Promises.
 // You can replace the internal implementation with actual fetch/axios calls using apiClient.
-const apiCall = async (url: string, method: string = "GET", body?: any) => {
+const apiCall = async (url: string, method: string = "GET", body?: any, isBlob: boolean = false) => {
   let base = "/api/organisation";
   if (url.startsWith("/employees")) base = "/api";
   if (url.startsWith("/exits")) base = "/api";
@@ -78,14 +78,25 @@ const apiCall = async (url: string, method: string = "GET", body?: any) => {
   if (url.startsWith("/api")) base = ""; // direct path
 
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = {};
+  
+  let fetchBody = body;
+  if (body) {
+    if (body instanceof FormData) {
+      fetchBody = body;
+    } else {
+      headers["Content-Type"] = "application/json";
+      fetchBody = JSON.stringify(body);
+    }
+  }
+
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   let res = await fetch(`${API_BASE_URL}${base}${url}`, {
     method,
     headers,
     cache: "no-store",
-    body: body ? JSON.stringify(body) : undefined,
+    body: fetchBody,
   });
 
   // Auto-refresh token if 401 Unauthorized
@@ -116,7 +127,6 @@ const apiCall = async (url: string, method: string = "GET", body?: any) => {
               localStorage.removeItem("hrms-auth");
               localStorage.removeItem("access_token");
               localStorage.removeItem("refresh_token");
-              window.location.href = "/auth";
             }
           }
         } catch (err) {
@@ -137,18 +147,16 @@ const apiCall = async (url: string, method: string = "GET", body?: any) => {
           method,
           headers,
           cache: "no-store",
-          body: body ? JSON.stringify(body) : undefined,
+          body: fetchBody,
         });
       } else {
-        throw new Error("Unauthorized");
+        throw redirect({ to: "/auth" });
       }
     } else {
       if (typeof window !== "undefined") {
         localStorage.removeItem("hrms-auth");
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
-        window.location.href = "/auth";
-        throw new Error("Unauthorized");
       }
       throw redirect({ to: "/auth" });
     }
@@ -160,13 +168,15 @@ const apiCall = async (url: string, method: string = "GET", body?: any) => {
       const errBody = await res.json();
       if (errBody && errBody.message) errMsg = errBody.message;
       else if (errBody && errBody.error) errMsg = errBody.error;
+      else if (errBody && errBody.detail) errMsg = errBody.detail;
       else if (errBody) errMsg = JSON.stringify(errBody);
     } catch (e) {
       /* ignore */
     }
     throw new Error(errMsg);
   }
-  return method === "DELETE" ? null : res.json();
+  if (method === "DELETE") return null;
+  return isBlob ? res.blob() : res.json();
 };
 
 export const api = {
@@ -180,7 +190,10 @@ export const authApi = {
   logout: async (refresh: string) => apiCall("/auth/logout/", "POST", { refresh }),
   requestPasswordReset: async (email: string) =>
     apiCall("/auth/password-reset/request/", "POST", { email }),
-  confirmPasswordReset: async (data: any) => apiCall("/auth/password-reset/confirm/", "POST", data),
+  confirmPasswordReset: async (data: any) =>
+    apiCall("/auth/password-reset/confirm/", "POST", data),
+  changePassword: async (data: any) =>
+    apiCall("/auth/change-password/", "POST", data),
 };
 
 export const searchApi = {
@@ -200,16 +213,7 @@ export const employeesApi = {
   bulkImport: async (file: File): Promise<any> => {
     const formData = new FormData();
     formData.append("file", file);
-    const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    const res = await fetch(`${API_BASE_URL}/api/employees/bulk_import/`, {
-      method: "POST",
-      headers,
-      body: formData,
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return apiCall("/employees/bulk_import/", "POST", formData);
   },
 
   // Documents
@@ -225,16 +229,7 @@ export const employeesApi = {
     formData.append("employee", String(employeeId));
     formData.append("document_type", documentType);
     formData.append("name", file.name);
-    const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    const res = await fetch(`${API_BASE_URL}/api/documents/`, {
-      method: "POST",
-      headers,
-      body: formData,
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return apiCall("/documents/", "POST", formData);
   },
   deleteDocument: async (documentId: string | number) =>
     apiCall(`/documents/${documentId}/`, "DELETE"),
@@ -338,31 +333,13 @@ export const attendanceApi = {
     for (const key in data) {
       formData.append(key, data[key]);
     }
-    const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    const res = await fetch(`${API_BASE_URL}/api/attendance/punch/`, {
-      method: "POST",
-      headers,
-      body: formData,
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return apiCall("/attendance/punch/", "POST", formData);
   },
   registerFace: async (file: File, employeeId: string | number): Promise<any> => {
     const formData = new FormData();
     formData.append("face_image", file);
     formData.append("employee", employeeId.toString());
-    const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    const res = await fetch(`${API_BASE_URL}/api/attendance/register_face/`, {
-      method: "POST",
-      headers,
-      body: formData,
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return apiCall("/attendance/register_face/", "POST", formData);
   },
   generateQr: async (data: any): Promise<any> => apiCall("/attendance/generate_qr/", "POST", data),
   getToday: async (): Promise<any[]> => apiCall("/attendance/today/"),
@@ -467,15 +444,7 @@ export const payrollApi = {
     apiCall(`/payroll/slips/${id}/email/`, "POST", { pdf: pdfBase64 }),
   getComplianceReports: async () => apiCall("/payroll/compliance/"),
   generateReturn: async (category: string) => {
-    const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
-    const res = await fetch(
-      `${API_BASE_URL}/api/payroll/compliance/generate_return/?category=${encodeURIComponent(category)}`,
-      {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      },
-    );
-    if (!res.ok) throw new Error(await res.text());
-    return res.blob();
+    return apiCall(`/payroll/compliance/generate_return/?category=${encodeURIComponent(category)}`, "GET", undefined, true);
   },
   getPreview: async (params: { period: string; entity?: string }) => {
     let qs = `?period=${encodeURIComponent(params.period)}&_t=${Date.now()}`;
@@ -549,12 +518,7 @@ export const offerTemplatesApi = {
         }
       }
     }
-    const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    const res = await fetch(`${API_BASE_URL}/api/offer-templates/`, { method: "POST", headers, body: formData });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return apiCall("/offer-templates/", "POST", formData);
   },
   update: async (id: string | number, data: any): Promise<any> => {
     const formData = new FormData();
@@ -567,12 +531,7 @@ export const offerTemplatesApi = {
         }
       }
     }
-    const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    const res = await fetch(`${API_BASE_URL}/api/offer-templates/${id}/`, { method: "PATCH", headers, body: formData });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return apiCall(`/offer-templates/${id}/`, "PATCH", formData);
   },
   delete: async (id: string | number): Promise<void> =>
     apiCall(`/offer-templates/${id}/`, "DELETE"),
@@ -585,28 +544,10 @@ export const leavesConfigApi = {
 export const form16Api = {
   getAll: async (): Promise<any[]> => apiCall("/payroll/form16/"),
   upload: async (formData: FormData): Promise<any> => {
-    const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    const res = await fetch(`${API_BASE_URL}/api/payroll/form16/`, {
-      method: "POST",
-      headers,
-      body: formData,
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return apiCall("/payroll/form16/", "POST", formData);
   },
   bulkUpload: async (formData: FormData): Promise<any> => {
-    const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    const res = await fetch(`${API_BASE_URL}/api/payroll/form16/bulk_upload/`, {
-      method: "POST",
-      headers,
-      body: formData,
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return apiCall("/payroll/form16/bulk_upload/", "POST", formData);
   },
   delete: async (id: number): Promise<any> => apiCall(`/payroll/form16/${id}/`, "DELETE"),
 };
@@ -614,16 +555,7 @@ export const form16Api = {
 export const ctcImportApi = {
   getHistory: async (): Promise<any[]> => apiCall("/payroll/import-ctc/history/"),
   upload: async (formData: FormData): Promise<any> => {
-    const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    const res = await fetch(`${API_BASE_URL}/api/payroll/import-ctc/upload/`, {
-      method: "POST",
-      headers,
-      body: formData,
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return apiCall("/payroll/import-ctc/upload/", "POST", formData);
   },
   downloadTemplate: `${API_BASE_URL}/api/payroll/import-ctc/template/`,
 };

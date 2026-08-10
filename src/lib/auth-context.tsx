@@ -13,6 +13,8 @@ interface User {
   role_name?: string;
   employee_id?: string | number;
   is_superuser?: boolean;
+  site_name?: string;
+  org_name?: string;
 }
 interface AuthCtx {
   user: User | null;
@@ -56,6 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 permissions: me.permissions || {},
                 role_name: me.roleName || me.role_name || "",
                 employee_id: me.employeeId || me.employee_id,
+                site_name: me.siteName || me.site_name,
+                org_name: me.orgName || me.org_name,
               };
               setUser(updatedUser);
               if (typeof localStorage !== "undefined") {
@@ -116,6 +120,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           permissions: me.permissions || {},
           role_name: me.role_name || "",
           employee_id: me.employee_id || me.employeeId,
+          site_name: me.siteName || me.site_name,
+          org_name: me.orgName || me.org_name,
         },
         res.access,
         res.refresh,
