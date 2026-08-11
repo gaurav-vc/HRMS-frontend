@@ -126,10 +126,27 @@ function BranchesPage() {
           {
             key: "created_at",
             header: "Created Date & Time",
-            render: (r) =>
-              (r as any).createdAt || (r as any).created_at
-                ? new Date((r as any).createdAt || (r as any).created_at).toLocaleString()
-                : "-",
+            accessor: (r) => (r as any).createdAt || (r as any).created_at || "",
+            render: (r: any) => {
+              const val = r.createdAt || r.created_at;
+              if (!val) return "—";
+              try {
+                const date = new Date(val);
+                if (isNaN(date.getTime())) return String(val);
+                
+                // Return explicitly formatted string to avoid browser locale inconsistencies
+                return date.toLocaleString('en-IN', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true
+                });
+              } catch (e) {
+                return String(val);
+              }
+            },
           },
         ]}
         actions={(r) => (

@@ -1,11 +1,13 @@
 import { createFileRoute, Link, Navigate, Outlet, useMatchRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Search, Eye, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { organizationsApi } from "@/api";
 import { DataTable } from "@/components/data-table";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/billing-payments")({
@@ -21,14 +23,28 @@ function BillingPaymentsPage() {
     queryFn: () => organizationsApi.getAll(),
   });
 
+  const queryClient = useQueryClient();
+
+  const handleDelete = async (id: number) => {
+    if (confirm("Are you sure you want to delete this organization?")) {
+      try {
+        await organizationsApi.delete(id);
+        toast.success("Organization deleted successfully");
+        queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      } catch (err) {
+        toast.error("Failed to delete organization");
+      }
+    }
+  };
+
   const [searchTerm, setSearchTerm] = useState("");
-  const isDetail = matchRoute({ to: "/billing-payments/$orgId", fuzzy: true });
+  const isExactParent = matchRoute({ to: "/billing-payments", fuzzy: false });
 
   if (user?.username !== "Vibe_admin") {
     return <Navigate to="/" />;
   }
 
-  if (isDetail) {
+  if (!isExactParent) {
     return <Outlet />;
   }
 
@@ -129,13 +145,31 @@ function BillingPaymentsPage() {
           ]}
           actions={(r: any) => (
             <div className="flex gap-2 justify-end">
-              <Link
-                to="/billing-payments/$orgId"
-                params={{ orgId: r.id.toString() }}
-                className="text-[#1a4cd2] text-sm font-medium hover:underline hover:text-[#1641b4] px-3 py-1.5 rounded-md hover:bg-blue-50 transition-colors"
+              <Button variant="ghost" size="icon" asChild>
+                <Link
+                  to="/billing-payments/$orgId"
+                  params={{ orgId: r.id.toString() }}
+                  title="View Billing"
+                >
+                  <Eye className="w-4 h-4 text-[#1a4cd2]" />
+                </Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => toast.info("Please navigate to the core Organizations module to edit organization details.")}
+                title="Edit Organization"
               >
-                View
-              </Link>
+                <Pencil className="w-4 h-4 text-slate-500" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleDelete(r.id)}
+                title="Delete Organization"
+              >
+                <Trash2 className="w-4 h-4 text-destructive" />
+              </Button>
             </div>
           )}
         />

@@ -35,12 +35,16 @@ function SitesPage() {
 
   const save = async (s: any) => {
     try {
+      // Strip 'logo' because sending the string URL back to DRF causes a FileField error.
+      // (Since there is no logo uploader in this dialog anyway)
+      const { logo, ...data } = s;
+      
       if (editing && s.id) {
-        await sitesApi.update(s.id, s);
+        await sitesApi.update(s.id, data);
         toast.success("Site updated");
       } else {
-        const { id, ...data } = s;
-        await sitesApi.create(data);
+        const { id, ...createData } = data;
+        await sitesApi.create(createData);
         toast.success("Site created");
       }
       setOpen(false);

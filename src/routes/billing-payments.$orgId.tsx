@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search, Download, ChevronRight, FileText } from "lucide-react";
+import { Search, Download, ChevronRight, FileText, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 
@@ -58,17 +58,24 @@ function BillingDetail() {
     <div className="p-6 space-y-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex justify-between items-start">
-        <div>
-          <div className="flex items-center text-sm text-slate-500 mb-1">
-            <Link to="/billing-payments" className="hover:text-purple-600">
-              Organization
+        <div className="flex gap-4 items-start">
+          <Button variant="ghost" size="icon" asChild className="mt-1 shrink-0 hover:bg-slate-200/50">
+            <Link to="/billing-payments">
+              <ArrowLeft className="w-5 h-5 text-slate-600" />
             </Link>
-            <ChevronRight className="w-4 h-4 mx-1" />
-            <span>Billing & Subscriptions</span>
+          </Button>
+          <div>
+            <div className="flex items-center text-sm text-slate-500 mb-1">
+              <Link to="/billing-payments" className="hover:text-purple-600">
+                Organization
+              </Link>
+              <ChevronRight className="w-4 h-4 mx-1" />
+              <span>Billing & Subscriptions</span>
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+              {organization?.name || "Organization"}
+            </h1>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-            {organization?.name || "Organization"}
-          </h1>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" onClick={() => toast.success("Downloading CSV...")}>
@@ -253,25 +260,28 @@ function BillingDetail() {
           <div className="bg-white p-2 rounded-lg border shadow-sm space-y-1">
             <Button
               variant="ghost"
+              asChild
               className="w-full justify-between font-normal text-slate-600 hover:text-slate-900"
             >
-              How do I change my billing cycle?
+              <Link to="/billing-payments/help">How do I change my billing cycle?</Link>
             </Button>
             <Button
               variant="ghost"
+              asChild
               className="w-full justify-between font-normal text-slate-600 hover:text-slate-900"
             >
-              When are invoices generated?
+              <Link to="/billing-payments/help">When are invoices generated?</Link>
             </Button>
             <Button
               variant="ghost"
+              asChild
               className="w-full justify-between font-normal text-slate-600 hover:text-slate-900"
             >
-              Accepted payment methods?
+              <Link to="/billing-payments/help">Accepted payment methods?</Link>
             </Button>
             <div className="p-2 pt-4 border-t mt-2">
-              <Button variant="outline" className="w-full bg-slate-50">
-                Visit Help Center
+              <Button variant="outline" asChild className="w-full bg-slate-50 hover:bg-slate-100">
+                <Link to="/billing-payments/help">Visit Help Center</Link>
               </Button>
             </div>
           </div>

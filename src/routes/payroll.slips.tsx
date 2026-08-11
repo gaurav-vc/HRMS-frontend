@@ -76,8 +76,15 @@ export const Route = createFileRoute("/payroll/slips")({
   },
   loaderDeps: ({ search: { period } }) => ({ period }),
   loader: async ({ deps: { period } }) => {
-    const data = await payrollApi.getSlips(period);
-    return { data };
+    try {
+      const data = await payrollApi.getSlips(period);
+      return { data };
+    } catch (e) {
+      console.error("Failed to load slips:", e);
+      // Ensure period is a string if not provided in search params
+      const p = period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+      return { data: { period: p, slips: [], diagnostics: { error: "Failed to load data" } } };
+    }
   },
   component: SlipsPage,
 });

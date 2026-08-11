@@ -11,6 +11,7 @@ import {
   XCircle,
   FileText,
   AlertCircle,
+  ArrowLeft,
 } from "lucide-react";
 import { format } from "date-fns";
 import { z } from "zod";
@@ -61,7 +62,18 @@ function SeparationRequestPage() {
       setEmployees(empsData);
       setAllRequests(data);
 
-      if (!selectedEmp && user?.employee_id) {
+      const matchedEmp = empsData.find(
+        (e: any) =>
+          String(e.id) === String(user?.employee_id) ||
+          String(e.code) === String(user?.employee_id) ||
+          String(e.employee_code) === String(user?.employee_id) ||
+          (user?.email && e.email?.toLowerCase() === user.email.toLowerCase()) ||
+          (user?.username && e.code?.toLowerCase() === user.username.toLowerCase())
+      );
+
+      if (matchedEmp) {
+        setSelectedEmp(String(matchedEmp.id));
+      } else if (user?.employee_id) {
         setSelectedEmp(String(user.employee_id));
       }
     } catch (err) {
@@ -135,17 +147,28 @@ function SeparationRequestPage() {
 
   return (
     <div className={cn("mx-auto", requests.length > 0 ? "max-w-6xl" : "max-w-3xl")}>
-      <div className="mb-6 text-left">
-        <h1 className="text-sm font-semibold text-[#1a4cd2] uppercase tracking-wider mb-1">
-          Employee Portal
-        </h1>
-        <h2 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">
-          Separation Request
-        </h2>
-        <p className="text-slate-500 max-w-2xl leading-relaxed text-sm">
-          Submit your request for offboarding. Records are preserved — accounts are smoothly
-          deactivated on the Last Working Day.
-        </p>
+      <div className="mb-6 text-left flex items-center gap-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => window.history.back()}
+          className="rounded-full hover:bg-slate-200/60 shrink-0"
+          title="Go Back"
+        >
+          <ArrowLeft className="w-5 h-5 text-slate-600" />
+        </Button>
+        <div>
+          <h1 className="text-sm font-semibold text-[#1a4cd2] uppercase tracking-wider mb-1">
+            Employee Portal
+          </h1>
+          <h2 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">
+            Separation Request
+          </h2>
+          <p className="text-slate-500 max-w-2xl leading-relaxed text-sm">
+            Submit your request for offboarding. Records are preserved — accounts are smoothly
+            deactivated on the Last Working Day.
+          </p>
+        </div>
       </div>
 
       <div className={cn(requests.length > 0 ? "flex flex-col lg:flex-row gap-8 items-start" : "")}>
@@ -291,9 +314,22 @@ function SeparationRequestPage() {
                   <Label>Full name</Label>
                   <Input
                     value={
-                      employees.find((e) => String(e.id) === selectedEmp)
-                        ? `${employees.find((e) => String(e.id) === selectedEmp)?.firstName || employees.find((e) => String(e.id) === selectedEmp)?.first_name || ""} ${employees.find((e) => String(e.id) === selectedEmp)?.lastName || employees.find((e) => String(e.id) === selectedEmp)?.last_name || ""}`.trim()
-                        : "Loading..."
+                      (() => {
+                        const emp = employees.find(
+                          (e) =>
+                            String(e.id) === selectedEmp ||
+                            String(e.code) === selectedEmp ||
+                            (e.employee_code && String(e.employee_code) === selectedEmp),
+                        );
+                        if (emp) {
+                          const fullName = `${emp.firstName || emp.first_name || ""} ${emp.lastName || emp.last_name || ""}`.trim();
+                          if (fullName) return fullName;
+                          if (emp.name) return emp.name;
+                        }
+                        if (user?.name) return user.name;
+                        if (user?.username) return user.username;
+                        return employees.length === 0 ? "Loading..." : "-";
+                      })()
                     }
                     readOnly
                     className="bg-slate-50"
@@ -301,7 +337,21 @@ function SeparationRequestPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Employee ID</Label>
-                  <Input value={selectedEmp || ""} readOnly className="bg-slate-50" />
+                  <Input
+                    value={
+                      (() => {
+                        const emp = employees.find(
+                          (e) =>
+                            String(e.id) === selectedEmp ||
+                            String(e.code) === selectedEmp ||
+                            (e.employee_code && String(e.employee_code) === selectedEmp),
+                        );
+                        return emp?.code || emp?.employee_code || user?.employee_id || selectedEmp || "-";
+                      })()
+                    }
+                    readOnly
+                    className="bg-slate-50"
+                  />
                 </div>
               </div>
             )}

@@ -31,6 +31,7 @@ import { Route as DesignationsRouteImport } from './routes/designations'
 import { Route as DepartmentsRouteImport } from './routes/departments'
 import { Route as BranchesRouteImport } from './routes/branches'
 import { Route as BillingPaymentsRouteImport } from './routes/billing-payments'
+import { Route as BillingHelpRouteImport } from './routes/billing-help'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AttendanceRouteImport } from './routes/attendance'
 import { Route as AllOffersRouteImport } from './routes/all-offers'
@@ -50,6 +51,7 @@ import { Route as Form16MyRouteImport } from './routes/form-16.my'
 import { Route as Form16ManagementRouteImport } from './routes/form-16.management'
 import { Route as Form16BulkRouteImport } from './routes/form-16.bulk'
 import { Route as EmployeesIdRouteImport } from './routes/employees.$id'
+import { Route as BillingPaymentsHelpRouteImport } from './routes/billing-payments.help'
 import { Route as BillingPaymentsOrgIdRouteImport } from './routes/billing-payments.$orgId'
 import { Route as AttendanceShiftsRouteImport } from './routes/attendance.shifts'
 import { Route as AttendanceRosterRouteImport } from './routes/attendance.roster'
@@ -168,6 +170,11 @@ const BillingPaymentsRoute = BillingPaymentsRouteImport.update({
   path: '/billing-payments',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BillingHelpRoute = BillingHelpRouteImport.update({
+  id: '/billing-help',
+  path: '/billing-help',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -263,6 +270,11 @@ const EmployeesIdRoute = EmployeesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => EmployeesRoute,
 } as any)
+const BillingPaymentsHelpRoute = BillingPaymentsHelpRouteImport.update({
+  id: '/help',
+  path: '/help',
+  getParentRoute: () => BillingPaymentsRoute,
+} as any)
 const BillingPaymentsOrgIdRoute = BillingPaymentsOrgIdRouteImport.update({
   id: '/$orgId',
   path: '/$orgId',
@@ -304,6 +316,7 @@ export interface FileRoutesByFullPath {
   '/all-offers': typeof AllOffersRoute
   '/attendance': typeof AttendanceRouteWithChildren
   '/auth': typeof AuthRoute
+  '/billing-help': typeof BillingHelpRoute
   '/billing-payments': typeof BillingPaymentsRouteWithChildren
   '/branches': typeof BranchesRoute
   '/departments': typeof DepartmentsRoute
@@ -333,6 +346,7 @@ export interface FileRoutesByFullPath {
   '/attendance/roster': typeof AttendanceRosterRoute
   '/attendance/shifts': typeof AttendanceShiftsRoute
   '/billing-payments/$orgId': typeof BillingPaymentsOrgIdRoute
+  '/billing-payments/help': typeof BillingPaymentsHelpRoute
   '/employees/$id': typeof EmployeesIdRoute
   '/form-16/bulk': typeof Form16BulkRoute
   '/form-16/management': typeof Form16ManagementRoute
@@ -353,6 +367,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/all-offers': typeof AllOffersRoute
   '/auth': typeof AuthRoute
+  '/billing-help': typeof BillingHelpRoute
   '/billing-payments': typeof BillingPaymentsRouteWithChildren
   '/branches': typeof BranchesRoute
   '/departments': typeof DepartmentsRoute
@@ -381,6 +396,7 @@ export interface FileRoutesByTo {
   '/attendance/roster': typeof AttendanceRosterRoute
   '/attendance/shifts': typeof AttendanceShiftsRoute
   '/billing-payments/$orgId': typeof BillingPaymentsOrgIdRoute
+  '/billing-payments/help': typeof BillingPaymentsHelpRoute
   '/employees/$id': typeof EmployeesIdRoute
   '/form-16/bulk': typeof Form16BulkRoute
   '/form-16/management': typeof Form16ManagementRoute
@@ -403,6 +419,7 @@ export interface FileRoutesById {
   '/all-offers': typeof AllOffersRoute
   '/attendance': typeof AttendanceRouteWithChildren
   '/auth': typeof AuthRoute
+  '/billing-help': typeof BillingHelpRoute
   '/billing-payments': typeof BillingPaymentsRouteWithChildren
   '/branches': typeof BranchesRoute
   '/departments': typeof DepartmentsRoute
@@ -432,6 +449,7 @@ export interface FileRoutesById {
   '/attendance/roster': typeof AttendanceRosterRoute
   '/attendance/shifts': typeof AttendanceShiftsRoute
   '/billing-payments/$orgId': typeof BillingPaymentsOrgIdRoute
+  '/billing-payments/help': typeof BillingPaymentsHelpRoute
   '/employees/$id': typeof EmployeesIdRoute
   '/form-16/bulk': typeof Form16BulkRoute
   '/form-16/management': typeof Form16ManagementRoute
@@ -455,6 +473,7 @@ export interface FileRouteTypes {
     | '/all-offers'
     | '/attendance'
     | '/auth'
+    | '/billing-help'
     | '/billing-payments'
     | '/branches'
     | '/departments'
@@ -484,6 +503,7 @@ export interface FileRouteTypes {
     | '/attendance/roster'
     | '/attendance/shifts'
     | '/billing-payments/$orgId'
+    | '/billing-payments/help'
     | '/employees/$id'
     | '/form-16/bulk'
     | '/form-16/management'
@@ -504,6 +524,7 @@ export interface FileRouteTypes {
     | '/'
     | '/all-offers'
     | '/auth'
+    | '/billing-help'
     | '/billing-payments'
     | '/branches'
     | '/departments'
@@ -532,6 +553,7 @@ export interface FileRouteTypes {
     | '/attendance/roster'
     | '/attendance/shifts'
     | '/billing-payments/$orgId'
+    | '/billing-payments/help'
     | '/employees/$id'
     | '/form-16/bulk'
     | '/form-16/management'
@@ -553,6 +575,7 @@ export interface FileRouteTypes {
     | '/all-offers'
     | '/attendance'
     | '/auth'
+    | '/billing-help'
     | '/billing-payments'
     | '/branches'
     | '/departments'
@@ -582,6 +605,7 @@ export interface FileRouteTypes {
     | '/attendance/roster'
     | '/attendance/shifts'
     | '/billing-payments/$orgId'
+    | '/billing-payments/help'
     | '/employees/$id'
     | '/form-16/bulk'
     | '/form-16/management'
@@ -604,6 +628,7 @@ export interface RootRouteChildren {
   AllOffersRoute: typeof AllOffersRoute
   AttendanceRoute: typeof AttendanceRouteWithChildren
   AuthRoute: typeof AuthRoute
+  BillingHelpRoute: typeof BillingHelpRoute
   BillingPaymentsRoute: typeof BillingPaymentsRouteWithChildren
   BranchesRoute: typeof BranchesRoute
   DepartmentsRoute: typeof DepartmentsRoute
@@ -790,6 +815,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BillingPaymentsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/billing-help': {
+      id: '/billing-help'
+      path: '/billing-help'
+      fullPath: '/billing-help'
+      preLoaderRoute: typeof BillingHelpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -923,6 +955,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmployeesIdRouteImport
       parentRoute: typeof EmployeesRoute
     }
+    '/billing-payments/help': {
+      id: '/billing-payments/help'
+      path: '/help'
+      fullPath: '/billing-payments/help'
+      preLoaderRoute: typeof BillingPaymentsHelpRouteImport
+      parentRoute: typeof BillingPaymentsRoute
+    }
     '/billing-payments/$orgId': {
       id: '/billing-payments/$orgId'
       path: '/$orgId'
@@ -1001,10 +1040,12 @@ const AttendanceRouteWithChildren = AttendanceRoute._addFileChildren(
 
 interface BillingPaymentsRouteChildren {
   BillingPaymentsOrgIdRoute: typeof BillingPaymentsOrgIdRoute
+  BillingPaymentsHelpRoute: typeof BillingPaymentsHelpRoute
 }
 
 const BillingPaymentsRouteChildren: BillingPaymentsRouteChildren = {
   BillingPaymentsOrgIdRoute: BillingPaymentsOrgIdRoute,
+  BillingPaymentsHelpRoute: BillingPaymentsHelpRoute,
 }
 
 const BillingPaymentsRouteWithChildren = BillingPaymentsRoute._addFileChildren(
@@ -1061,6 +1102,7 @@ const rootRouteChildren: RootRouteChildren = {
   AllOffersRoute: AllOffersRoute,
   AttendanceRoute: AttendanceRouteWithChildren,
   AuthRoute: AuthRoute,
+  BillingHelpRoute: BillingHelpRoute,
   BillingPaymentsRoute: BillingPaymentsRouteWithChildren,
   BranchesRoute: BranchesRoute,
   DepartmentsRoute: DepartmentsRoute,

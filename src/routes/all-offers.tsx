@@ -42,7 +42,6 @@ function AllOffersPage() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>(initialFilter || "All");
-  const [activeTab, setActiveTab] = useState(initialFilter ? "All" : "Pending Approval");
 
   const [open, setOpen] = useState(false);
   const [selectedEmp, setSelectedEmp] = useState<any>(null);
@@ -52,11 +51,16 @@ function AllOffersPage() {
   const [isPreviewMode, setIsPreviewMode] = useState<boolean>(false);
   const [emailBodyText, setEmailBodyText] = useState<string>("");
 
-  const tabs = ["All", "No Offer", "Pending Approval", "Awaiting Acceptance", "Completed"];
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -170,17 +174,18 @@ function AllOffersPage() {
       return false;
 
     if (statusFilter !== "All") {
-      if (offer.status !== statusFilter) return false;
-    } else {
-      if (activeTab === "No Offer" && offer.status !== "No Offer") return false;
-      if (activeTab === "Pending Approval" && offer.status !== "Pending Approval") return false;
-      if (activeTab === "Awaiting Acceptance" && offer.status !== "Awaiting Acceptance")
+      if (statusFilter === "Completed") {
+        if (!["Accepted", "Joined"].includes(offer.status)) return false;
+      } else if (offer.status !== statusFilter) {
         return false;
-      if (activeTab === "Completed" && !["Accepted", "Joined"].includes(offer.status)) return false;
+      }
     }
 
     return true;
   });
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleStatusChange = (id: number | string, newStatus: string) => {
     if (typeof id === "string" && id.startsWith("emp-")) {
@@ -215,7 +220,6 @@ function AllOffersPage() {
             value={statusFilter}
             onValueChange={(val) => {
               setStatusFilter(val);
-              if (val !== "All") setActiveTab("All");
             }}
           >
             <SelectTrigger className="w-[180px] bg-background">
@@ -223,9 +227,11 @@ function AllOffersPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="All">All Statuses</SelectItem>
+              <SelectItem value="No Offer">No Offer</SelectItem>
               <SelectItem value="Draft">Draft</SelectItem>
               <SelectItem value="Pending Approval">Pending Approval</SelectItem>
               <SelectItem value="Awaiting Acceptance">Awaiting Acceptance</SelectItem>
+              <SelectItem value="Completed">Completed (Accepted/Joined)</SelectItem>
               <SelectItem value="Accepted">Accepted</SelectItem>
               <SelectItem value="Rejected">Rejected</SelectItem>
               <SelectItem value="Joined">Joined</SelectItem>
@@ -233,25 +239,10 @@ function AllOffersPage() {
               <SelectItem value="Expired">Expired</SelectItem>
             </SelectContent>
           </Select>
-
-          <div className="flex bg-muted/50 p-1 rounded-lg overflow-x-auto">
-            {tabs.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => {
-                  setActiveTab(tab);
-                  setStatusFilter("All");
-                }}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${activeTab === tab ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 
-      <Card className="border shadow-sm rounded-lg overflow-hidden">
+      <Card className="border shadow-sm rounded-lg overflow-hidden flex flex-col">
         {error && (
           <div className="m-4 p-4 bg-destructive/10 text-destructive border border-destructive/20 rounded-md">
             <h4 className="font-semibold text-sm mb-1">Error Loading Data</h4>
@@ -267,8 +258,8 @@ function AllOffersPage() {
           <div>Status</div>
           <div className="text-right">Actions</div>
         </div>
-        <div className="divide-y">
-          {filteredData.map((offer) => (
+        <div className="divide-y flex-1">
+          {paginatedData.map((offer) => (
             <div
               key={offer.id}
               className="grid grid-cols-[120px_minmax(180px,1.5fr)_minmax(150px,1fr)_minmax(120px,1fr)_100px_130px_150px] gap-4 py-4 px-6 items-center hover:bg-muted/30 transition-colors"
@@ -304,33 +295,37 @@ function AllOffersPage() {
                 </span>
               </div>
               <div className="flex justify-end gap-2">
-                {!["Accepted", "Joined", "Declined", "Expired"].includes(offer.status) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedEmp(offer);
-                      setEmailBodyText(`Dear ${offer.candidateName},\n\nCongratulations!\n\nWe are thrilled to extend an offer for the position of ${offer.designationName || 'Employee'} at ${offer.entityName || 'the company'}.\n\nPlease find your detailed offer letter attached to this email. Kindly review the document, and if you choose to accept, follow the instructions provided within the attachment.\n\nIf you have any questions or need further clarification, please feel free to reach out.\n\nBest regards,\nHR Department\n${offer.entityName || 'the company'}`);
-                      setOpen(true);
-                    }}
-                    className="h-8 text-xs px-2 whitespace-nowrap"
-                  >
-                    <MailPlus className="h-3.5 w-3.5 mr-1" />{" "}
-                    {offer.status === "Awaiting Acceptance" ? "Resend" : "Send Offer"}
-                  </Button>
-                )}
-                {(offer.status === "Pending Approval" ||
-                  offer.status === "No Offer" ||
-                  offer.status === "Awaiting Acceptance") && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300 transition-colors"
-                    title="Mark Accepted"
-                    onClick={() => handleStatusChange(offer.id, "Accepted")}
-                  >
-                    <Check className="h-4 w-4" />
-                  </Button>
+                {!["Accepted", "Joined", "Declined", "Expired"].includes(offer.status) ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedEmp(offer);
+                        setEmailBodyText(`Dear ${offer.candidateName},\n\nCongratulations!\n\nWe are thrilled to extend an offer for the position of ${offer.designationName || 'Employee'} at ${offer.entityName || 'the company'}.\n\nPlease find your detailed offer letter attached to this email. Kindly review the document, and if you choose to accept, follow the instructions provided within the attachment.\n\nIf you have any questions or need further clarification, please feel free to reach out.\n\nBest regards,\nHR Department\n${offer.entityName || 'the company'}`);
+                        setOpen(true);
+                      }}
+                      className="h-8 text-xs px-2 whitespace-nowrap"
+                    >
+                      <MailPlus className="h-3.5 w-3.5 mr-1" />{" "}
+                      {offer.status === "Awaiting Acceptance" ? "Resend" : "Send Offer"}
+                    </Button>
+                    {(offer.status === "Pending Approval" ||
+                      offer.status === "No Offer" ||
+                      offer.status === "Awaiting Acceptance") && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300 transition-colors"
+                        title="Mark Accepted"
+                        onClick={() => handleStatusChange(offer.id, "Accepted")}
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-xs text-muted-foreground italic mr-2">No Action</span>
                 )}
               </div>
             </div>
@@ -342,6 +337,34 @@ function AllOffersPage() {
             <div className="p-8 text-center text-muted-foreground text-sm">Loading offers...</div>
           )}
         </div>
+        
+        {!loading && filteredData.length > 0 && (
+          <div className="flex items-center justify-end px-6 py-3 border-t bg-slate-50/50">
+            <div className="flex gap-1.5 items-center">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-8 px-3 text-xs"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <div className="flex items-center justify-center px-3 text-xs font-semibold text-slate-700 bg-white border h-8 rounded-md min-w-[80px]">
+                Page {currentPage} of {totalPages || 1}
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-8 px-3 text-xs"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages || totalPages === 0}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       <Dialog 
