@@ -246,9 +246,10 @@ function SitesPage() {
               key: "productType",
               options: [
                 { value: "Vibecopilot", label: "Vibecopilot" },
+                { value: "Custom HRMS", label: "Custom HRMS" },
                 { value: "Other", label: "Other" },
               ],
-              predicate: (row: any, v: string) => row.productType === v,
+              predicate: (row: any, v: string) => (row.productType || row.product_type) === v,
             }
           ]}
           rows={filteredRows}
@@ -271,11 +272,11 @@ function SitesPage() {
             {
               key: "productType",
               header: "Product Type",
-              accessor: (r: any) => r.productType || "—",
+              accessor: (r: any) => r.productType || r.product_type || "—",
               render: (r: any) =>
-                r.productType ? (
+                (r.productType || r.product_type) ? (
                   <Badge variant="secondary" className="bg-slate-100 text-slate-700">
-                    {r.productType}
+                    {r.productType || r.product_type}
                   </Badge>
                 ) : (
                   <span>—</span>

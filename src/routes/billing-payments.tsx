@@ -68,20 +68,10 @@ function BillingPaymentsPage() {
         </p>
       </div>
 
-      <div className="bg-white p-4 rounded-lg border shadow-sm">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
-            placeholder="Search organization billing..."
-            className="pl-9 w-full md:w-[400px]"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-      </div>
-
       <div className="bg-white rounded-lg border shadow-sm">
         <DataTable
+          searchPlaceholder="Search organization billing..."
+          searchKeys={["name", "companyName"]}
           rows={filteredRows}
           rowKey={(r: any) => r.id}
           columns={[
