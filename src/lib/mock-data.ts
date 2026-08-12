@@ -37,6 +37,8 @@ export interface Branch {
 export interface Site {
   id: string;
   branch: string | number;
+  organization?: string | number;
+  entity?: string | number;
   name: string;
   address: string;
   latitude: number;

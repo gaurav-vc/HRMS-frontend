@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, isRedirect } from "@tanstack/react-router";
 import React, { useState } from "react";
 import { toast } from "sonner";
 import { Download, Mail, Eye, FileDown } from "lucide-react";
@@ -80,6 +80,7 @@ export const Route = createFileRoute("/payroll/slips")({
       const data = await payrollApi.getSlips(period);
       return { data };
     } catch (e) {
+      if (isRedirect(e)) throw e;
       console.error("Failed to load slips:", e);
       // Ensure period is a string if not provided in search params
       const p = period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;

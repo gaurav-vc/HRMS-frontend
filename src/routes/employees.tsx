@@ -868,9 +868,11 @@ function EmployeeDialog({
                       <SelectContent>
                         <SelectItem value=" ">None</SelectItem>
                         {(sites || [])
-                          .filter(
-                            (s: Site) => !form.branch || String(s?.branch) === String(form.branch),
-                          )
+                          .filter((s: Site) => {
+                            if (form.branch) return String(s?.branch) === String(form.branch);
+                            if (form.entity) return String(s?.organization) === String(form.entity) || String(s?.entity) === String(form.entity);
+                            return true;
+                          })
                           .map((s: Site, idx: number) => (
                             <SelectItem key={s?.id || `st-${idx}`} value={String(s?.id)}>
                               {s?.name || "Unknown"}
@@ -908,6 +910,9 @@ function EmployeeDialog({
                               {(sites || [])
                                 .filter((s: Site) => {
                                   if (!form.entity) return true;
+                                  
+                                  if (String(s.organization) === String(form.entity) || String(s.entity) === String(form.entity)) return true;
+                                  
                                   const siteBranch = (branches || []).find(
                                     (b: Branch) => String(b.id) === String(s.branch),
                                   );

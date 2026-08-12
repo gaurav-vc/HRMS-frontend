@@ -236,7 +236,7 @@ function ExecutiveDashboard({ role }: { role: string }) {
             tone="info"
           />
         </Link>
-        <Link to="/leave" className="block hover:opacity-80 transition-opacity">
+        <Link to="/leave-inbox" className="block hover:opacity-80 transition-opacity">
           <StatCard
             label="Pending Approvals"
             value={String(stat.pendingLeaves || 0)}
@@ -404,12 +404,14 @@ function ManagerDashboard() {
           icon={CalendarCheck2}
           tone="warning"
         />
-        <StatCard
-          label="Pending Approvals"
-          value={String(stat.pendingApprovals || 0)}
-          icon={AlertTriangle}
-          tone="info"
-        />
+        <Link to="/leave-inbox" className="block hover:opacity-80 transition-opacity">
+          <StatCard
+            label="Pending Approvals"
+            value={String(stat.pendingApprovals || 0)}
+            icon={AlertTriangle}
+            tone="info"
+          />
+        </Link>
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <AttendanceModeWidget modes={exec.attendanceModes} />

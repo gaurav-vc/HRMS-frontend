@@ -7,9 +7,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search, Download, ChevronRight, FileText, ArrowLeft } from "lucide-react";
+import { Search, Download, ChevronRight, FileText, ArrowLeft, CreditCard } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/billing-payments/$orgId")({
   component: BillingDetail,
@@ -54,6 +62,43 @@ function BillingDetail() {
     return matchesSearch && matchesStatus;
   });
 
+
+
+  const handleDownloadCSV = () => {
+    if (!filteredInvoices || filteredInvoices.length === 0) {
+      toast.info("No Invoices Available", {
+        description: "There are no invoices available to download for this organization at this time.",
+      });
+      return;
+    }
+    
+    const headers = ["Invoice Number", "Status", "Amount Due", "Period", "Created At"];
+    const rows = filteredInvoices.map((inv: any) => [
+      inv.invoice_number,
+      inv.status,
+      inv.amount_due,
+      inv.period,
+      inv.created_at ? new Date(inv.created_at).toLocaleDateString() : ""
+    ]);
+    
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row: any) => row.map((cell: any) => `"${cell || ''}"`).join(","))
+    ].join("\n");
+    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Invoices_${organization?.name || 'Organization'}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success("CSV downloaded successfully!");
+  };
+
   return (
     <div className="p-6 space-y-8 max-w-7xl mx-auto">
       {/* Header */}
@@ -78,10 +123,25 @@ function BillingDetail() {
           </div>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" onClick={() => toast.success("Downloading CSV...")}>
+          <Button variant="outline" onClick={handleDownloadCSV}>
             Download CSV
           </Button>
-          <Button className="bg-purple-600 hover:bg-purple-700">Pay Now</Button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button className="bg-purple-600 hover:bg-purple-700">Pay Now</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg p-8">
+              <DialogHeader className="flex flex-col items-center text-center space-y-4">
+                <div className="w-16 h-16 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mb-2">
+                  <CreditCard className="w-8 h-8" />
+                </div>
+                <DialogTitle className="text-2xl font-bold">Payment Gateway</DialogTitle>
+                <DialogDescription className="text-base text-slate-500 max-w-[400px]">
+                  Your professional payment gateway is arriving in a future update! We are currently integrating secure and seamless online payment options to power your business.
+                </DialogDescription>
+              </DialogHeader>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 

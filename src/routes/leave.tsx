@@ -299,12 +299,20 @@ function LeavePage() {
               {
                 key: "status",
                 header: "Status",
-                accessor: (r: any) =>
-                  (Number(r.remainingDays || r.remaining_days) || 0) < 2
-                    ? "Low Balance"
-                    : "Healthy",
-                render: (r: any) => {
+                accessor: (r: any) => {
+                  const allocated = Number(r.allocatedDays || r.allocated_days) || 0;
                   const rem = Number(r.remainingDays || r.remaining_days) || 0;
+                  if (allocated === 0) return "N/A";
+                  return rem < 2 ? "Low Balance" : "Healthy";
+                },
+                render: (r: any) => {
+                  const allocated = Number(r.allocatedDays || r.allocated_days) || 0;
+                  const rem = Number(r.remainingDays || r.remaining_days) || 0;
+                  
+                  if (allocated === 0) {
+                    return <Badge variant="secondary" className="bg-slate-100 text-slate-500">N/A</Badge>;
+                  }
+                  
                   return (
                     <Badge variant={rem < 2 ? "destructive" : "outline"}>
                       {rem < 2 ? "Low Balance" : "Healthy"}

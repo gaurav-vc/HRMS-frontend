@@ -233,6 +233,15 @@ function SitesPage() {
           searchKeys={["name", "address"]}
           filters={[
             {
+              label: "Site",
+              key: "site",
+              options: Array.from(new Set(filteredRows.map((r: any) => r.name))).filter(Boolean).map((name: any) => ({
+                label: name,
+                value: name,
+              })),
+              predicate: (row: any, v: string) => row.name === v,
+            },
+            {
               label: "Product Type",
               key: "productType",
               options: [
