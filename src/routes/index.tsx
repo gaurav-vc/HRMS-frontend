@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate, isRedirect } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, isRedirect, redirect } from "@tanstack/react-router";
 import { useEffect } from "react";
 import {
   Users,
@@ -38,6 +38,10 @@ import { api } from "@/api";
 
 export const Route = createFileRoute("/")({
   loader: async () => {
+    const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
+    if (!token) {
+      throw redirect({ to: "/auth" });
+    }
     try {
       return await api.getDashboardStats();
     } catch (e) {
@@ -143,17 +147,19 @@ function ExceptionAlertsWidget({ exceptions }: { exceptions: any[] }) {
 }
 
 function Index() {
-  const { user } = useAuth();
+  const { user, init } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!init) return;
     if (!user) {
       navigate({ to: "/auth" });
     } else if (user.username === "Vibe_admin") {
       navigate({ to: "/superadmin-dashboard" });
     }
-  }, [user, navigate]);
+  }, [user, init, navigate]);
 
+  if (!init) return null;
   if (!user) return null;
   if (user.username === "Vibe_admin") return null;
 

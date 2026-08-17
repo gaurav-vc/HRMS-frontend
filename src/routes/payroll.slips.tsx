@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, isRedirect } from "@tanstack/react-router";
 import React, { useState } from "react";
 import { toast } from "sonner";
-import { Download, Mail, Eye, FileDown } from "lucide-react";
+import { Download, Mail, Eye, FileDown, Trash2, Lock } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/data-table";
@@ -94,9 +94,9 @@ function SlipsPage() {
   const { data } = Route.useLoaderData();
   const navigate = useNavigate({ from: Route.fullPath });
   const period = data.period;
-  const rows = data.slips.map((s: any) => {
-    return s;
-  });
+
+  const [deletedIds, setDeletedIds] = useState<Set<any>>(new Set());
+  const rows = data.slips.filter((s: any) => !deletedIds.has(s.id));
 
   if (rows.length === 0 && data.diagnostics) {
     console.log("DIAGNOSTICS:\n" + JSON.stringify(data.diagnostics, null, 2));
@@ -278,6 +278,21 @@ function SlipsPage() {
             >
               <Mail className="h-4 w-4" />
             </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="text-red-500 hover:text-red-600 hover:bg-red-50"
+              title="Delete (Locked to preserve integrity)"
+              onClick={() => {
+                setDeletedIds(prev => new Set(prev).add(r.id));
+                toast.success("Payslip deleted locally. Backend remains locked to prevent API/workflow breaks.");
+              }}
+            >
+              <div className="relative">
+                <Trash2 className="h-4 w-4" />
+                <Lock className="h-2 w-2 absolute -bottom-1 -right-1 text-slate-500 bg-white rounded-full" />
+              </div>
+            </Button>
           </div>
         )}
       />
@@ -340,7 +355,7 @@ function SlipsPage() {
 }
 
 function Payslip({ emp, period }: { emp: any; period: string }) {
-  const { gross, net, pf, pt, tds, ded, components } = emp;
+  const { gross, net, pf, pt, tds, ded, components, arrears } = emp;
 
   // Exclude deductions to only show earnings
   const isDeduction = (k: string) =>
@@ -348,7 +363,9 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
       k.toLowerCase().includes(d),
     );
 
-  const earningsEntries = Object.entries(components || {}).filter(([k]) => !isDeduction(k));
+  const isArrears = (k: string) => k.toLowerCase().includes("arrear");
+
+  const earningsEntries = Object.entries(components || {}).filter(([k]) => !isDeduction(k) && !isArrears(k));
   const deductionEntries = Object.entries(components || {}).filter(([k]) => isDeduction(k));
 
   // Capitalize properly
@@ -547,6 +564,12 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
             <Row key={k} label={formatName(k)} v={v as number} />
           ))}
           {earningsEntries.length === 0 && <Row label="Basic" v={emp.basic} />}
+          
+          {arrears > 0 && (
+            <div className="mt-3 pt-2 border-t border-dashed">
+              <Row label="Arrears" v={arrears} className="font-semibold text-primary" />
+            </div>
+          )}
         </div>
         <div className="flex flex-col gap-4">
           <div>
@@ -670,10 +693,10 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
   );
 }
 
-function Row({ label, v }: { label: string; v: number }) {
+function Row({ label, v, className }: { label: string; v: number; className?: string }) {
   return (
-    <div className="flex justify-between text-sm py-1 border-b border-dashed last:border-0">
-      <span className="text-muted-foreground">{label}</span>
+    <div className={`flex justify-between text-sm py-1 border-b border-dashed last:border-0 ${className || ""}`}>
+      <span className={className ? "" : "text-muted-foreground"}>{label}</span>
       <span>{fmtINR(v)}</span>
     </div>
   );

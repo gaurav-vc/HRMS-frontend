@@ -170,10 +170,6 @@ export function roleLabel(r: Role) {
 export function usePermissions(moduleName: string) {
   const { user } = useAuth();
 
-  if (user?.role === "super_admin" || user?.username === "Vibe_admin") {
-    return { canView: true, canCreate: true, canUpdate: true, canDelete: true };
-  }
-
   const perms = user?.permissions?.[moduleName] || {
     view: false,
     create: false,

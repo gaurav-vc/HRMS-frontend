@@ -82,7 +82,6 @@ function RunPage() {
     user?.permissions?.can_view_confidential_payroll === "true";
   const canApprove =
     user?.permissions?.can_approve_payroll === true ||
-    user?.permissions?.can_approve === true ||
     user?.permissions?.can_approve_payroll === "true";
 
   // Role based check for Maker
@@ -114,7 +113,7 @@ function RunPage() {
       <Tabs defaultValue={isMaker ? "oneclick" : canApprove ? "approvals" : ""}>
         {!isConfirming && (isMaker || canApprove) && (
           <TabsList
-            className={`grid w-full max-w-xl h-11 ${isMaker && canApprove ? "grid-cols-3" : isMaker ? "grid-cols-2" : "grid-cols-1"}`}
+            className={`grid w-full max-w-xl h-11 ${isMaker ? "grid-cols-3" : "grid-cols-1"}`}
           >
             {isMaker && (
               <>
@@ -128,7 +127,7 @@ function RunPage() {
                 </TabsTrigger>
               </>
             )}
-            {canApprove && (
+            {(isMaker || canApprove) && (
               <TabsTrigger value="approvals" className="text-sm relative">
                 <ShieldCheck className="h-4 w-4 mr-1.5" />
                 Approvals
@@ -149,11 +148,11 @@ function RunPage() {
             </TabsContent>
           </>
         )}
-        {canApprove && (
+        {(isMaker || canApprove) && (
           <TabsContent value="approvals">
             <ApprovalsPanel
               pendingRuns={payrollRuns.filter(
-                (r: any) => r.status === "Maker-Submitted" && r.employees > 0,
+                (r: any) => ["Maker-Submitted", "Disbursed", "Rejected", "Frozen"].includes(r.status) && r.employees > 0,
               )}
               canViewConfidential={canViewConfidential}
               canApprove={canApprove}
@@ -209,6 +208,7 @@ function OneClickPanel({
   const [editingRow, setEditingRow] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<any>(null);
   const [overrides, setOverrides] = useState<Record<number, any>>({});
+  const [arrearsLogs, setArrearsLogs] = useState<string[]>([]);
 
   const handleEditSave = (entityName: string, empId: number) => {
     setPreviewData((prev) =>
@@ -227,7 +227,15 @@ function OneClickPanel({
         };
       }),
     );
-    setOverrides((prev) => ({ ...prev, [empId]: editForm }));
+    const cleanOverride = { ...editForm };
+    delete cleanOverride.totalAmount;
+    delete cleanOverride.deduction;
+    delete cleanOverride.payableSalary;
+    delete cleanOverride.pf;
+    delete cleanOverride.pt;
+    delete cleanOverride.currentSalary;
+    
+    setOverrides((prev) => ({ ...prev, [empId]: cleanOverride }));
     setEditingRow(null);
   };
 
@@ -246,13 +254,19 @@ function OneClickPanel({
     { id: "ot", label: "OT Overtime" },
     { id: "daysPaid", label: "Payable Days" },
     { id: "totalAmount", label: "Total Amount" },
+    { id: "arrears", label: "Arrears" },
     { id: "deduction", label: "Deduction" },
     { id: "pf", label: "PF" },
     { id: "pt", label: "PT" },
     { id: "reimbursement", label: "Reimbursement" },
     { id: "incentive", label: "Incentive" },
     { id: "payableSalary", label: "Payable Salary" },
-  ];
+  ].filter((col) => {
+    if (!canViewConfidential) {
+      return !["currentSalary", "totalAmount", "arrears", "deduction", "pf", "pt", "reimbursement", "incentive", "payableSalary"].includes(col.id);
+    }
+    return true;
+  });
   const [visibleColumns, setVisibleColumns] = useState<string[]>(ALL_COLUMNS.map((c) => c.id));
 
   const toggleColumn = (id: string) => {
@@ -374,11 +388,16 @@ function OneClickPanel({
               })
               .then((run: any) => {
                 return payrollApi
-                  .executeRun(run.id, {
-                    overrides: Object.values(overrides),
-                    include_variable_bonus: includeBonus,
-                  })
-                  .then((r: any) => r.data);
+                .executeRun(run.id, {
+                  overrides: Object.values(overrides),
+                  include_variable_bonus: includeBonus,
+                })
+                .then((r: any) => {
+                  if (r && r.arrearsLogs) {
+                    setArrearsLogs(r.arrearsLogs);
+                  }
+                  return r.data;
+                });
               });
           }),
         )
@@ -515,6 +534,7 @@ function OneClickPanel({
                             {ALL_COLUMNS.filter((c) => visibleColumns.includes(c.id)).map((col) => {
                               const isFinancial = [
                                 "totalAmount",
+                                "arrears",
                                 "deduction",
                                 "pf",
                                 "pt",
@@ -528,17 +548,37 @@ function OneClickPanel({
                                   key={col.id}
                                   className={`px-2.5 py-1.5 align-middle border-r border-border ${isFinancial ? "text-right" : ["presentDays", "leaves", "lopDays", "halfDays", "latePenalties", "ot", "daysPaid"].includes(col.id) ? "text-center" : "text-left"}`}
                                 >
-                                  {isEditing && isFinancial ? (
+                                  {isEditing && (isFinancial || ["presentDays", "leaves", "lopDays", "halfDays", "latePenalties", "ot", "daysPaid"].includes(col.id)) ? (
                                     <Input
                                       type="number"
                                       className="h-7 w-24 px-2 text-xs font-mono border-primary/50 focus-visible:ring-primary/30"
-                                      value={editForm[col.id]}
-                                      onChange={(e) =>
-                                        setEditForm({
-                                          ...editForm,
-                                          [col.id]: parseFloat(e.target.value) || 0,
-                                        })
-                                      }
+                                      value={editForm[col.id] || ""}
+                                      onChange={(e) => {
+                                        const val = parseFloat(e.target.value) || 0;
+                                        if (["presentDays", "lopDays", "leaves", "daysPaid"].includes(col.id)) {
+                                          let updated = { ...editForm, [col.id]: val };
+                                          const total = updated.totalDays || 30;
+                                          if (col.id === "presentDays") {
+                                            updated.lopDays = Math.max(0, total - val - (updated.leaves || 0));
+                                            updated.daysPaid = Math.max(0, total - updated.lopDays);
+                                          } else if (col.id === "lopDays") {
+                                            updated.presentDays = Math.max(0, total - val - (updated.leaves || 0));
+                                            updated.daysPaid = Math.max(0, total - val);
+                                          } else if (col.id === "leaves") {
+                                            updated.lopDays = Math.max(0, total - (updated.presentDays || 0) - val);
+                                            updated.daysPaid = Math.max(0, total - updated.lopDays);
+                                          } else if (col.id === "daysPaid") {
+                                            updated.lopDays = Math.max(0, total - val);
+                                            updated.presentDays = Math.max(0, total - updated.lopDays - (updated.leaves || 0));
+                                          }
+                                          setEditForm(updated);
+                                        } else {
+                                          setEditForm({
+                                            ...editForm,
+                                            [col.id]: val,
+                                          });
+                                        }
+                                      }}
                                     />
                                   ) : col.id === "attendance" ? (
                                     <div className="flex flex-col w-36 text-[11px] bg-muted/20 p-2 rounded border border-border/40 shadow-sm">
@@ -632,37 +672,29 @@ function OneClickPanel({
                 </table>
               </div>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-4 border-t">
-                <div className="flex gap-6">
+                <div className="flex flex-wrap gap-6">
                   <Stat label="Total Employees" value={String(empCount)} />
                   <Stat
                     label="Month"
                     value={`${new Date(period + "-01").toLocaleString("en-US", { month: "short" })} (${new Date(parseInt(period.split("-")[0]), parseInt(period.split("-")[1]), 0).getDate()} days)`}
                   />
-                  <Stat
-                    label="Total Gross"
-                    value={
-                      canViewConfidential
-                        ? fmtINR(previewData.reduce((sum, d) => sum + d.gross, 0))
-                        : "***"
-                    }
-                  />
-                  <Stat
-                    label="Total Deductions"
-                    value={
-                      canViewConfidential
-                        ? fmtINR(previewData.reduce((sum, d) => sum + d.deduction, 0))
-                        : "***"
-                    }
-                  />
-                  <Stat
-                    label="Total Net Payout"
-                    value={
-                      canViewConfidential
-                        ? fmtINR(previewData.reduce((sum, d) => sum + d.net, 0))
-                        : "***"
-                    }
-                    tone="success"
-                  />
+                  {canViewConfidential && (
+                    <>
+                      <Stat
+                        label="Total Gross"
+                        value={fmtINR(previewData.reduce((sum, d) => sum + d.gross, 0))}
+                      />
+                      <Stat
+                        label="Total Deductions"
+                        value={fmtINR(previewData.reduce((sum, d) => sum + d.deduction, 0))}
+                      />
+                      <Stat
+                        label="Total Net Payout"
+                        value={fmtINR(previewData.reduce((sum, d) => sum + d.net, 0))}
+                        tone="success"
+                      />
+                    </>
+                  )}
                 </div>
                 <div className="flex items-center gap-3">
                   <Button
@@ -693,6 +725,7 @@ function OneClickPanel({
 
   return (
     <div className="grid lg:grid-cols-[1.2fr_1fr] gap-6 mt-4">
+
       <Card
         className="p-8 shadow-[var(--shadow-elegant)]"
         style={{
@@ -1168,7 +1201,13 @@ function ApprovalsPanel({
   const handleApprove = async () => {
     setIsProcessing(true);
     try {
-      await Promise.all(pendingRuns.map((run: any) => payrollApi.approveRun(run.id)));
+      const readyRuns = pendingRuns.filter((r: any) => r.status === "Maker-Submitted");
+      if (readyRuns.length === 0) {
+        toast.error("No runs are currently in Maker-Submitted status ready for approval.");
+        setIsProcessing(false);
+        return;
+      }
+      await Promise.all(readyRuns.map((run: any) => payrollApi.approveRun(run.id)));
       toast.success(
         "✅ All pending payrolls approved successfully! They have been moved to Finance.",
         { duration: 5000 },
@@ -1218,9 +1257,19 @@ function ApprovalsPanel({
     { id: "lopDays", label: "LOP" },
     { id: "ot", label: "OT Overtime" },
     { id: "daysPaid", label: "Payable Days" },
-    { id: "totalAmount", label: "Total Amount" },
-    { id: "deduction", label: "Deductions" },
-    { id: "payableSalary", label: "Payable Salary" },
+    ...(canViewConfidential
+      ? [
+          { id: "currentSalary", label: "Current Salary" },
+          { id: "totalAmount", label: "Total Amount" },
+          { id: "arrears", label: "Arrears" },
+          { id: "deduction", label: "Deductions" },
+          { id: "pf", label: "PF" },
+          { id: "pt", label: "PT" },
+          { id: "reimbursement", label: "Reimbursement" },
+          { id: "incentive", label: "Incentive" },
+          { id: "payableSalary", label: "Payable Salary" },
+        ]
+      : []),
   ];
 
   const visibleColumns = ALL_COLUMNS.map((c) => c.id);
@@ -1233,7 +1282,7 @@ function ApprovalsPanel({
             <div>
               <h3 className="text-xl font-semibold">Payroll for {run.period}</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Prepared by HR Team • Awaiting your approval
+                Prepared by HR Team • {run.status === "Maker-Submitted" ? (canApprove ? "Awaiting your approval" : "Approval is pending") : run.status === "Disbursed" ? "Approval completed (Disbursed)" : run.status === "Rejected" ? "Rejected" : run.status}
               </p>
 
               {run.exceptions && run.exceptions.length > 0 && (
@@ -1384,7 +1433,9 @@ function ApprovalsPanel({
                           >
                             {ALL_COLUMNS.filter((c) => visibleColumns.includes(c.id)).map((col) => {
                               const isFinancial = [
+                                "currentSalary",
                                 "totalAmount",
+                                "arrears",
                                 "deduction",
                                 "payableSalary",
                                 "pf",
@@ -1421,49 +1472,51 @@ function ApprovalsPanel({
         </Card>
       ))}
 
-      <Card className="p-6 mt-8 border-primary/30 shadow-md bg-muted/10 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-1 h-full bg-primary/60"></div>
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-primary" /> Batch Approval Action
-          </h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            Accept or reject all pending entity payroll runs simultaneously. This action applies to
-            all {pendingRuns.length} pending runs above.
-          </p>
-        </div>
+      {canApprove && pendingRuns.filter((r: any) => r.status === "Maker-Submitted").length > 0 && (
+        <Card className="p-6 mt-8 border-primary/30 shadow-md bg-muted/10 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-primary/60"></div>
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-primary" /> Batch Approval Action
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Accept or reject all pending entity payroll runs simultaneously. This action applies to
+              all {pendingRuns.filter((r: any) => r.status === "Maker-Submitted").length} pending runs.
+            </p>
+          </div>
 
-        <div className="flex flex-col md:flex-row md:items-start gap-6 bg-white p-4 rounded border shadow-sm">
-          <div className="flex-1 space-y-1.5">
-            <Label className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
-              Rejection Comment (Required if rejecting)
-            </Label>
-            <Input
-              className="h-10 bg-background focus-visible:ring-primary/50"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="E.g. Bonus amounts look incorrect for sales team..."
-            />
+          <div className="flex flex-col md:flex-row md:items-start gap-6 bg-white p-4 rounded border shadow-sm">
+            <div className="flex-1 space-y-1.5">
+              <Label className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
+                Rejection Comment (Required if rejecting)
+              </Label>
+              <Input
+                className="h-10 bg-background focus-visible:ring-primary/50"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="E.g. Bonus amounts look incorrect for sales team..."
+              />
+            </div>
+            <div className="flex gap-3 md:pt-6 w-full md:w-auto">
+              <Button
+                variant="destructive"
+                className="flex-1 md:flex-none shadow-sm hover:shadow"
+                onClick={handleReject}
+                disabled={isProcessing || !canApprove}
+              >
+                Reject All
+              </Button>
+              <Button
+                className="flex-1 md:flex-none bg-success text-success-foreground hover:bg-success/90 shadow-sm hover:shadow"
+                onClick={handleApprove}
+                disabled={isProcessing || !canApprove}
+              >
+                Accept All
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-3 md:pt-6 w-full md:w-auto">
-            <Button
-              variant="destructive"
-              className="flex-1 md:flex-none shadow-sm hover:shadow"
-              onClick={handleReject}
-              disabled={isProcessing || !canApprove}
-            >
-              Reject All
-            </Button>
-            <Button
-              className="flex-1 md:flex-none bg-success text-success-foreground hover:bg-success/90 shadow-sm hover:shadow"
-              onClick={handleApprove}
-              disabled={isProcessing || !canApprove}
-            >
-              Accept All
-            </Button>
-          </div>
-        </div>
-      </Card>
+        </Card>
+      )}
     </div>
   );
 }

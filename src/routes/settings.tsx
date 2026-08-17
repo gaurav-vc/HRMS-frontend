@@ -170,10 +170,10 @@ function UsersAndRolesTab() {
     try {
       setLoading(true);
       const [r, e, d, nt, s] = await Promise.all([
-        rolesApi.getAll(),
-        employeesApi.getAll(),
-        departmentsApi.getAll(),
-        orgEngineApi.getNodeTypes(),
+        rolesApi.getAll().catch(() => []),
+        employeesApi.getAll().catch(() => []),
+        departmentsApi.getAll().catch(() => []),
+        orgEngineApi.getNodeTypes().catch(() => []),
         sitesApi.getAll().catch(() => []),
       ]);
       setRoles(r);
@@ -181,8 +181,10 @@ function UsersAndRolesTab() {
       setDepartments(d);
       setNodeTypes(nt);
       setSites(s);
-    } catch (e) {
-      toast.error("Failed to load setup data");
+    } catch (e: any) {
+      if (e?.response?.status !== 403) {
+        toast.error("Failed to load setup data");
+      }
     } finally {
       setLoading(false);
     }
@@ -1297,7 +1299,7 @@ const MODULES = [
   { group: "Overview", items: ["Dashboard"] },
   {
     group: "Organisation",
-    items: ["Entities", "Branches", "Sites", "Departments", "Designations"],
+    items: ["Entities", "Branches", "Sites", "Departments", "Designations", "Roles & Users"],
   },
   {
     group: "People",
@@ -1308,6 +1310,7 @@ const MODULES = [
       "Offer Templates",
       "Separation Request",
       "Manage Exits",
+      "Documents",
     ],
   },
   {
@@ -1322,7 +1325,7 @@ const MODULES = [
       "Regularization",
     ],
   },
-  { group: "Leave", items: ["Leave Requests", "Inbox"] },
+  { group: "Leave", items: ["Leave Requests", "Inbox", "Leave Policies", "Leave Balances"] },
   { group: "Holiday Planner", items: ["Holiday Planner", "Calendar"] },
   {
     group: "Payroll",
@@ -1353,8 +1356,8 @@ function RolePermissionsTab() {
     rolesApi.getAll().then((res) => {
       setRoles(res);
       if (res.length > 0) setSelectedRole(String(res[0].id));
-    });
-    entitiesApi.getAll().then((res) => setEntities(res));
+    }).catch(() => {});
+    entitiesApi.getAll().then((res) => setEntities(res)).catch(() => {});
   }, []);
 
   useEffect(() => {

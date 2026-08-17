@@ -152,8 +152,6 @@ export const SUPER_ADMIN_NAV: Group[] = [
 ];
 
 export const canAccessRoute = (it: Item, user: any) => {
-  if (user?.username === "Vibe_admin") return true;
-  if (user?.role === "super_admin") return true;
   if (user?.permissions && user.permissions[it.title]) {
     const v = user.permissions[it.title].view;
     return v === true || v === "self" || v === "selected_entities";
@@ -190,11 +188,16 @@ export function AppSidebar() {
     }).catch(() => {});
   }, [user]);
 
-  const can = (it: Item) => canAccessRoute(it, user);
+  const isSuperAdmin = user?.username === "Vibe_admin";
+  const can = (it: Item) => {
+    if (isSuperAdmin) return true;
+    return canAccessRoute(it, user);
+  };
   const isActive = (url: string) =>
     url === "/" ? pathname === "/" : pathname === url || pathname.startsWith(url + "/");
-
-  const nav = user?.username === "Vibe_admin" ? SUPER_ADMIN_NAV : NAV;
+  
+  // Vibe_admin ONLY sees SUPER_ADMIN_NAV
+  const nav = isSuperAdmin ? SUPER_ADMIN_NAV : NAV;
 
   return (
     <Sidebar collapsible="icon">
@@ -209,6 +212,7 @@ export function AppSidebar() {
               {branding.text ? branding.text[0].toUpperCase() : 'P'}
             </div>
           )}
+
           {!collapsed && branding.text && (
             <div className="leading-tight overflow-hidden">
               <div className="text-sm font-semibold text-sidebar-foreground truncate">{branding.text}</div>

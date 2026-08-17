@@ -23,13 +23,17 @@ export const Route = createFileRoute("/superadmin-dashboard")({
 });
 
 function SuperAdminDashboard() {
-  const { user } = useAuth();
+  const { user, init } = useAuth();
+  const isSuperAdmin = user?.username === "Vibe_admin";
   const { data: rawData, isLoading } = useQuery({
     queryKey: ["superadmin_dashboard_stats"],
     queryFn: () => api.getDashboardStats(),
+    enabled: isSuperAdmin,
   });
 
-  if (user?.username !== "Vibe_admin") {
+  if (!init) return null; // Wait for auth to initialize
+
+  if (!isSuperAdmin) {
     return <Navigate to="/" />;
   }
 

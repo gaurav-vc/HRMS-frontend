@@ -58,7 +58,7 @@ const MODULES = [
   { group: "Overview", items: ["Dashboard"] },
   {
     group: "Organisation",
-    items: ["Entities", "Branches", "Sites", "Departments", "Designations"],
+    items: ["Entities", "Branches", "Sites", "Departments", "Designations", "Roles & Users"],
   },
   {
     group: "People",
@@ -69,6 +69,7 @@ const MODULES = [
       "Offer Templates",
       "Separation Request",
       "Manage Exits",
+      "Documents",
     ],
   },
   {
@@ -83,7 +84,7 @@ const MODULES = [
       "Regularization",
     ],
   },
-  { group: "Leave", items: ["Leave Requests", "Inbox"] },
+  { group: "Leave", items: ["Leave Requests", "Inbox", "Leave Policies", "Leave Balances"] },
   { group: "Holiday Planner", items: ["Holiday Planner", "Calendar"] },
   {
     group: "Payroll",
