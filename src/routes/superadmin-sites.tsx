@@ -157,6 +157,9 @@ function SitesPage() {
       if (payload.organization === "") payload.organization = null;
       if (payload.branch === "") payload.branch = null;
 
+      // Strip 'logo' because sending the string URL back to DRF causes a FileField error.
+      delete payload.logo;
+
       if (editing && payload.id) {
         await sitesApi.update(payload.id, payload);
         toast.success("Site updated");

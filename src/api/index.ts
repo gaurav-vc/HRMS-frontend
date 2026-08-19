@@ -187,6 +187,7 @@ export const api = {
 export const authApi = {
   login: async (credentials: any) => apiCall("/auth/token/", "POST", credentials),
   getMe: async () => apiCall("/auth/me/"),
+  updateProfile: async (data: any) => apiCall("/auth/me/", "PATCH", data),
   logout: async (refresh: string) => apiCall("/auth/logout/", "POST", { refresh }),
   requestPasswordReset: async (email: string) =>
     apiCall("/auth/password-reset/request/", "POST", { email }),
@@ -434,6 +435,7 @@ export const payrollApi = {
     return apiCall(`/payroll/components/${qs}`);
   },
   createSalaryComponent: async (data: any) => apiCall("/payroll/components/", "POST", data),
+  updateSalaryComponent: async (id: number, data: any) => apiCall(`/payroll/components/${id}/`, "PATCH", data),
   deleteSalaryComponent: async (id: number) => apiCall(`/payroll/components/${id}/`, "DELETE"),
   getSlips: async (period?: string) => {
     const query = period ? `?period=${encodeURIComponent(period)}` : "";

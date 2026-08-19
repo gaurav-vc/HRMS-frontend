@@ -752,12 +752,15 @@ function OneClickPanel({
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Pay Period</Label>
-                <Select value={period} onValueChange={setPeriod}>
+                <Select value={period} onValueChange={(p) => {
+                  setPeriod(p);
+                  setCutoff(`${p}-25`);
+                }}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {["2026-04", "2026-05", "2026-06", "2026-07"].map((p) => (
+                    {["2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11", "2026-12"].map((p) => (
                       <SelectItem key={p} value={p}>
                         {p}
                       </SelectItem>
@@ -1155,6 +1158,7 @@ function ApprovalsPanel({
   canViewConfidential: boolean;
 }) {
   const [comment, setComment] = useState("");
+  const [runComments, setRunComments] = useState<Record<number, string>>({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [expandedRun, setExpandedRun] = useState<number | null>(null);
   const [previewData, setPreviewData] = useState<any[]>([]);
@@ -1235,6 +1239,35 @@ function ApprovalsPanel({
     }
   };
 
+  const handleApproveSingle = async (runId: number) => {
+    setIsProcessing(true);
+    try {
+      await payrollApi.approveRun(runId);
+      toast.success("✅ Payroll approved successfully!", { duration: 5000 });
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (e: any) {
+      toast.error(e.message);
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRejectSingle = async (runId: number) => {
+    const runComment = runComments[runId];
+    if (!runComment) {
+      toast.error("Please provide a rejection comment");
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      await payrollApi.rejectRun(runId, runComment);
+      toast.success("❌ Payroll rejected successfully.", { duration: 5000 });
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (e: any) {
+      toast.error(e.message);
+      setIsProcessing(false);
+    }
+  };
+
   if (pendingRuns.length === 0) {
     return (
       <Card className="p-12 text-center mt-4">
@@ -1274,9 +1307,15 @@ function ApprovalsPanel({
 
   const visibleColumns = ALL_COLUMNS.map((c) => c.id);
 
+  const sortedRuns = [...pendingRuns].sort((a, b) => {
+    if (a.status === "Maker-Submitted" && b.status !== "Maker-Submitted") return -1;
+    if (b.status === "Maker-Submitted" && a.status !== "Maker-Submitted") return 1;
+    return 0;
+  });
+
   return (
     <div className="space-y-4 mt-4">
-      {pendingRuns.map((run: any) => (
+      {sortedRuns.map((run: any) => (
         <Card key={run.id} className="p-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 mb-4">
             <div>
@@ -1467,56 +1506,39 @@ function ApprovalsPanel({
                   </table>
                 </div>
               )}
+
+              {canApprove && run.status === "Maker-Submitted" && (
+                <div className="mt-4 flex flex-col sm:flex-row gap-3 justify-end border-t border-border/50 pt-4">
+                  <Input 
+                    placeholder="Rejection comment (Required if rejecting)..." 
+                    className="max-w-md w-full bg-background"
+                    value={runComments[run.id] || ""}
+                    onChange={(e) => setRunComments({...runComments, [run.id]: e.target.value})}
+                  />
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="destructive" 
+                      onClick={() => handleRejectSingle(run.id)}
+                      disabled={isProcessing}
+                    >
+                      Reject
+                    </Button>
+                    <Button 
+                      className="bg-success text-success-foreground hover:bg-success/90" 
+                      onClick={() => handleApproveSingle(run.id)}
+                      disabled={isProcessing}
+                    >
+                      Approve
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </Card>
       ))}
 
-      {canApprove && pendingRuns.filter((r: any) => r.status === "Maker-Submitted").length > 0 && (
-        <Card className="p-6 mt-8 border-primary/30 shadow-md bg-muted/10 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-1 h-full bg-primary/60"></div>
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-primary" /> Batch Approval Action
-            </h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Accept or reject all pending entity payroll runs simultaneously. This action applies to
-              all {pendingRuns.filter((r: any) => r.status === "Maker-Submitted").length} pending runs.
-            </p>
-          </div>
 
-          <div className="flex flex-col md:flex-row md:items-start gap-6 bg-white p-4 rounded border shadow-sm">
-            <div className="flex-1 space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
-                Rejection Comment (Required if rejecting)
-              </Label>
-              <Input
-                className="h-10 bg-background focus-visible:ring-primary/50"
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="E.g. Bonus amounts look incorrect for sales team..."
-              />
-            </div>
-            <div className="flex gap-3 md:pt-6 w-full md:w-auto">
-              <Button
-                variant="destructive"
-                className="flex-1 md:flex-none shadow-sm hover:shadow"
-                onClick={handleReject}
-                disabled={isProcessing || !canApprove}
-              >
-                Reject All
-              </Button>
-              <Button
-                className="flex-1 md:flex-none bg-success text-success-foreground hover:bg-success/90 shadow-sm hover:shadow"
-                onClick={handleApprove}
-                disabled={isProcessing || !canApprove}
-              >
-                Accept All
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
     </div>
   );
 }

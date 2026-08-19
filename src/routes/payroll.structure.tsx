@@ -68,7 +68,8 @@ function StructurePage() {
   // Dialog state for new component
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<any>({
+    id: undefined,
     name: "New Component",
     type: "Earning",
     calc: "Fixed",
@@ -132,30 +133,52 @@ function StructurePage() {
   const handleCreateComponent = async () => {
     try {
       setIsSubmitting(true);
-      const res = await payrollApi.createSalaryComponent({
-        structure: activeId,
-        name: form.name,
-        type: form.type,
-        calc: form.calc,
-        value: form.calc === "Balancing" ? 0 : form.value,
-        prorate: form.prorate,
-      });
-      setComps((c) => [...c, res]);
-      setStructures(
-        structures.map((s) =>
-          s.id === activeId ? { ...s, components: [...(s.components || []), res] } : s,
-        ),
-      );
+      if (form.id) {
+        const res = await payrollApi.updateSalaryComponent(form.id, {
+          name: form.name,
+          type: form.type,
+          calc: form.calc,
+          value: form.calc === "Balancing" ? 0 : form.value,
+          formula: form.formula,
+          prorate: form.prorate,
+        });
+        setComps((c) => c.map(comp => comp.id === form.id ? res : comp));
+        setStructures(
+          structures.map((s) =>
+            s.id === activeId ? { ...s, components: s.components?.map((comp: any) => comp.id === form.id ? res : comp) || [] } : s,
+          ),
+        );
+        toast.success("Component updated!");
+      } else {
+        const res = await payrollApi.createSalaryComponent({
+          structure: activeId,
+          name: form.name,
+          type: form.type,
+          calc: form.calc,
+          value: form.calc === "Balancing" ? 0 : form.value,
+          formula: form.formula,
+          prorate: form.prorate,
+        });
+        setComps((c) => [...c, res]);
+        setStructures(
+          structures.map((s) =>
+            s.id === activeId ? { ...s, components: [...(s.components || []), res] } : s,
+          ),
+        );
+        toast.success("Component created!");
+      }
       setOpen(false);
       setForm({
+        id: undefined,
         name: "New Component",
         type: "Earning",
         calc: "Fixed",
         value: 1000,
+        formula: "",
         prorate: true,
       });
     } catch (e: any) {
-      toast.error("Failed to add component: " + e.message);
+      toast.error("Failed to save component: " + e.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -274,6 +297,10 @@ function StructurePage() {
     if (c.calc === "Formula" && c.formula) {
       const matchCTC = c.formula.match(/monthly_ctc\s*\*\s*([\d.]+)/);
       if (matchCTC) return Math.round((ctc / 12) * parseFloat(matchCTC[1]));
+      
+      const matchIfElse = c.formula.match(/ifelse\([^,]+,\s*([\d.]+),\s*([\d.]+)\)/);
+      if (matchIfElse) return Number(matchIfElse[2]); // Return the default monthly value for preview
+      
       if (!isNaN(Number(c.formula))) return Number(c.formula);
     }
     return 0;
@@ -541,7 +568,11 @@ function StructurePage() {
                       earnings.map(({ c, v }) => (
                         <div
                           key={c.id}
-                          className="grid grid-cols-[1.5fr_1fr_1fr_1fr_50px] gap-4 p-4 items-center text-sm group"
+                          className="grid grid-cols-[1.5fr_1fr_1fr_1fr_50px] gap-4 p-4 items-center text-sm group cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => {
+                            setForm(c);
+                            setOpen(true);
+                          }}
                         >
                           <div className="font-medium">{c.name}</div>
                           <div className="text-muted-foreground">
@@ -565,7 +596,10 @@ function StructurePage() {
                               size="icon"
                               variant="ghost"
                               className="h-8 w-8 text-destructive"
-                              onClick={() => handleDeleteComponent(c.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteComponent(c.id);
+                              }}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -612,7 +646,11 @@ function StructurePage() {
                       deductions.map(({ c, v }) => (
                         <div
                           key={c.id}
-                          className="grid grid-cols-[1.5fr_1fr_1fr_1fr_50px] gap-4 p-4 items-center text-sm group"
+                          className="grid grid-cols-[1.5fr_1fr_1fr_1fr_50px] gap-4 p-4 items-center text-sm group cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => {
+                            setForm(c);
+                            setOpen(true);
+                          }}
                         >
                           <div className="font-medium">{c.name}</div>
                           <div className="text-muted-foreground">
@@ -636,7 +674,10 @@ function StructurePage() {
                               size="icon"
                               variant="ghost"
                               className="h-8 w-8 text-destructive"
-                              onClick={() => handleDeleteComponent(c.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteComponent(c.id);
+                              }}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -751,11 +792,23 @@ function StructurePage() {
                   <SelectItem value="Fixed">Fixed Amount / year</SelectItem>
                   <SelectItem value="% of Basic">% of Basic</SelectItem>
                   <SelectItem value="% of CTC">% of CTC</SelectItem>
+                  <SelectItem value="Formula">Custom Formula</SelectItem>
                   <SelectItem value="Balancing">Balancing (Remaining value)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            {form.calc !== "Balancing" && (
+            {form.calc === "Formula" && (
+              <div className="space-y-1.5">
+                <Label>Formula</Label>
+                <Input
+                  type="text"
+                  placeholder="e.g. monthly_ctc * 0.6"
+                  value={form.formula || ""}
+                  onChange={(e) => setForm({ ...form, formula: e.target.value })}
+                />
+              </div>
+            )}
+            {form.calc !== "Balancing" && form.calc !== "Formula" && (
               <div className="space-y-1.5">
                 <Label>Value</Label>
                 <Input

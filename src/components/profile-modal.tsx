@@ -21,12 +21,35 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"profile" | "security">("profile");
 
+  // Profile tab state
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editName, setEditName] = useState(user?.name || "");
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
   // Security tab state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
+    setMessage(null);
+    try {
+      await authApi.updateProfile({ name: editName });
+      setMessage({ type: "success", text: "Profile updated successfully." });
+      setIsEditingProfile(false);
+      // Wait for 1 second then reload to fetch the new name across the app
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.response?.data?.error || "Failed to update profile." });
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,16 +120,50 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
         <div className="flex-1 bg-white p-8 overflow-y-auto">
           {activeTab === "profile" && (
             <div className="max-w-md">
-              <h2 className="text-2xl font-semibold text-slate-900 mb-2">Profile Details</h2>
+              <div className="flex justify-between items-start mb-2">
+                <h2 className="text-2xl font-semibold text-slate-900">Profile Details</h2>
+                {!isEditingProfile ? (
+                  <Button variant="outline" size="sm" onClick={() => setIsEditingProfile(true)}>
+                    Edit Profile
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setIsEditingProfile(false)} disabled={isSavingProfile}>
+                      Cancel
+                    </Button>
+                    <Button size="sm" onClick={handleSaveProfile} disabled={isSavingProfile}>
+                      {isSavingProfile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Save
+                    </Button>
+                  </div>
+                )}
+              </div>
               <p className="text-sm text-slate-500 mb-8">
                 Your personal and organizational details.
               </p>
+
+              {message && activeTab === "profile" && (
+                <div className={`p-3 rounded-md text-sm mb-6 ${
+                  message.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"
+                }`}>
+                  {message.text}
+                </div>
+              )}
 
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-slate-500 text-xs uppercase tracking-wider">Full Name</Label>
-                    <div className="font-medium mt-1">{user?.name}</div>
+                    {!isEditingProfile ? (
+                      <div className="font-medium mt-1">{user?.name}</div>
+                    ) : (
+                      <Input 
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="mt-1"
+                        placeholder="John Doe"
+                      />
+                    )}
                   </div>
                   <div>
                     <Label className="text-slate-500 text-xs uppercase tracking-wider">Email</Label>

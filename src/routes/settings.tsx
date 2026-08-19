@@ -176,11 +176,11 @@ function UsersAndRolesTab() {
         orgEngineApi.getNodeTypes().catch(() => []),
         sitesApi.getAll().catch(() => []),
       ]);
-      setRoles(r);
-      setEmployees(e);
-      setDepartments(d);
-      setNodeTypes(nt);
-      setSites(s);
+      setRoles(Array.isArray(r) ? r : (r as any).results || []);
+      setEmployees(Array.isArray(e) ? e : (e as any).results || []);
+      setDepartments(Array.isArray(d) ? d : (d as any).results || []);
+      setNodeTypes(Array.isArray(nt) ? nt : (nt as any).results || []);
+      setSites(Array.isArray(s) ? s : (s as any).results || []);
     } catch (e: any) {
       if (e?.response?.status !== 403) {
         toast.error("Failed to load setup data");
@@ -1379,19 +1379,13 @@ function RolePermissionsTab() {
       const next = { ...current, [action]: checked };
 
       if (checked) {
+        // If enabling any action, 'view' must also be enabled
         if (action === "create" || action === "update" || action === "delete") {
           next.view = true;
-          next.create = true;
-          next.update = true;
-          next.delete = true;
         }
       } else {
+        // If disabling 'view', all other actions must be disabled
         if (action === "view") {
-          next.create = false;
-          next.update = false;
-          next.delete = false;
-        }
-        if (action === "create" || action === "update" || action === "delete") {
           next.create = false;
           next.update = false;
           next.delete = false;

@@ -870,7 +870,12 @@ function EmployeeDialog({
                         {(sites || [])
                           .filter((s: Site) => {
                             if (form.branch) return String(s?.branch) === String(form.branch);
-                            if (form.entity) return String(s?.organization) === String(form.entity) || String(s?.entity) === String(form.entity);
+                            if (form.entity) {
+                              if (String(s?.entity) === String(form.entity)) return true;
+                              const selectedEntityObj = entities?.find((ent: any) => String(ent.id) === String(form.entity));
+                              if (selectedEntityObj && s?.organization && String(s.organization) === String(selectedEntityObj.organization)) return true;
+                              return false;
+                            }
                             return true;
                           })
                           .map((s: Site, idx: number) => (
@@ -1033,10 +1038,14 @@ function EmployeeDialog({
                                 None
                               </CommandItem>
                               {(employees || [])
-                                .filter(
-                                  (e: Employee) =>
-                                    !form.entity || String(e?.entity) === String(form.entity),
-                                )
+                                .filter((e: Employee) => {
+                                  if (!form.entity) return true;
+                                  if (String(e?.entity) === String(form.entity)) return true;
+                                  const selectedEntityObj = entities?.find((ent: any) => String(ent.id) === String(form.entity));
+                                  const empOrg = (e as any)?.organization;
+                                  if (selectedEntityObj && empOrg && String(empOrg) === String(selectedEntityObj.organization)) return true;
+                                  return false;
+                                })
                                 .map((e: Employee) => (
                                   <CommandItem
                                     key={e.id}
@@ -1408,13 +1417,18 @@ function EmployeeDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            {tab === "compliance" || tab === "documents" ? (
-              <Button onClick={() => onSave(form, pendingDocs)}>Save Employee</Button>
-            ) : (
-              <Button onClick={() => onSave({ ...form, status: "Draft" }, pendingDocs)}>
-                Save Draft
+            {employee?.status === "Draft" && (
+              <Button 
+                variant="default"
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => onSave({ ...form, status: 'Active' }, pendingDocs)}
+              >
+                Activate Employee
               </Button>
             )}
+            <Button onClick={() => onSave(form, pendingDocs)}>
+              {employee?.status === "Draft" ? "Save Draft" : "Save Employee"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
