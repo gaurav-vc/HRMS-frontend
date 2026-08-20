@@ -152,10 +152,33 @@ export const SUPER_ADMIN_NAV: Group[] = [
 ];
 
 export const canAccessRoute = (it: Item, user: any) => {
+  // If user has explicit permissions (e.g. from a custom role)
   if (user?.permissions && user.permissions[it.title]) {
     const v = user.permissions[it.title].view;
     return v === true || v === "self" || v === "selected_entities";
   }
+  
+  // Default fallback for normal employees
+  if (user?.role === "employee") {
+    const defaultEmployeeModules = [
+      "Dashboard",
+      "My Calendar",
+      "Attendance",
+      "QR Check-in",
+      "Face Verification",
+      "GPS Capture",
+      "Regularization",
+      "Leave Requests",
+      "Inbox",
+      "Salary Slips",
+      "My Form 16",
+      "Separation Request"
+    ];
+    if (defaultEmployeeModules.includes(it.title)) {
+      return true;
+    }
+  }
+  
   return false;
 };
 

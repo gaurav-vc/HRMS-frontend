@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/stat-card";
 import { attendanceApi, employeesApi } from "@/api";
+import { EmployeeAttendanceReport } from "@/components/employee-attendance-report";
 
 export const Route = createFileRoute("/attendance/")({
   loader: async () => {
@@ -37,6 +38,8 @@ function AttendancePage() {
     title: string;
   } | null>(null);
   const [detailedRow, setDetailedRow] = useState<any>(null);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportEmployeeId, setReportEmployeeId] = useState<number | null>(null);
 
   // Compute some stats based on punch history
   const isVerified = (status: string) => status === "VERIFIED" || status === "PENDING_ML_INSTALL";
@@ -80,10 +83,13 @@ function AttendancePage() {
 
       <Dialog open={!!detailedRow} onOpenChange={(o) => !o && setDetailedRow(null)}>
         <DialogContent className="sm:max-w-4xl">
-          <DialogHeader>
+          <DialogHeader className="flex flex-row items-center justify-between pr-8">
             <DialogTitle>
               Attendance Details - {detailedRow?.employee_name || detailedRow?.employeeName}
             </DialogTitle>
+            <Button size="sm" variant="outline" onClick={() => { setReportEmployeeId(detailedRow?.employee || null); setReportOpen(true); setDetailedRow(null); }}>
+              View Monthly Report
+            </Button>
           </DialogHeader>
           <div className="space-y-4 mt-2">
             <div className="grid grid-cols-2 gap-4">
@@ -176,6 +182,14 @@ function AttendancePage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <EmployeeAttendanceReport
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        initialEmployeeId={reportEmployeeId}
+        employees={employees}
+      />
+
       <PageHeader title="Attendance" description="Live attendance feed across all sites" />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">

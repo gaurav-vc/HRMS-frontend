@@ -857,45 +857,16 @@ function EmployeeDialog({
                       </SelectContent>
                     </Select>
                   </Field>
-                  <Field label="Site">
-                    <Select
-                      value={String(form.site || " ")}
-                      onValueChange={(v) => setForm({ ...form, site: v === " " ? null : v } as any)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Site" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value=" ">None</SelectItem>
-                        {(sites || [])
-                          .filter((s: Site) => {
-                            if (form.branch) return String(s?.branch) === String(form.branch);
-                            if (form.entity) {
-                              if (String(s?.entity) === String(form.entity)) return true;
-                              const selectedEntityObj = entities?.find((ent: any) => String(ent.id) === String(form.entity));
-                              if (selectedEntityObj && s?.organization && String(s.organization) === String(selectedEntityObj.organization)) return true;
-                              return false;
-                            }
-                            return true;
-                          })
-                          .map((s: Site, idx: number) => (
-                            <SelectItem key={s?.id || `st-${idx}`} value={String(s?.id)}>
-                              {s?.name || "Unknown"}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
                   <Field label="Enrolled Sites">
                     <Popover>
                       <PopoverTrigger asChild>
                         <button
                           role="combobox"
-                          className={`flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border-2 border-slate-300 dark:border-slate-600 bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring ${!form.enrolled_sites?.length ? "text-muted-foreground" : ""}`}
+                          className={`flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border-2 border-slate-300 dark:border-slate-600 bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring ${!form.enrolledSites?.length ? "text-muted-foreground" : ""}`}
                         >
-                          {form.enrolled_sites?.length > 0 ? (
+                          {form.enrolledSites?.length > 0 ? (
                             <span className="text-foreground font-medium">
-                              {form.enrolled_sites.length} site(s) selected
+                              {form.enrolledSites.length} site(s) selected
                             </span>
                           ) : (
                             "Select sites..."
@@ -914,42 +885,45 @@ function EmployeeDialog({
                             <div className="max-h-[200px] overflow-y-auto">
                               {(sites || [])
                                 .filter((s: Site) => {
-                                  if (!form.entity) return true;
+                                  const eId = form.entity && form.entity !== " " && form.entity !== "null" ? String(form.entity) : null;
+                                  if (!eId) return true;
                                   
-                                  if (String(s.organization) === String(form.entity) || String(s.entity) === String(form.entity)) return true;
+                                  const entitiesList = Array.isArray(entities) ? entities : ((entities as any)?.results || []);
+                                  const branchesList = Array.isArray(branches) ? branches : ((branches as any)?.results || []);
                                   
-                                  const siteBranch = (branches || []).find(
-                                    (b: Branch) => String(b.id) === String(s.branch),
-                                  );
-                                  return (
-                                    siteBranch && String(siteBranch.entity) === String(form.entity)
-                                  );
+                                  const selectedEntityObj = entitiesList.find((ent: any) => String(ent.id) === String(eId));
+                                  if (selectedEntityObj && s?.organization && String(s.organization) === String(selectedEntityObj.organization)) return true;
+                                  
+                                  const siteBranch = branchesList.find((b: Branch) => String(b.id) === String(s.branch));
+                                  if (siteBranch && String(siteBranch.entity) === String(eId)) return true;
+                                  
+                                  return false;
                                 })
-                                .map((s: Site) => (
+                                .map((s: Site, idx: number) => (
                                   <CommandItem
-                                    key={s.id}
-                                    value={s.name}
+                                    key={s?.id || `st-pop-${idx}`}
+                                    value={String(s?.id)}
                                     className="cursor-pointer font-medium hover:bg-slate-100 dark:hover:bg-slate-800"
                                     onSelect={() => {
-                                      const current = form.enrolled_sites || [];
+                                      const current = form.enrolledSites || [];
                                       if (current.includes(s.id)) {
                                         setForm({
                                           ...form,
-                                          enrolled_sites: current.filter(
-                                            (id: any) => String(id) !== String(s.id),
+                                          enrolledSites: current.filter(
+                                            (sid: string | number) => sid !== s.id,
                                           ),
                                         });
                                       } else {
-                                        setForm({ ...form, enrolled_sites: [...current, s.id] });
+                                        setForm({ ...form, enrolledSites: [...current, s.id] });
                                       }
                                     }}
                                   >
                                     <div
-                                      className={`mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary ${form.enrolled_sites?.includes(s.id) ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible"}`}
+                                      className={`mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary ${form.enrolledSites?.includes(s.id) ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible"}`}
                                     >
-                                      <Check className="h-3 w-3 font-bold stroke-[3]" />
+                                      <Check className="h-4 w-4" />
                                     </div>
-                                    {s.name}
+                                    <span>{s.name}</span>
                                   </CommandItem>
                                 ))}
                             </div>

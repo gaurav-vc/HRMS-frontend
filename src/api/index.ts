@@ -374,6 +374,8 @@ export const attendanceApi = {
     start_date: string;
     end_date: string;
   }): Promise<any> => apiCall("/attendance/roster/bulk_assign/", "POST", data),
+  getEmployeeReport: async (employeeId: number, year: number, month: number): Promise<any> =>
+    apiCall(`/attendance/employee_report/?employee_id=${employeeId}&year=${year}&month=${month}`),
 };
 
 export const departmentsApi = {
