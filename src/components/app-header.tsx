@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -379,6 +379,7 @@ export function AppHeader() {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="h-9 px-2 gap-2">
             <Avatar className="h-7 w-7">
+              {user?.avatar && <AvatarImage src={user.avatar} alt={user.name} className="object-cover" />}
               <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                 {user?.name
                   .split(" ")
@@ -398,7 +399,11 @@ export function AppHeader() {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
           <DropdownMenuItem onClick={() => setIsProfileOpen(true)}>Profile</DropdownMenuItem>
-          <DropdownMenuItem>My Payslips</DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/payroll/slips" search={{ period: undefined }} className="w-full cursor-pointer">
+              My Payslips
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={logout}>
             <LogOut className="h-4 w-4 mr-2" />

@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { fmtINR } from "@/lib/mock-data";
 import { reimbursementsApi, employeesApi } from "@/api";
+import { getMediaUrl } from "@/api";
 import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/reimbursements")({
@@ -51,6 +52,7 @@ function ReimbPage() {
     amount: 5000,
     date: new Date().toISOString().split("T")[0],
   });
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
 
   const empName = (id: string | number) => {
     const emp = employees.find((e: any) => e.id == id);
@@ -73,13 +75,27 @@ function ReimbPage() {
     }
     try {
       setIsSubmitting(true);
-      const newClaim = await reimbursementsApi.createReimbursement({
-        ...form,
-        employee_id: form.employee,
-        status: "Pending",
-      });
+      let payload: any;
+      if (receiptFile) {
+        payload = new FormData();
+        payload.append("employee", form.employee);
+        payload.append("category", form.category);
+        payload.append("amount", form.amount.toString());
+        payload.append("date", form.date);
+        payload.append("status", "Pending");
+        payload.append("receipt", receiptFile);
+      } else {
+        payload = {
+          ...form,
+          employee_id: form.employee,
+          status: "Pending",
+        };
+      }
+      
+      const newClaim = await reimbursementsApi.createReimbursement(payload);
       setRows((prev) => [newClaim, ...prev]);
       setOpen(false);
+      setReceiptFile(null);
       toast.success("Claim submitted successfully");
     } catch (e: any) {
       toast.error("Failed to submit claim: " + e.message);
@@ -144,7 +160,23 @@ function ReimbPage() {
             render: (r) => fmtINR(r.amount),
           },
           { key: "date", header: "Date", accessor: (r) => r.date, sortable: true },
-          { key: "receipt", header: "Receipt" },
+          {
+            key: "receipt",
+            header: "Receipt",
+            render: (r) =>
+              r.receipt ? (
+                <a
+                  href={getMediaUrl(r.receipt)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline text-sm font-medium"
+                >
+                  View Receipt
+                </a>
+              ) : (
+                <span className="text-muted-foreground text-sm">—</span>
+              ),
+          },
           {
             key: "status",
             header: "Status",
@@ -258,6 +290,14 @@ function ReimbPage() {
                 type="date"
                 value={form.date}
                 onChange={(e) => setForm({ ...form, date: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Receipt (Optional)</Label>
+              <Input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
               />
             </div>
           </div>

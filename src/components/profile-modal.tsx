@@ -24,6 +24,8 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
   // Profile tab state
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editName, setEditName] = useState(user?.name || "");
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(user?.avatar || null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Security tab state
@@ -37,7 +39,16 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
     setIsSavingProfile(true);
     setMessage(null);
     try {
-      await authApi.updateProfile({ name: editName });
+      let payload: any = { name: editName };
+      
+      if (selectedPhoto) {
+        const formData = new FormData();
+        formData.append("name", editName);
+        formData.append("photo", selectedPhoto);
+        payload = formData;
+      }
+      
+      await authApi.updateProfile(payload);
       setMessage({ type: "success", text: "Profile updated successfully." });
       setIsEditingProfile(false);
       // Wait for 1 second then reload to fetch the new name across the app
@@ -74,6 +85,14 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
       setMessage({ type: "error", text: err?.response?.data?.error || "Failed to update password." });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedPhoto(file);
+      setPreviewUrl(URL.createObjectURL(file));
     }
   };
 
@@ -151,6 +170,34 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
               )}
 
               <div className="space-y-6">
+                {/* Photo Upload Area */}
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="h-16 w-16 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center shrink-0 border">
+                    {previewUrl ? (
+                      <img src={previewUrl} alt="Avatar" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-slate-500 font-semibold text-xl uppercase">
+                        {user?.name?.charAt(0) || "U"}
+                      </span>
+                    )}
+                  </div>
+                  {isEditingProfile && (
+                    <div>
+                      <Label htmlFor="photo-upload" className="cursor-pointer text-sm font-medium text-blue-600 hover:text-blue-700">
+                        Upload new photo
+                      </Label>
+                      <Input
+                        id="photo-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handlePhotoChange}
+                      />
+                      <p className="text-xs text-slate-500 mt-1">Recommended: Square image, max 2MB</p>
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-slate-500 text-xs uppercase tracking-wider">Full Name</Label>

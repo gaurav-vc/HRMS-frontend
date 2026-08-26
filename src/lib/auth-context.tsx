@@ -47,17 +47,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             const me = await authApi.getMe();
             if (mounted) {
-              const updatedUser = {
-                name:
-                  `${me.firstName || ""} ${me.lastName || ""}`.trim() ||
-                  me.email?.split("@")[0] ||
-                  "User",
-                username: me.username || "",
-                email: me.email,
-                role: (me.role as Role) || "employee",
-                permissions: me.permissions || {},
-                role_name: me.roleName || me.role_name || "",
-                employee_id: me.employeeId || me.employee_id,
+                const updatedUser = {
+                  name:
+                    `${me.firstName || me.first_name || ""} ${me.lastName || me.last_name || ""}`.trim() ||
+                    me.email?.split("@")[0] ||
+                    "User",
+                  username: me.username || "",
+                  email: me.email,
+                  role: (me.role as Role) || "employee",
+                  permissions: me.permissions || {},
+                  role_name: me.roleName || me.role_name || "",
+                  employee_id: me.employeeId || me.employee_id,
+                  avatar: me.photoUrl || me.photo_url,
                 site_name: me.siteName || me.site_name,
                 org_name: me.orgName || me.org_name,
               };
@@ -113,13 +114,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const me = await authApi.getMe();
       persist(
         {
-          name: `${me.firstName || ""} ${me.lastName || ""}`.trim() || email.split("@")[0],
+          name: `${me.firstName || me.first_name || ""} ${me.lastName || me.last_name || ""}`.trim() || email.split("@")[0],
           username: me.username || email.split("@")[0],
           email: email,
           role: (me.role as Role) || "employee",
           permissions: me.permissions || {},
           role_name: me.role_name || "",
           employee_id: me.employee_id || me.employeeId,
+          avatar: me.photoUrl || me.photo_url,
           site_name: me.siteName || me.site_name,
           org_name: me.orgName || me.org_name,
         },
