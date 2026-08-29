@@ -295,38 +295,93 @@ function NotificationBell() {
                   </div>
 
                   {isEmp ? (
-                    <div className="flex gap-4 mt-3 w-full">
-                      <span
-                        className="text-xs text-primary font-medium cursor-pointer hover:underline"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          navigate({
-                            to: "/employees",
-                            search: { edit: relatedEmployeeId, tab: "personal" } as any,
-                          });
-                          markRead(n.id);
-                        }}
-                      >
-                        View Employee Details →
-                      </span>
-                      {(user?.role === "super_admin" ||
-                        user?.permissions?.can_add_ctc === true) && (
-                        <span
-                          className="text-xs text-blue-600 font-medium cursor-pointer hover:underline"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            navigate({
-                              to: "/employees",
-                              search: { edit: relatedEmployeeId, tab: "compensation" } as any,
-                            });
-                            markRead(n.id);
-                          }}
-                        >
-                          Add CTC Details →
-                        </span>
-                      )}
-                    </div>
-                  ) : (
+                    (() => {
+                      const title = (n.title || "").toLowerCase();
+                      if (title.includes("loan")) {
+                        return (
+                          <div className="flex gap-4 mt-3 w-full">
+                            <span
+                              className="text-xs text-primary font-medium cursor-pointer hover:underline"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                navigate({ to: "/loans" });
+                                markRead(n.id);
+                              }}
+                            >
+                              Review Loan Request →
+                            </span>
+                          </div>
+                        );
+                      }
+                      if (title.includes("reimbursement")) {
+                        return (
+                          <div className="flex gap-4 mt-3 w-full">
+                            <span
+                              className="text-xs text-primary font-medium cursor-pointer hover:underline"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                navigate({ to: "/reimbursements" });
+                                markRead(n.id);
+                              }}
+                            >
+                              Review Reimbursement →
+                            </span>
+                          </div>
+                        );
+                      }
+                      if (title.includes("regularization")) {
+                        return (
+                          <div className="flex gap-4 mt-3 w-full">
+                            <span
+                              className="text-xs text-primary font-medium cursor-pointer hover:underline"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                navigate({ to: "/attendance/regularize" });
+                                markRead(n.id);
+                              }}
+                            >
+                              Review Request →
+                            </span>
+                          </div>
+                        );
+                      }
+
+                      // Default for generic employee notifications (e.g., Employee Created)
+                      return (
+                        <div className="flex gap-4 mt-3 w-full">
+                          <span
+                            className="text-xs text-primary font-medium cursor-pointer hover:underline"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              navigate({
+                                to: "/employees",
+                                search: { edit: relatedEmployeeId, tab: "personal" } as any,
+                              });
+                              markRead(n.id);
+                            }}
+                          >
+                            View Employee Details →
+                          </span>
+                          {(user?.role === "super_admin" ||
+                            user?.permissions?.can_add_ctc === true) && (
+                            <span
+                              className="text-xs text-blue-600 font-medium cursor-pointer hover:underline"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                navigate({
+                                  to: "/employees",
+                                  search: { edit: relatedEmployeeId, tab: "compensation" } as any,
+                                });
+                                markRead(n.id);
+                              }}
+                            >
+                              Add CTC Details →
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()
+                  ) : isRun ? (
                     <span
                       className="text-xs text-primary font-medium mt-2 block w-full cursor-pointer hover:underline"
                       onClick={(e) => {
@@ -337,7 +392,7 @@ function NotificationBell() {
                     >
                       View Payroll Run →
                     </span>
-                  )}
+                  ) : null}
                 </div>
               );
             })}
