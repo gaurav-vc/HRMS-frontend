@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { Plus, Check, X } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { fmtINR } from "@/lib/mock-data";
 import { loansApi, employeesApi } from "@/api";
+import { useAuth, usePermissions } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/loans")({
   loader: async () => {
@@ -36,6 +37,8 @@ export const Route = createFileRoute("/loans")({
 function LoansPage() {
   const { loans, employees } = Route.useLoaderData();
   const [rows, setRows] = useState<any[]>(loans);
+  const { user } = useAuth();
+  const { canUpdate } = usePermissions("Loans & Advances");
 
   // Dialog State
   const [open, setOpen] = useState(false);
@@ -64,7 +67,7 @@ function LoansPage() {
         ...form,
         employee_id: form.employee, // map to backend if needed
         outstanding: form.amount,
-        status: "Active",
+        status: "Pending",
       });
       setRows((prev) => [...prev, newLoan]);
       setOpen(false);
@@ -131,33 +134,86 @@ function LoansPage() {
           {
             key: "status",
             header: "Status",
-            render: (r) => (
-              <Badge
-                className={
-                  r.status === "Active"
-                    ? "bg-info text-info-foreground"
-                    : r.status === "Closed"
-                      ? "bg-success text-success-foreground"
-                      : "bg-warning text-warning-foreground"
+            render: (r) => {
+              let displayStatus = r.status;
+              let badgeClass = "bg-warning text-warning-foreground";
+              
+              if (r.status === "Active") {
+                displayStatus = "Accepted";
+                badgeClass = "bg-info text-info-foreground";
+              } else if (r.status === "Closed") {
+                if (r.outstanding === r.amount && r.amount > 0) {
+                  displayStatus = "Rejected";
+                  badgeClass = "bg-destructive text-destructive-foreground";
+                } else {
+                  displayStatus = "Closed";
+                  badgeClass = "bg-success text-success-foreground";
                 }
-              >
-                {r.status}
-              </Badge>
-            ),
+              }
+
+              return (
+                <Badge className={badgeClass}>
+                  {displayStatus}
+                </Badge>
+              );
+            },
           },
         ]}
-        actions={(r) => (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setRows((rs) => rs.map((x) => (x.id === r.id ? { ...x, status: "Closed" } : x)));
-              toast.success("Loan closed");
-            }}
-          >
-            Close
-          </Button>
-        )}
+        actions={(r) => {
+          const currentEmpCode = user?.employee_id;
+          const myEmpObj = employees.find((e: any) => e.code === currentEmpCode || e.employeeId === currentEmpCode);
+          const myDbId = myEmpObj?.id;
+
+          const loanEmpId = r.employee || r.employeeId || r.employee_id;
+          const isMyLoan = Boolean(myDbId && loanEmpId && myDbId == loanEmpId);
+
+          const canAction = (canUpdate || user?.is_superuser) && !isMyLoan;
+
+          if (!canAction) return null;
+
+          if (r.status === "Pending") {
+            return (
+              <div className="flex justify-end gap-2">
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 text-success hover:text-success border-success/30 hover:bg-success/10"
+                  onClick={async () => {
+                    try {
+                      const updated = await loansApi.updateLoan(r.id, { status: "Active" });
+                      setRows((rs) => rs.map((x) => (x.id === r.id ? updated : x)));
+                      toast.success("Action accepted");
+                    } catch (e: any) {
+                      toast.error("Failed to accept: " + e.message);
+                    }
+                  }}
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/10"
+                  onClick={async () => {
+                    try {
+                      const updated = await loansApi.updateLoan(r.id, {
+                        status: "Closed",
+                        outstanding: r.amount, // Record that nothing was paid
+                      });
+                      setRows((rs) => rs.map((x) => (x.id === r.id ? updated : x)));
+                      toast.success("Action rejected");
+                    } catch (e: any) {
+                      toast.error("Failed to reject: " + e.message);
+                    }
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            );
+          }
+          return null;
+        }}
       />
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -202,7 +258,11 @@ function LoansPage() {
               <Input
                 type="number"
                 value={form.amount}
-                onChange={(e) => setForm({ ...form, amount: +e.target.value })}
+                onChange={(e) => {
+                  const amt = +e.target.value;
+                  const newTenure = form.emi > 0 ? Math.ceil(amt / form.emi) : form.tenure;
+                  setForm({ ...form, amount: amt, tenure: newTenure });
+                }}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -211,7 +271,11 @@ function LoansPage() {
                 <Input
                   type="number"
                   value={form.emi}
-                  onChange={(e) => setForm({ ...form, emi: +e.target.value })}
+                  onChange={(e) => {
+                    const emiVal = +e.target.value;
+                    const newTenure = emiVal > 0 ? Math.ceil(form.amount / emiVal) : form.tenure;
+                    setForm({ ...form, emi: emiVal, tenure: newTenure });
+                  }}
                 />
               </div>
               <div className="space-y-1.5">

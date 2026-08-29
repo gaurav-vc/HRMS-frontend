@@ -460,6 +460,7 @@ export const payrollApi = {
 export const loansApi = {
   getAll: async (): Promise<Loan[]> => apiCall("/payroll/loans/"),
   createLoan: async (data: any): Promise<Loan> => apiCall("/payroll/loans/", "POST", data),
+  updateLoan: async (id: string | number, data: any): Promise<Loan> => apiCall(`/payroll/loans/${id}/`, "PATCH", data),
 };
 
 export const reimbursementsApi = {

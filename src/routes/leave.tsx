@@ -302,7 +302,7 @@ function LeavePage() {
                 accessor: (r: any) => {
                   const allocated = Number(r.allocatedDays || r.allocated_days) || 0;
                   const rem = Number(r.remainingDays || r.remaining_days) || 0;
-                  if (allocated === 0) return "N/A";
+                  if (allocated === 0) return "Not Applicable";
                   return rem < 2 ? "Low Balance" : "Healthy";
                 },
                 render: (r: any) => {
@@ -310,7 +310,7 @@ function LeavePage() {
                   const rem = Number(r.remainingDays || r.remaining_days) || 0;
                   
                   if (allocated === 0) {
-                    return <Badge variant="secondary" className="bg-slate-100 text-slate-500">N/A</Badge>;
+                    return <Badge variant="secondary" className="bg-slate-100 text-slate-500">Not Applicable</Badge>;
                   }
                   
                   return (

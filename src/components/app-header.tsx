@@ -194,12 +194,20 @@ function NotificationBell() {
 
   useEffect(() => {
     if (!user) return;
-    notificationsApi
-      .getAll()
-      .then((data) => {
-        if (Array.isArray(data)) setNotifs(data);
-      })
-      .catch(() => {});
+    
+    const fetchNotifs = () => {
+      notificationsApi
+        .getAll()
+        .then((data) => {
+          if (Array.isArray(data)) setNotifs(data);
+        })
+        .catch(() => {});
+    };
+
+    fetchNotifs(); // initial fetch
+    const interval = setInterval(fetchNotifs, 10000); // Poll every 10s
+
+    return () => clearInterval(interval);
   }, [user]);
 
   const markRead = (id: number) => {
