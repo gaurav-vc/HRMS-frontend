@@ -26,6 +26,12 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const [viewMode, setViewMode] = useState<"login" | "forgot_email" | "forgot_otp" | "forgot_reset">("login");
+  const [resetEmail, setResetEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
   useEffect(() => {
     if (user) {
       if (typeof window !== "undefined" && !localStorage.getItem("access_token")) {
@@ -41,6 +47,70 @@ function AuthPage() {
       }
     }
   }, [user, navigate]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await login(email, password);
+    } catch (err: any) {
+      alert(err.message || "Invalid credentials");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail) return alert("Please enter your email");
+    setLoading(true);
+    try {
+      const { authApi } = await import("@/api");
+      await authApi.requestPasswordReset(resetEmail);
+      setViewMode("forgot_otp");
+    } catch (err: any) {
+      alert(err.message || "Failed to send OTP");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otp) return alert("Please enter the OTP");
+    setLoading(true);
+    try {
+      const { authApi } = await import("@/api");
+      await authApi.verifyOTP(resetEmail, otp);
+      setViewMode("forgot_reset");
+    } catch (err: any) {
+      alert(err.message || "Invalid or expired OTP");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword) return alert("Please enter a new password");
+    setLoading(true);
+    try {
+      const { authApi } = await import("@/api");
+      const res = await authApi.confirmPasswordReset({ email: resetEmail, otp, password: newPassword });
+      if (res.access && res.refresh) {
+        localStorage.setItem("access_token", res.access);
+        localStorage.setItem("refresh_token", res.refresh);
+        window.location.reload();
+      } else {
+        alert("Password reset successfully. Please login.");
+        setViewMode("login");
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to reset password");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
@@ -90,55 +160,158 @@ function AuthPage() {
 
       <div className="flex items-center justify-center p-6">
         <Card className="w-full max-w-md p-8 shadow-[var(--shadow-elegant)]">
-          <div className="flex items-center gap-2 mb-1 text-primary text-xs uppercase tracking-widest">
-            <Sparkles className="h-3 w-3" /> Welcome back
-          </div>
-          <h2 className="text-2xl font-semibold">Sign in to PeoplePulse</h2>
-          <p className="text-sm text-muted-foreground mt-1">Enter your credentials to continue.</p>
+          {viewMode === "login" && (
+            <>
+              <div className="flex items-center gap-2 mb-1 text-primary text-xs uppercase tracking-widest">
+                <Sparkles className="h-3 w-3" /> Welcome back
+              </div>
+              <h2 className="text-2xl font-semibold">Sign in to PeoplePulse</h2>
+              <p className="text-sm text-muted-foreground mt-1">Enter your credentials to continue.</p>
 
-          <form
-            className="mt-6 space-y-4"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              try {
-                await login(email, password);
-                // Navigation is handled by the useEffect above automatically based on the user's role
-              } catch (err: any) {
-                alert(err.message || "Invalid credentials");
-              }
-            }}
-          >
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Work email / Username</Label>
-              <div className="relative">
-                <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  className="pl-8"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="pw">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="pw"
-                  type="password"
-                  className="pl-8"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-            </div>
-            <Button type="submit" className="w-full">
-              Sign in
-            </Button>
-          </form>
+              <form className="mt-6 space-y-4" onSubmit={handleLogin}>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email">Work email / Username</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      className="pl-8"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pw">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="pw"
+                      type="password"
+                      className="pl-8"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="flex justify-end pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("forgot_email")}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Signing in..." : "Sign in"}
+                </Button>
+              </form>
+            </>
+          )}
+
+          {viewMode === "forgot_email" && (
+            <>
+              <h2 className="text-2xl font-semibold">Reset Password</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Enter your registered work email to receive an OTP.
+              </p>
+
+              <form className="mt-6 space-y-4" onSubmit={handleSendOTP}>
+                <div className="space-y-1.5">
+                  <Label htmlFor="resetEmail">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="resetEmail"
+                      type="email"
+                      className="pl-8"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" className="w-full" onClick={() => setViewMode("login")} disabled={loading}>
+                    Back to Login
+                  </Button>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? "Sending..." : "Send OTP"}
+                  </Button>
+                </div>
+              </form>
+            </>
+          )}
+
+          {viewMode === "forgot_otp" && (
+            <>
+              <h2 className="text-2xl font-semibold">Verify OTP</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Enter the 6-digit code sent to {resetEmail}. Valid for 10 minutes.
+              </p>
+
+              <form className="mt-6 space-y-4" onSubmit={handleVerifyOTP}>
+                <div className="space-y-1.5">
+                  <Label htmlFor="otp">Enter OTP</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="otp"
+                      type="text"
+                      maxLength={6}
+                      className="pl-8 text-center tracking-widest text-lg"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" className="w-full" onClick={() => setViewMode("forgot_email")} disabled={loading}>
+                    Resend
+                  </Button>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? "Verifying..." : "Verify"}
+                  </Button>
+                </div>
+              </form>
+            </>
+          )}
+
+          {viewMode === "forgot_reset" && (
+            <>
+              <h2 className="text-2xl font-semibold">Create New Password</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Enter a strong password to secure your account.
+              </p>
+
+              <form className="mt-6 space-y-4" onSubmit={handleResetPassword}>
+                <div className="space-y-1.5">
+                  <Label htmlFor="newPassword">New Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      className="pl-8"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Saving..." : "Save & Login"}
+                </Button>
+              </form>
+            </>
+          )}
         </Card>
       </div>
     </div>
   );
 }
+

@@ -23,7 +23,9 @@ export const API_BASE_URL = import.meta.env.PROD
   ? (typeof window !== 'undefined' && window.location.hostname.includes('vibesandbox')
       ? "https://hrms.vibesandbox.live"
       : "https://hrms.vibecopilot.ai")
-  : "http://127.0.0.1:8000";
+  : (typeof window !== 'undefined' 
+      ? `http://${window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname}:8000` 
+      : "http://127.0.0.1:8000");
 
 export const getMediaUrl = (url: string | null | undefined): string => {
   if (!url) return "";
@@ -191,6 +193,8 @@ export const authApi = {
   logout: async (refresh: string) => apiCall("/auth/logout/", "POST", { refresh }),
   requestPasswordReset: async (email: string) =>
     apiCall("/auth/password-reset/request/", "POST", { email }),
+  verifyOTP: async (email: string, otp: string) =>
+    apiCall("/auth/password-reset/verify-otp/", "POST", { email, otp }),
   confirmPasswordReset: async (data: any) =>
     apiCall("/auth/password-reset/confirm/", "POST", data),
   changePassword: async (data: any) =>
