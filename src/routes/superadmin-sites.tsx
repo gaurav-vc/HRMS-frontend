@@ -151,9 +151,26 @@ function SitesPage() {
 
   const save = async (s: any) => {
     try {
+      // Map camelCase fields to snake_case for DRF
+      const payload = { 
+        ...s,
+        site_code: s.siteCode,
+        product_type: s.productType,
+        activate_date: s.activateDate,
+        contact_name: s.contactName,
+        contact_phone: s.contactPhone,
+        contact_email: s.contactEmail,
+      };
+      
+      delete payload.siteCode;
+      delete payload.productType;
+      delete payload.activateDate;
+      delete payload.contactName;
+      delete payload.contactPhone;
+      delete payload.contactEmail;
+
       // Clean up empty strings for optional fields that DRF expects to be null
-      const payload = { ...s };
-      if (payload.activateDate === "") payload.activateDate = null;
+      if (payload.activate_date === "") payload.activate_date = null;
       if (payload.organization === "") payload.organization = null;
       if (payload.branch === "") payload.branch = null;
 
