@@ -30,6 +30,7 @@ import {
   entitiesApi,
   sitesApi,
   payrollApi,
+  getMediaUrl,
 } from "@/api";
 
 import React from "react";
@@ -607,7 +608,7 @@ function EmployeeDetail() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <Button size="sm" variant="outline" asChild>
-                      <a href={d.file} target="_blank" rel="noopener noreferrer">
+                      <a href={getMediaUrl(d.file)} target="_blank" rel="noopener noreferrer">
                         View
                       </a>
                     </Button>
