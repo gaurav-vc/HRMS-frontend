@@ -37,7 +37,16 @@ function SitesPage() {
     try {
       // Strip 'logo' because sending the string URL back to DRF causes a FileField error.
       // (Since there is no logo uploader in this dialog anyway)
-      const { logo, ...data } = s;
+      const { logo, qrEnabled, faceEnabled, ...rest } = s;
+      
+      // The backend overrides parsers and uses raw JSONParser, so it expects snake_case for writes
+      // even though it emits camelCase for reads.
+      const data = {
+        ...rest,
+        qr_enabled: qrEnabled,
+        face_enabled: faceEnabled,
+        site_code: rest.site_code || rest.siteCode,
+      };
       
       if (editing && s.id) {
         await sitesApi.update(s.id, data);
@@ -159,26 +168,32 @@ function SitesPage() {
           {
             key: "qr",
             header: "QR",
-            accessor: (r: any) => (r.qr_enabled !== false ? "On" : "Off"),
-            render: (r: any) => (
-              <span
-                className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-semibold ${r.qr_enabled !== false ? "bg-[#06b6d4] text-white shadow-sm" : "bg-slate-100 text-slate-500"}`}
-              >
-                {r.qr_enabled !== false ? "On" : "Off"}
-              </span>
-            ),
+            accessor: (r: any) => (r.qrEnabled === false || r.qrEnabled === 'false' ? "Off" : "On"),
+            render: (r: any) => {
+              const isOn = r.qrEnabled !== false && r.qrEnabled !== 'false';
+              return (
+                <span
+                  className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-semibold ${isOn ? "bg-[#06b6d4] text-white shadow-sm" : "bg-slate-100 text-slate-500"}`}
+                >
+                  {isOn ? "On" : "Off"}
+                </span>
+              );
+            },
           },
           {
             key: "face",
             header: "Face",
-            accessor: (r: any) => (r.face_enabled !== false ? "On" : "Off"),
-            render: (r: any) => (
-              <span
-                className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-semibold ${r.face_enabled !== false ? "bg-[#06b6d4] text-white shadow-sm" : "bg-slate-100 text-slate-500"}`}
-              >
-                {r.face_enabled !== false ? "On" : "Off"}
-              </span>
-            ),
+            accessor: (r: any) => (r.faceEnabled === false || r.faceEnabled === 'false' ? "Off" : "On"),
+            render: (r: any) => {
+              const isOn = r.faceEnabled !== false && r.faceEnabled !== 'false';
+              return (
+                <span
+                  className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-semibold ${isOn ? "bg-[#06b6d4] text-white shadow-sm" : "bg-slate-100 text-slate-500"}`}
+                >
+                  {isOn ? "On" : "Off"}
+                </span>
+              );
+            },
           },
           {
             key: "created_at",
@@ -237,8 +252,8 @@ function SiteDialog({ open, onOpenChange, site, onSave, readOnly }: any) {
     latitude: "",
     longitude: "",
     radius: 150,
-    qr_enabled: true,
-    face_enabled: true,
+    qrEnabled: true,
+    faceEnabled: true,
     status: "Active",
   };
 
@@ -246,7 +261,16 @@ function SiteDialog({ open, onOpenChange, site, onSave, readOnly }: any) {
 
   useEffect(() => {
     if (open) {
-      setForm(site || defaultForm);
+      if (site) {
+        setForm({
+          ...defaultForm,
+          ...site,
+          qrEnabled: site.qrEnabled === false || site.qrEnabled === 'false' ? false : (site.qrEnabled === true || site.qrEnabled === 'true' ? true : defaultForm.qrEnabled),
+          faceEnabled: site.faceEnabled === false || site.faceEnabled === 'false' ? false : (site.faceEnabled === true || site.faceEnabled === 'true' ? true : defaultForm.faceEnabled),
+        });
+      } else {
+        setForm(defaultForm);
+      }
     }
   }, [open, site]);
 
@@ -362,14 +386,30 @@ function SiteDialog({ open, onOpenChange, site, onSave, readOnly }: any) {
 
         {/* Attendance Features */}
         <section className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
-          <h3 className="font-semibold text-lg text-slate-800">Attendance Modes</h3>
+          <div className="flex flex-col space-y-1">
+            <h3 className="font-semibold text-lg text-slate-800">Attendance Modes</h3>
+            <p className="text-sm text-slate-500">Configure how employees mark attendance at this site.</p>
+          </div>
+          
+          {(!form.qrEnabled && !form.faceEnabled) && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm flex items-start">
+              <div className="font-semibold mr-2">Security Alert:</div>
+              <div>At least one attendance mode (QR Check-in or Face Verification) must be enabled to allow employees to check in.</div>
+            </div>
+          )}
+
           <div className="flex gap-8">
             <div className="flex items-center space-x-2">
               <Switch
                 id="qr-mode"
                 checked={form.qrEnabled ?? true}
                 disabled={readOnly}
-                onCheckedChange={(c) => setForm({ ...form, qrEnabled: c })}
+                onCheckedChange={(c) => {
+                  if (!c && !form.faceEnabled) {
+                    toast.error("Cannot disable QR Check-in while Face Verification is also disabled.");
+                  }
+                  setForm({ ...form, qrEnabled: c });
+                }}
               />
               <Label htmlFor="qr-mode" className="cursor-pointer">
                 QR Check-in
@@ -380,7 +420,12 @@ function SiteDialog({ open, onOpenChange, site, onSave, readOnly }: any) {
                 id="face-mode"
                 checked={form.faceEnabled ?? true}
                 disabled={readOnly}
-                onCheckedChange={(c) => setForm({ ...form, faceEnabled: c })}
+                onCheckedChange={(c) => {
+                  if (!c && !form.qrEnabled) {
+                    toast.error("Cannot disable Face Verification while QR Check-in is also disabled.");
+                  }
+                  setForm({ ...form, faceEnabled: c });
+                }}
               />
               <Label htmlFor="face-mode" className="cursor-pointer">
                 Face Verification
@@ -402,7 +447,14 @@ function SiteDialog({ open, onOpenChange, site, onSave, readOnly }: any) {
             </Button>
             <Button
               className="bg-[#1a4cd2] hover:bg-[#1641b4] text-white"
-              onClick={() => onSave(form)}
+              disabled={!form.qrEnabled && !form.faceEnabled}
+              onClick={() => {
+                if (!form.qrEnabled && !form.faceEnabled) {
+                  toast.error("Security Requirement: At least one attendance mode must be active.");
+                  return;
+                }
+                onSave(form);
+              }}
             >
               Save Site
             </Button>

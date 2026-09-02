@@ -215,8 +215,25 @@ function Shell() {
   const router = useRouter();
 
   useEffect(() => {
-    if (init && !user && pathname !== "/auth") {
-      router.navigate({ to: "/auth" });
+    if (!init) return;
+
+    if (!user && pathname !== "/auth") {
+      router.navigate({ to: "/auth", replace: true });
+      return;
+    }
+
+    if (user) {
+      const isSuperAdmin = user.username === "Vibe_admin" || user.is_superuser;
+      const isSuperAdminRoute = 
+        pathname.startsWith("/superadmin-") || 
+        pathname.startsWith("/organizations") || 
+        pathname.startsWith("/billing-payments");
+
+      if (isSuperAdmin && !isSuperAdminRoute && pathname !== "/auth") {
+        router.navigate({ to: "/superadmin-dashboard", replace: true });
+      } else if (!isSuperAdmin && isSuperAdminRoute && pathname !== "/auth") {
+        router.navigate({ to: "/", replace: true });
+      }
     }
   }, [init, user, pathname, router]);
 
@@ -227,6 +244,16 @@ function Shell() {
   if (!user) {
     return null;
   }
+
+  const isSuperAdmin = user.username === "Vibe_admin" || user.is_superuser;
+  const isSuperAdminRoute = 
+    pathname.startsWith("/superadmin-") || 
+    pathname.startsWith("/organizations") || 
+    pathname.startsWith("/billing-payments");
+
+  if (isSuperAdmin && !isSuperAdminRoute) return null;
+  if (!isSuperAdmin && isSuperAdminRoute) return null;
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background relative pb-16 md:pb-0">
