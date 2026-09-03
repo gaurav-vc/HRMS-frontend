@@ -1721,7 +1721,7 @@ function AttendanceSettingsTab() {
           requireFace: p.requireFace ?? p.require_face,
           requireQr: p.requireQr ?? p.require_qr,
           requireGps: p.requireGps ?? p.require_gps,
-          wfhEmployees: p.wfhEmployees ?? p.wfh_employees ?? [],
+          wfhEmployees: (p.wfhEmployees ?? p.wfh_employees ?? []).map(String),
         });
       } else if (res && res.results && res.results.length > 0) {
         const p = res.results[0];
@@ -1736,7 +1736,7 @@ function AttendanceSettingsTab() {
           requireFace: p.requireFace ?? p.require_face,
           requireQr: p.requireQr ?? p.require_qr,
           requireGps: p.requireGps ?? p.require_gps,
-          wfhEmployees: p.wfhEmployees ?? p.wfh_employees ?? [],
+          wfhEmployees: (p.wfhEmployees ?? p.wfh_employees ?? []).map(String),
         });
       } else {
         // No policy found for this scope, reset to defaults
