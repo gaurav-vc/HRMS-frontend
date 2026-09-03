@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, MoreHorizontal, ChevronDown, Check, Info } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   rolesApi,
   employeesApi,
@@ -39,7 +40,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import { X } from "lucide-react";
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
 
 function SettingsPage() {
@@ -1639,7 +1649,16 @@ function AttendanceSettingsTab() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [policyId, setPolicyId] = useState<number | null>(null);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    maxLateMinutes: number;
+    halfDayHours: number;
+    fullDayHours: number;
+    otApplicableAfterHours: number;
+    requireFace: boolean;
+    requireQr: boolean;
+    requireGps: boolean;
+    wfhEmployees: string[];
+  }>({
     maxLateMinutes: 15,
     halfDayHours: 4.0,
     fullDayHours: 8.0,
@@ -1647,11 +1666,13 @@ function AttendanceSettingsTab() {
     requireFace: true,
     requireQr: true,
     requireGps: true,
+    wfhEmployees: [],
   });
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dropdownError, setDropdownError] = useState<string | null>(null);
+  const [wfhEntityFilter, setWfhEntityFilter] = useState<string>("");
 
   useEffect(() => {
     Promise.all([entitiesApi.getAll(), sitesApi.getAll(), employeesApi.getAll()])
@@ -1700,6 +1721,7 @@ function AttendanceSettingsTab() {
           requireFace: p.requireFace ?? p.require_face,
           requireQr: p.requireQr ?? p.require_qr,
           requireGps: p.requireGps ?? p.require_gps,
+          wfhEmployees: p.wfhEmployees ?? p.wfh_employees ?? [],
         });
       } else if (res && res.results && res.results.length > 0) {
         const p = res.results[0];
@@ -1714,6 +1736,7 @@ function AttendanceSettingsTab() {
           requireFace: p.requireFace ?? p.require_face,
           requireQr: p.requireQr ?? p.require_qr,
           requireGps: p.requireGps ?? p.require_gps,
+          wfhEmployees: p.wfhEmployees ?? p.wfh_employees ?? [],
         });
       } else {
         // No policy found for this scope, reset to defaults
@@ -1726,6 +1749,7 @@ function AttendanceSettingsTab() {
           requireFace: true,
           requireQr: true,
           requireGps: true,
+          wfhEmployees: [],
         });
       }
     } catch (e) {
@@ -1738,7 +1762,16 @@ function AttendanceSettingsTab() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const payload: any = { ...formData };
+      const payload: any = {
+        max_late_minutes: formData.maxLateMinutes,
+        half_day_hours: formData.halfDayHours,
+        full_day_hours: formData.fullDayHours,
+        ot_applicable_after_hours: formData.otApplicableAfterHours,
+        require_face: formData.requireFace,
+        require_qr: formData.requireQr,
+        require_gps: formData.requireGps,
+        wfh_employees: formData.wfhEmployees,
+      };
       if (selectedEmployeeId) {
         payload.employee = selectedEmployeeId;
       } else {
@@ -1875,6 +1908,142 @@ function AttendanceSettingsTab() {
         </div>
       ) : (
         <div className="space-y-6">
+          <div className="p-4 border rounded-md bg-muted/10 space-y-4">
+            <div className="space-y-1">
+              <Label className="text-base font-semibold">Authorized WFH Employees</Label>
+              <p className="text-sm text-muted-foreground">
+                Explicitly select which employees can bypass the geofence restriction under this policy.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">Filter by Entity (Optional)</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between font-normal" role="combobox">
+                    {wfhEntityFilter === "all" || !wfhEntityFilter 
+                      ? "All Entities" 
+                      : entities.find(e => String(e.id) === wfhEntityFilter)?.name || "All Entities"}
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search entity..." />
+                    <CommandList>
+                      <CommandEmpty>No entity found.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="all entities"
+                          onSelect={() => setWfhEntityFilter("all")}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4", wfhEntityFilter === "all" || !wfhEntityFilter ? "opacity-100" : "opacity-0")} />
+                          All Entities
+                        </CommandItem>
+                        {entities.map((ent) => (
+                          <CommandItem
+                            key={ent.id}
+                            value={ent.name}
+                            onSelect={() => setWfhEntityFilter(String(ent.id))}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", wfhEntityFilter === String(ent.id) ? "opacity-100" : "opacity-0")} />
+                            {ent.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="space-y-3">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between font-normal text-muted-foreground" role="combobox">
+                    Select Employee(s)...
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search employees by name or code..." />
+                    <CommandList>
+                      <CommandEmpty>No employees found.</CommandEmpty>
+                      <CommandGroup>
+                        {employees
+                          .filter((emp) => {
+                            if (!wfhEntityFilter || wfhEntityFilter === "all") return true;
+                            // Check all possible ways the entity ID might be exposed in the frontend object
+                            const empEntityId = emp.entity?.id || emp.entity || emp.organization?.id || emp.organization || emp.entity_id;
+                            return String(empEntityId) === String(wfhEntityFilter);
+                          })
+                          .map((emp) => {
+                            const empId = String(emp.id);
+                            const isSelected = formData.wfhEmployees.includes(empId);
+                            const fullName = `${emp.first_name || emp.firstName || ""} ${emp.last_name || emp.lastName || ""}`.trim();
+                            return (
+                              <CommandItem
+                                key={empId}
+                                value={`${fullName} ${emp.code || ""}`}
+                                onSelect={() => {
+                                  if (isSelected) {
+                                    setFormData({
+                                      ...formData,
+                                      wfhEmployees: formData.wfhEmployees.filter((id) => id !== empId),
+                                    });
+                                  } else {
+                                    setFormData({
+                                      ...formData,
+                                      wfhEmployees: [...formData.wfhEmployees, empId],
+                                    });
+                                  }
+                                }}
+                              >
+                                <div className="flex items-center space-x-2 w-full">
+                                  <Checkbox checked={isSelected} className="pointer-events-none" />
+                                  <span className="flex-1 font-medium">{fullName} <span className="text-muted-foreground font-normal ml-1">({emp.code || "No Code"})</span></span>
+                                </div>
+                              </CommandItem>
+                            );
+                          })}
+                      </CommandGroup>
+                    </CommandList>
+                    <div className="p-2 border-t bg-muted/20 flex justify-end">
+                      <Button size="sm" onClick={handleSave} disabled={saving}>
+                        {saving ? "Saving..." : "Save Selection"}
+                      </Button>
+                    </div>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+
+              {formData.wfhEmployees.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {formData.wfhEmployees.map((empId) => {
+                    const emp = employees.find((e) => String(e.id) === empId);
+                    if (!emp) return null;
+                    const fullName = `${emp.first_name || emp.firstName || ""} ${emp.last_name || emp.lastName || ""}`.trim();
+                    return (
+                      <Badge key={empId} variant="secondary" className="px-3 py-1 flex items-center space-x-1 text-sm bg-background border shadow-sm">
+                        <span>{fullName}</span>
+                        <X 
+                          className="h-3.5 w-3.5 ml-1 cursor-pointer hover:text-destructive transition-colors" 
+                          onClick={() => {
+                            setFormData({
+                              ...formData,
+                              wfhEmployees: formData.wfhEmployees.filter((id) => id !== empId),
+                            });
+                          }}
+                        />
+                      </Badge>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">

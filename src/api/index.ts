@@ -322,11 +322,11 @@ export const orgEngineApi = {
 
 export const attendancePoliciesApi = {
   getAll: async (params?: string): Promise<any> =>
-    apiCall(`/organisation/attendance-policies/${params || ""}`),
+    apiCall(`/api/organisation/attendance-policies/${params || ""}`),
   create: async (data: any): Promise<any> =>
-    apiCall("/organisation/attendance-policies/", "POST", data),
+    apiCall("/api/organisation/attendance-policies/", "POST", data),
   update: async (id: number, data: any): Promise<any> =>
-    apiCall(`/organisation/attendance-policies/${id}/`, "PATCH", data),
+    apiCall(`/api/organisation/attendance-policies/${id}/`, "PATCH", data),
 };
 
 export const attendanceApi = {

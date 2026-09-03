@@ -72,6 +72,7 @@ function ScanPunchPage() {
 
   const [livenessPrompt, setLivenessPrompt] = useState("Please look straight into the camera");
   const [verifyStatus, setVerifyStatus] = useState<string>("");
+  const [errorTitle, setErrorTitle] = useState("Authentication Failed");
   const [errorMsg, setErrorMsg] = useState(
     loaderError
       ? `Backend API Error: ${loaderError}`
@@ -245,7 +246,18 @@ function ScanPunchPage() {
         } catch (e) {
           /* ignore */
         }
-        setErrorMsg(msg);
+        
+        if (
+          msg.toLowerCase().includes("face") ||
+          msg.toLowerCase().includes("identity") ||
+          msg.toLowerCase().includes("liveness")
+        ) {
+          setErrorTitle("Verification Failed");
+          setErrorMsg("Could not verify live selfie. Please snap a new photo and try again.");
+        } else {
+          setErrorTitle("Authentication Failed");
+          setErrorMsg(msg);
+        }
         setStep("ERROR");
       }
     };
@@ -258,6 +270,7 @@ function ScanPunchPage() {
     setFaceImageBlob(null);
     setLocation(null);
     setErrorMsg("");
+    setErrorTitle("Authentication Failed");
     setVerifyStatus("");
     setIsCameraReady(false);
 
@@ -493,7 +506,7 @@ function ScanPunchPage() {
               <div className="text-center text-white p-6 bg-destructive/10 w-full h-full flex flex-col justify-center">
                 <XCircle className="w-20 h-20 mx-auto mb-4 text-destructive" />
                 <h4 className="text-xl font-semibold text-destructive mb-2">
-                  Authentication Failed
+                  {errorTitle}
                 </h4>
                 <p className="text-sm text-slate-300 mt-2 max-w-xs mx-auto border border-destructive/50 bg-destructive/20 p-3 rounded">
                   {errorMsg}
