@@ -53,7 +53,8 @@ function HolidayPlanner() {
         const allHolidays = Array.isArray(res) ? res : [];
         setHolidays(allHolidays);
 
-        const today = new Date().toISOString().split("T")[0];
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
         setStats({
           total_holidays: allHolidays.length,
           upcoming: allHolidays.filter((h: any) => h.date >= today).length,
@@ -227,7 +228,8 @@ function HolidayPlanner() {
         <CardContent>
           <div className="space-y-4 mt-4">
             {holidays.filter((h) => {
-              const today = new Date().toISOString().split("T")[0];
+              const now = new Date();
+              const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
               if (!filterType || filterType === "UPCOMING") return h.date >= today;
               if (filterType === "TOTAL") return true;
               if (filterType === "OPTIONAL") return h.holiday_type === "Optional";
@@ -242,7 +244,8 @@ function HolidayPlanner() {
             ) : (
               holidays
                 .filter((h) => {
-                  const today = new Date().toISOString().split("T")[0];
+                  const now = new Date();
+                  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
                   if (!filterType || filterType === "UPCOMING") return h.date >= today;
                   if (filterType === "TOTAL") return true;
                   if (filterType === "OPTIONAL") return h.holiday_type === "Optional";

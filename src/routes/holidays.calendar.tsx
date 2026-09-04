@@ -88,7 +88,10 @@ function HolidayCalendar() {
 
         <div className="grid grid-cols-7">
           {days.map((date, i) => {
-            const dateStr = date.toISOString().split("T")[0];
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+            const dateStr = `${year}-${month}-${day}`;
             const isCurrentMonth = date.getMonth() === currentDate.getMonth();
             const dayHolidays = holidays.filter((h) => h.date === dateStr);
 
