@@ -22,6 +22,7 @@ interface AuthCtx {
   login: (email: string, password?: string) => Promise<void>;
   logout: () => Promise<void>;
   setRole: (r: Role) => void;
+  refreshUser: () => Promise<void>;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -145,6 +146,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const refreshUser = async () => {
+    try {
+      const me = await authApi.getMe();
+      if (user) {
+        const updatedUser = {
+          ...user,
+          avatar: me.photoUrl || me.photo_url,
+          name: `${me.firstName || me.first_name || ""} ${me.lastName || me.last_name || ""}`.trim() || user.name,
+        };
+        persist(updatedUser, typeof localStorage !== "undefined" ? localStorage.getItem("access_token") || undefined : undefined, typeof localStorage !== "undefined" ? localStorage.getItem("refresh_token") || undefined : undefined);
+      }
+    } catch (e) {
+      /* ignore */
+    }
+  };
+
   const contextValue = useMemo(
     () => ({
       user,
@@ -152,6 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login: performLogin as any,
       logout: performLogout,
       setRole: (r: Role) => user && persist({ ...user, role: r }),
+      refreshUser,
     }),
     [user, init],
   );

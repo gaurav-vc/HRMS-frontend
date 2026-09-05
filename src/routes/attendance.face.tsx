@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { isRedirect } from "@tanstack/react-router";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/attendance/face")({
   loader: async () => {
@@ -45,6 +46,7 @@ type ScanStep = "SELECT_SITE" | "QR" | "FACE_LIVENESS" | "GEO" | "SUBMITTING" | 
 
 function ScanPunchPage() {
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const loaderData = Route.useLoaderData();
   const sitesList = Array.isArray(loaderData.sites)
     ? loaderData.sites
@@ -236,6 +238,8 @@ function ScanPunchPage() {
         } else {
           setVerifyStatus("VERIFIED");
         }
+
+        await refreshUser();
 
         setStep("DONE");
       } catch (err: any) {

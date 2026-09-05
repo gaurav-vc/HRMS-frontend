@@ -173,29 +173,14 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                 {/* Photo Upload Area */}
                 <div className="flex items-center gap-4 mb-4">
                   <div className="h-16 w-16 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center shrink-0 border">
-                    {previewUrl ? (
-                      <img src={previewUrl} alt="Avatar" className="h-full w-full object-cover" />
+                    {user?.avatar ? (
+                      <img src={user.avatar} alt="Avatar" className="h-full w-full object-cover" />
                     ) : (
                       <span className="text-slate-500 font-semibold text-xl uppercase">
                         {user?.name?.charAt(0) || "U"}
                       </span>
                     )}
                   </div>
-                  {isEditingProfile && (
-                    <div>
-                      <Label htmlFor="photo-upload" className="cursor-pointer text-sm font-medium text-blue-600 hover:text-blue-700">
-                        Upload new photo
-                      </Label>
-                      <Input
-                        id="photo-upload"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handlePhotoChange}
-                      />
-                      <p className="text-xs text-slate-500 mt-1">Recommended: Square image, max 2MB</p>
-                    </div>
-                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
