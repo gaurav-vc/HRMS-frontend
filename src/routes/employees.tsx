@@ -208,6 +208,11 @@ function EmployeesPage() {
       if (!cleanData.designation) cleanData.designation = null;
       if (!cleanData.salaryStructure || cleanData.salaryStructure === " ")
         cleanData.salaryStructure = null;
+        
+      // Strip 'photo' if it's a string URL because DRF expects a File object
+      if (typeof cleanData.photo === 'string') {
+        delete cleanData.photo;
+      }
 
       let empId = e.id;
       if (editing && e.id) {
