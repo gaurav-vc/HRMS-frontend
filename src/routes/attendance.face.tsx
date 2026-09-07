@@ -46,7 +46,7 @@ type ScanStep = "SELECT_SITE" | "QR" | "FACE_LIVENESS" | "GEO" | "SUBMITTING" | 
 
 function ScanPunchPage() {
   const router = useRouter();
-  const { refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
   const loaderData = Route.useLoaderData();
   const sitesList = Array.isArray(loaderData.sites)
     ? loaderData.sites
@@ -257,7 +257,7 @@ function ScanPunchPage() {
           msg.toLowerCase().includes("liveness")
         ) {
           setErrorTitle("Verification Failed");
-          setErrorMsg("Could not verify live selfie. Please snap a new photo and try again.");
+          setErrorMsg(msg); // Show actual detailed error from backend
         } else {
           setErrorTitle("Authentication Failed");
           setErrorMsg(msg);
@@ -387,12 +387,22 @@ function ScanPunchPage() {
 
             {step === "FACE_LIVENESS" && (
               <div className="w-full h-full relative">
+                {!user?.avatar && (
+                   <div className="absolute top-4 inset-x-4 z-50 bg-primary/95 text-primary-foreground p-3 rounded-lg text-sm font-medium shadow-lg backdrop-blur text-center flex flex-col items-center animate-in fade-in slide-in-from-top-4">
+                     <div className="flex items-center mb-1">
+                       <ShieldCheck className="h-5 w-5 mr-2 text-green-400" />
+                       <span className="font-semibold text-base">First-Time Face Enrollment</span>
+                     </div>
+                     <span className="opacity-90">Please align your face clearly. Your biometric data will be securely encrypted and stored for future attendance. You will not be asked for this again.</span>
+                   </div>
+                )}
                 <Webcam
                   audio={false}
                   ref={webcamRef}
                   screenshotFormat="image/jpeg"
                   className="w-full h-full object-cover"
                   videoConstraints={{ facingMode: "user" }}
+                  mirrored={true}
                   onUserMedia={() => setIsCameraReady(true)}
                   onUserMediaError={() => {
                     setErrorMsg("Camera permission denied or device unavailable.");
