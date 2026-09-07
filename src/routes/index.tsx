@@ -177,6 +177,15 @@ function ExecutiveDashboard({ role }: { role: string }) {
   if (!data) return <div>Loading...</div>;
   const stat = data.executive || {};
 
+  let displayMonth = new Date().toLocaleString('default', { month: 'long' });
+  if (stat.recentRuns && stat.recentRuns.length > 0 && stat.recentRuns[0].period) {
+    const [year, month] = stat.recentRuns[0].period.split('-');
+    if (year && month) {
+      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+      displayMonth = date.toLocaleString('default', { month: 'long' });
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div
@@ -198,7 +207,7 @@ function ExecutiveDashboard({ role }: { role: string }) {
               {role === "super_admin" ? "CEO Cockpit" : "Executive Overview"}
             </p>
             <h2 className="text-2xl md:text-3xl font-semibold mt-1">
-              Welcome back — June payroll is ready for approval.
+              Welcome back — {displayMonth} payroll is ready for approval.
             </h2>
             <p className="opacity-80 text-sm mt-1">
               {stat.totalHeadcount || 0} employees across {stat.entitiesCount || 1} entities.
