@@ -80,7 +80,9 @@ const apiCall = async (url: string, method: string = "GET", body?: any, isBlob: 
   if (url.startsWith("/api")) base = ""; // direct path
 
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = {
+    "Accept": "application/json",
+  };
   
   let fetchBody = body;
   if (body) {
