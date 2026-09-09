@@ -2174,6 +2174,7 @@ function LeaveSettingsTab() {
     standard_annual_leaves: 12,
     max_consecutive_leaves: 3,
     exception_month: 3,
+    is_saturday_working: false,
   });
 
   const months = [
@@ -2196,11 +2197,12 @@ function LeaveSettingsTab() {
       .getSettings()
       .then((res) => {
         setForm({
-          tenured_years_threshold: res.tenured_years_threshold || 5,
-          tenured_annual_leaves: Number(res.tenured_annual_leaves) || 15,
-          standard_annual_leaves: Number(res.standard_annual_leaves) || 12,
-          max_consecutive_leaves: res.max_consecutive_leaves || 3,
-          exception_month: res.exception_month || 3,
+          tenured_years_threshold: res.tenuredYearsThreshold ?? res.tenured_years_threshold ?? 5,
+          tenured_annual_leaves: Number(res.tenuredAnnualLeaves ?? res.tenured_annual_leaves) || 15,
+          standard_annual_leaves: Number(res.standardAnnualLeaves ?? res.standard_annual_leaves) || 12,
+          max_consecutive_leaves: res.maxConsecutiveLeaves ?? res.max_consecutive_leaves ?? 3,
+          exception_month: res.exceptionMonth ?? res.exception_month ?? 3,
+          is_saturday_working: res.isSaturdayWorking === true || res.is_saturday_working === true || res.isSaturdayWorking === "true" || res.is_saturday_working === "true" || res.isSaturdayWorking === "True" || res.is_saturday_working === "True",
         });
       })
       .catch(() => toast.error("Failed to load leave settings"))
@@ -2214,11 +2216,12 @@ function LeaveSettingsTab() {
       .then((res) => {
         toast.success("Leave policy updated successfully!");
         setForm({
-          tenured_years_threshold: res.tenured_years_threshold || 5,
-          tenured_annual_leaves: Number(res.tenured_annual_leaves) || 15,
-          standard_annual_leaves: Number(res.standard_annual_leaves) || 12,
-          max_consecutive_leaves: res.max_consecutive_leaves || 3,
-          exception_month: res.exception_month || 3,
+          tenured_years_threshold: res.tenuredYearsThreshold ?? res.tenured_years_threshold ?? 5,
+          tenured_annual_leaves: Number(res.tenuredAnnualLeaves ?? res.tenured_annual_leaves) || 15,
+          standard_annual_leaves: Number(res.standardAnnualLeaves ?? res.standard_annual_leaves) || 12,
+          max_consecutive_leaves: res.maxConsecutiveLeaves ?? res.max_consecutive_leaves ?? 3,
+          exception_month: res.exceptionMonth ?? res.exception_month ?? 3,
+          is_saturday_working: res.isSaturdayWorking === true || res.is_saturday_working === true || res.isSaturdayWorking === "true" || res.is_saturday_working === "true" || res.isSaturdayWorking === "True" || res.is_saturday_working === "True",
         });
       })
       .catch(() => toast.error("Failed to update leave settings"))
@@ -2254,6 +2257,21 @@ function LeaveSettingsTab() {
               />
               <p className="text-xs text-muted-foreground">
                 Accrual rate: {(form.standard_annual_leaves / 12).toFixed(2)} leaves per month
+              </p>
+            </div>
+            <div className="pt-2">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="is_saturday_working"
+                  checked={form.is_saturday_working}
+                  onCheckedChange={(checked) =>
+                    setForm({ ...form, is_saturday_working: checked })
+                  }
+                />
+                <Label htmlFor="is_saturday_working" className="cursor-pointer">Saturday is a Working Day</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 ml-11">
+                If checked, Saturdays will be counted as normal working days when calculating leave durations.
               </p>
             </div>
           </div>
