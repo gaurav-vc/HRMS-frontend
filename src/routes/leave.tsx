@@ -1,7 +1,9 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Check, X, Plus } from "lucide-react";
+import { Check, X, Plus, CalendarIcon, AlertCircle } from "lucide-react";
+import { format, differenceInDays, parseISO, isWeekend } from "date-fns";
+import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -24,15 +26,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { leavesApi, employeesApi } from "@/api";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { leavesApi, employeesApi, holidaysApi } from "@/api";
 
 export const Route = createFileRoute("/leave")({
   loader: async () => {
-    const [leavesRaw, typesRaw, balancesRaw, employeesRaw] = await Promise.all([
+    const [leavesRaw, typesRaw, balancesRaw, employeesRaw, holidaysRaw, configRaw] = await Promise.all([
       leavesApi.getAll("my_leaves"),
       leavesApi.getTypes(),
       leavesApi.getLeaveBalances(),
       employeesApi.getAll(),
+      holidaysApi.getAll(),
+      leavesApi.getConfig().catch(() => ({ is_saturday_working: false }))
     ]);
     const leaves = Array.isArray(leavesRaw) ? leavesRaw : (leavesRaw as any)?.results || [];
     const types = Array.isArray(typesRaw) ? typesRaw : (typesRaw as any)?.results || [];
@@ -40,24 +46,64 @@ export const Route = createFileRoute("/leave")({
     const employees = Array.isArray(employeesRaw)
       ? employeesRaw
       : (employeesRaw as any)?.results || [];
-    return { leaves, types, balances, employees };
+    const holidays = Array.isArray(holidaysRaw) ? holidaysRaw : (holidaysRaw as any)?.results || [];
+    const config = configRaw || { is_saturday_working: false };
+    return { leaves, types, balances, employees, holidays, config };
   },
   component: LeavePage,
 });
 
 function LeavePage() {
-  const { leaves, types, balances, employees } = Route.useLoaderData();
+  const { leaves, types, balances, employees, holidays, config } = Route.useLoaderData();
   const router = useRouter();
+  
+  const isSatWorking = config.isSaturdayWorking === true || config.is_saturday_working === true || config.isSaturdayWorking === "true" || config.is_saturday_working === "true" || config.isSaturdayWorking === "True" || config.is_saturday_working === "True";
+  
   const [createOpen, setCreateOpen] = useState(false);
   const [balancesOpen, setBalancesOpen] = useState(false);
   const [form, setForm] = useState({
     employee: "",
     leave_type: "",
-    start_date: "",
-    end_date: "",
+    start_date: undefined as Date | undefined,
+    end_date: undefined as Date | undefined,
     total_days: "",
     reason: "",
   });
+
+  const calculateDays = (start?: Date, end?: Date) => {
+    if (!start || !end || start > end) return "";
+    let days = 0;
+    let curr = new Date(start);
+    const holidayDates = holidays.map((h: any) => h.date);
+    
+    while (curr <= end) {
+      const day = curr.getDay();
+      const isWorkingDay = day !== 0 && (day !== 6 || isSatWorking);
+      const dateStr = format(curr, "yyyy-MM-dd");
+      
+      if (isWorkingDay && !holidayDates.includes(dateStr)) {
+        days++;
+      }
+      curr.setDate(curr.getDate() + 1);
+    }
+    return days.toString();
+  };
+
+  const handleDateChange = (field: "start_date" | "end_date", date?: Date) => {
+    const newForm = { ...form, [field]: date };
+    if (newForm.start_date && newForm.end_date) {
+      newForm.total_days = calculateDays(newForm.start_date, newForm.end_date);
+    }
+    setForm(newForm);
+  };
+
+  const isHolidayOrDisabled = (date: Date) => {
+    const day = date.getDay();
+    if (day === 0) return true; // Sunday
+    if (day === 6 && !isSatWorking) return true; // Saturday if off
+    const dateStr = format(date, "yyyy-MM-dd");
+    return holidays.some((h: any) => h.date === dateStr);
+  };
 
   const submitNew = async () => {
     if (!form.employee || !form.leave_type || !form.start_date || !form.end_date) {
@@ -65,14 +111,19 @@ function LeavePage() {
       return;
     }
     try {
-      await leavesApi.createLeave(form);
+      await leavesApi.createLeave({
+        ...form,
+        start_date: format(form.start_date, "yyyy-MM-dd"),
+        end_date: format(form.end_date, "yyyy-MM-dd"),
+        total_days: form.total_days
+      });
       toast.success("Leave requested successfully");
       setCreateOpen(false);
       setForm({
         employee: "",
         leave_type: "",
-        start_date: "",
-        end_date: "",
+        start_date: undefined,
+        end_date: undefined,
         total_days: "",
         reason: "",
       });
@@ -209,22 +260,65 @@ function LeavePage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label>Start Date</Label>
-                <Input
-                  type="date"
-                  value={form.start_date}
-                  onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                />
+            {holidays.length > 0 && (
+              <div className="bg-blue-50 border border-blue-100 p-3 rounded-md flex gap-2 items-start text-sm text-blue-800">
+                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                <div>
+                  <div className="font-semibold mb-1">Upcoming Holidays</div>
+                  <ul className="list-disc pl-4 space-y-1">
+                    {holidays.slice(0, 3).map((h: any) => (
+                      <li key={h.id}>{h.name} ({format(parseISO(h.date), "MMM d, yyyy")})</li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-              <div>
+            )}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-2">
+                <Label>Start Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn("w-full justify-start text-left font-normal", !form.start_date && "text-muted-foreground")}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {form.start_date ? format(form.start_date, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={form.start_date}
+                      onSelect={(date) => handleDateChange("start_date", date)}
+                      disabled={isHolidayOrDisabled}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="flex flex-col gap-2">
                 <Label>End Date</Label>
-                <Input
-                  type="date"
-                  value={form.end_date}
-                  onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn("w-full justify-start text-left font-normal", !form.end_date && "text-muted-foreground")}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {form.end_date ? format(form.end_date, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={form.end_date}
+                      onSelect={(date) => handleDateChange("end_date", date)}
+                      disabled={(date) => isHolidayOrDisabled(date) || (form.start_date ? date < form.start_date : false)}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">

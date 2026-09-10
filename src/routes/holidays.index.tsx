@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
-import { Calendar, CalendarOff, CalendarCheck2, Map, Users } from "lucide-react";
+import { Calendar, CalendarOff, CalendarCheck2, Map, Users, Pencil, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import { holidaysApi } from "@/api";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/holidays/")({
   component: HolidayPlanner,
@@ -41,6 +42,7 @@ function HolidayPlanner() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
+    id: null as number | null,
     date: "",
     name: "",
     holiday_type: "National",
@@ -72,20 +74,56 @@ function HolidayPlanner() {
     fetchData();
   }, []);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleCreateOrUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setIsSubmitting(true);
-      await holidaysApi.create(formData);
+      if (formData.id) {
+        await holidaysApi.update(formData.id, {
+          date: formData.date,
+          name: formData.name,
+          holiday_type: formData.holiday_type
+        });
+        toast.success("Holiday updated successfully");
+      } else {
+        await holidaysApi.create({
+          date: formData.date,
+          name: formData.name,
+          holiday_type: formData.holiday_type
+        });
+        toast.success("Holiday created successfully");
+      }
       setIsDialogOpen(false);
-      setFormData({ date: "", name: "", holiday_type: "National" });
+      setFormData({ id: null, date: "", name: "", holiday_type: "National" });
       fetchData(); // Refresh list & stats
     } catch (err) {
       console.error(err);
-      alert("Failed to create holiday");
+      toast.error(formData.id ? "Failed to update holiday" : "Failed to create holiday");
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this holiday?")) return;
+    try {
+      await holidaysApi.delete(id);
+      toast.success("Holiday deleted successfully");
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete holiday");
+    }
+  };
+
+  const handleEdit = (holiday: any) => {
+    setFormData({
+      id: holiday.id,
+      name: holiday.name,
+      date: holiday.date,
+      holiday_type: holiday.holiday_type,
+    });
+    setIsDialogOpen(true);
   };
 
   return (
@@ -97,13 +135,13 @@ function HolidayPlanner() {
         />
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-[#0f4c5c] text-white hover:bg-[#0f4c5c]/90">+ New Holiday</Button>
+            <Button className="bg-[#0f4c5c] text-white hover:bg-[#0f4c5c]/90" onClick={() => setFormData({ id: null, date: "", name: "", holiday_type: "National" })}>+ New Holiday</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create New Holiday</DialogTitle>
+              <DialogTitle>{formData.id ? "Edit Holiday" : "Create New Holiday"}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-4 mt-4">
+            <form onSubmit={handleCreateOrUpdate} className="space-y-4 mt-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Holiday Name</Label>
                 <Input
@@ -145,7 +183,7 @@ function HolidayPlanner() {
               </div>
               <div className="pt-4 flex justify-end">
                 <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Creating..." : "Save Holiday"}
+                  {isSubmitting ? "Saving..." : (formData.id ? "Update Holiday" : "Save Holiday")}
                 </Button>
               </div>
             </form>
@@ -285,7 +323,17 @@ function HolidayPlanner() {
                         {holiday.rule_groups?.length || 0} rule group(s)
                       </div>
                     </div>
-                    <div className="text-sm text-muted-foreground">{holiday.date}</div>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <span>{holiday.date}</span>
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(holiday)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(holiday.id)} className="text-red-500 hover:text-red-600">
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 ))
             )}

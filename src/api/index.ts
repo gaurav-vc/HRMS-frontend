@@ -408,6 +408,7 @@ export const leavesApi = {
   getAll: async (mode?: string): Promise<any[]> =>
     apiCall(`/leaves/${mode ? `?mode=${mode}` : ""}`),
   getTypes: async (): Promise<any[]> => apiCall("/leaves/types/"),
+  getConfig: async (): Promise<any> => apiCall("/leaves/config/"),
   createLeave: async (data: any): Promise<any> => apiCall("/leaves/", "POST", data),
   getLeaveBalances: async (): Promise<any[]> => apiCall("/leaves/balances/"),
   getDashboard: async (mode?: string): Promise<any> =>
@@ -499,6 +500,8 @@ export const holidaysApi = {
   getAll: async (): Promise<any> => apiCall("/attendance/holidays/"),
   getStats: async (): Promise<any> => apiCall("/attendance/holidays/stats/"),
   create: async (data: any): Promise<any> => apiCall("/attendance/holidays/", "POST", data),
+  update: async (id: string | number, data: any): Promise<any> => apiCall(`/attendance/holidays/${id}/`, "PATCH", data),
+  delete: async (id: string | number): Promise<void> => apiCall(`/attendance/holidays/${id}/`, "DELETE"),
 };
 
 export const offersApi = {
