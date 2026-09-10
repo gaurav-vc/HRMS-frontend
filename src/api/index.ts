@@ -77,6 +77,7 @@ const apiCall = async (url: string, method: string = "GET", body?: any, isBlob: 
   if (url.startsWith("/leaves/config")) base = "/api"; // Config is under leaves/config
   if (url.startsWith("/organizations")) base = "/api/admin_org";
   if (url.startsWith("/invoices")) base = "/api/admin_org";
+  if (url.startsWith("/reports")) base = "/api";
   if (url.startsWith("/api")) base = ""; // direct path
 
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
@@ -251,6 +252,13 @@ export const employeesApi = {
   getExits: async () => apiCall("/exits/"),
   createExit: async (data: any) => apiCall("/exits/", "POST", data),
   updateExit: async (id: string | number, data: any) => apiCall(`/exits/${id}/`, "PATCH", data),
+};
+
+export const reportsApi = {
+  getComprehensiveReport: (reportType: string, params: Record<string, any> = {}) => {
+    const qs = new URLSearchParams({ type: reportType, ...params }).toString();
+    return apiCall(`/reports/comprehensive/?${qs}`);
+  }
 };
 
 export const organizationsApi = {

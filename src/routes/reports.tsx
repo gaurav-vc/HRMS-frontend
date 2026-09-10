@@ -5,7 +5,7 @@ import { Download, FileBarChart2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { api, employeesApi, attendanceApi, payrollApi } from "@/api";
+import { api, employeesApi, attendanceApi, payrollApi, reportsApi } from "@/api";
 
 export const Route = createFileRoute("/reports")({ component: ReportsPage });
 
@@ -118,11 +118,35 @@ function ReportsPage() {
           TDS: s.tds,
         }));
       } else {
-        toast.error(
-          `The "${reportName}" report is currently under development and not yet available.`,
-        );
-        setDownloading(null);
-        return;
+        // Map UI report names to API types
+        const typeMap: Record<string, string> = {
+          "Attrition Analysis": "attrition_analysis",
+          "Diversity Report": "diversity_report",
+          "New Joiners": "new_joiners",
+          "Exits": "exits",
+          "Monthly Summary": "monthly_summary",
+          "Overtime": "overtime",
+          "CTC Distribution": "ctc_distribution",
+          "Cost by Department": "cost_by_department",
+          "Variable Pay": "variable_pay",
+          "Bonus Provision": "bonus_provision",
+          "PF ECR": "pf_ecr",
+          "ESI Return": "esi_return",
+          "PT State-wise": "pt_state_wise",
+          "TDS 24Q": "tds_24q",
+          "Form 16": "form_16"
+        };
+        
+        const apiType = typeMap[reportName];
+        if (apiType) {
+          data = await reportsApi.getComprehensiveReport(apiType);
+        } else {
+          toast.error(
+            `The "${reportName}" report is currently under development and not yet available.`,
+          );
+          setDownloading(null);
+          return;
+        }
       }
 
       downloadCSV(reportName.replace(/\s+/g, "_").toLowerCase(), data);
