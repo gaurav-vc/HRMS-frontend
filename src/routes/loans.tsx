@@ -73,7 +73,25 @@ function LoansPage() {
       setOpen(false);
       toast.success("Loan created successfully");
     } catch (e: any) {
-      toast.error("Failed to create loan: " + e.message);
+      let errorMsg = e.message || "An unknown error occurred";
+      try {
+        const parsed = JSON.parse(errorMsg);
+        if (parsed.nonFieldErrors && parsed.nonFieldErrors.length > 0) {
+          errorMsg = parsed.nonFieldErrors[0];
+        } else if (parsed.non_field_errors && parsed.non_field_errors.length > 0) {
+          errorMsg = parsed.non_field_errors[0];
+        } else {
+          const firstKey = Object.keys(parsed)[0];
+          if (Array.isArray(parsed[firstKey]) && parsed[firstKey].length > 0) {
+            errorMsg = parsed[firstKey][0];
+          } else if (typeof parsed[firstKey] === "string") {
+            errorMsg = parsed[firstKey];
+          }
+        }
+      } catch (err) {
+        // Not JSON, use original message
+      }
+      toast.warning(errorMsg);
     } finally {
       setIsSubmitting(false);
     }
