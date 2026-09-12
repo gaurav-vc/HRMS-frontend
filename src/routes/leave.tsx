@@ -1,7 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Check, X, Plus, CalendarIcon, AlertCircle } from "lucide-react";
+import { Check, X, Plus, CalendarIcon, AlertCircle, Info } from "lucide-react";
 import { format, differenceInDays, parseISO, isWeekend } from "date-fns";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
@@ -377,8 +377,32 @@ function LeavePage() {
               },
               {
                 key: "allocatedDays",
-                header: "Allocated",
-                accessor: (r: any) => r.allocatedDays || r.allocated_days || 0,
+                header: "Allocated / Earned",
+                render: (r: any) => {
+                  const val = r.allocatedDays || r.allocated_days || 0;
+                  const type = r.leaveTypeCode || r.leave_type_code || "";
+                  if (type === "AL") {
+                    return (
+                      <div className="flex items-center gap-1.5 font-semibold text-blue-700">
+                        {val} Earned
+                        <Popover>
+                          <PopoverTrigger>
+                            <Info className="h-4 w-4 text-blue-500 cursor-pointer hover:text-blue-700" />
+                          </PopoverTrigger>
+                          <PopoverContent className="w-80 text-sm">
+                            <h4 className="font-semibold text-blue-900 mb-1">Earned Leave (AL) Policy</h4>
+                            <p className="text-muted-foreground">
+                              Earn <strong>1 Annual Leave</strong> per month by maintaining perfect attendance in that month (0 leaves taken, 0 intentional absences). 
+                              Late penalties do not break your earning streak! <br/>
+                              <span className="text-xs mt-2 block">Note: Earned leaves are strictly bound to the calendar year and do not carry forward.</span>
+                            </p>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    );
+                  }
+                  return <span>{val} Allocated</span>;
+                },
               },
               {
                 key: "usedDays",
