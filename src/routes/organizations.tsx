@@ -215,7 +215,7 @@ export function OrgDialog({ open, onOpenChange, data, mode, onSave }: any) {
   const [form, setForm] = useState<any>({});
 
   useEffect(() => {
-    if (open) setForm(data || { status: "Active", whiteLabelEnabled: false });
+    if (open) setForm(data && Object.keys(data).length > 0 ? data : { status: "Active", whiteLabelEnabled: false });
   }, [open, data]);
 
   const handleChange = (e: any) => setForm({ ...form, [e.target.name]: e.target.value });

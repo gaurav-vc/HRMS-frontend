@@ -1910,7 +1910,7 @@ function AttendanceSettingsTab() {
         <div className="space-y-6">
           <div className="p-4 border rounded-md bg-muted/10 space-y-4">
             <div className="space-y-1">
-              <Label className="text-base font-semibold">Authorized WFH Employees</Label>
+              <Label className="text-base font-semibold">Remote Punch</Label>
               <p className="text-sm text-muted-foreground">
                 Explicitly select which employees can bypass the geofence restriction under this policy.
               </p>
@@ -2175,6 +2175,7 @@ function LeaveSettingsTab() {
     max_consecutive_leaves: 3,
     exception_month: 3,
     is_saturday_working: false,
+    require_full_attendance_for_al: true,
   });
 
   const months = [
@@ -2203,6 +2204,7 @@ function LeaveSettingsTab() {
           max_consecutive_leaves: res.maxConsecutiveLeaves ?? res.max_consecutive_leaves ?? 3,
           exception_month: res.exceptionMonth ?? res.exception_month ?? 3,
           is_saturday_working: res.isSaturdayWorking === true || res.is_saturday_working === true || res.isSaturdayWorking === "true" || res.is_saturday_working === "true" || res.isSaturdayWorking === "True" || res.is_saturday_working === "True",
+          require_full_attendance_for_al: res.requireFullAttendanceForAl === true || res.require_full_attendance_for_al === true || res.requireFullAttendanceForAl === "true" || res.require_full_attendance_for_al === "true" || res.requireFullAttendanceForAl === "True" || res.require_full_attendance_for_al === "True" || (res.requireFullAttendanceForAl === undefined && res.require_full_attendance_for_al === undefined),
         });
       })
       .catch(() => toast.error("Failed to load leave settings"))
@@ -2222,6 +2224,7 @@ function LeaveSettingsTab() {
           max_consecutive_leaves: res.maxConsecutiveLeaves ?? res.max_consecutive_leaves ?? 3,
           exception_month: res.exceptionMonth ?? res.exception_month ?? 3,
           is_saturday_working: res.isSaturdayWorking === true || res.is_saturday_working === true || res.isSaturdayWorking === "true" || res.is_saturday_working === "true" || res.isSaturdayWorking === "True" || res.is_saturday_working === "True",
+          require_full_attendance_for_al: res.requireFullAttendanceForAl === true || res.require_full_attendance_for_al === true || res.requireFullAttendanceForAl === "true" || res.require_full_attendance_for_al === "true" || res.requireFullAttendanceForAl === "True" || res.require_full_attendance_for_al === "True" || (res.requireFullAttendanceForAl === undefined && res.require_full_attendance_for_al === undefined),
         });
       })
       .catch(() => toast.error("Failed to update leave settings"))
@@ -2272,6 +2275,21 @@ function LeaveSettingsTab() {
               </div>
               <p className="text-xs text-muted-foreground mt-1 ml-11">
                 If checked, Saturdays will be counted as normal working days when calculating leave durations.
+              </p>
+            </div>
+            <div className="pt-2">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="require_full_attendance_for_al"
+                  checked={form.require_full_attendance_for_al}
+                  onCheckedChange={(checked) =>
+                    setForm({ ...form, require_full_attendance_for_al: checked })
+                  }
+                />
+                <Label htmlFor="require_full_attendance_for_al" className="cursor-pointer">Require Full Attendance for AL</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 ml-11">
+                If unchecked, employees can earn their monthly Annual Leave even if they had intentional absences.
               </p>
             </div>
           </div>

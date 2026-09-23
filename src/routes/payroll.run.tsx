@@ -200,6 +200,7 @@ function OneClickPanel({
   const [includeReimb, setIncludeReimb] = useState(true);
   const [includeLoans, setIncludeLoans] = useState(true);
   const [includeBonus, setIncludeBonus] = useState(true);
+  const [includeLeaves, setIncludeLeaves] = useState(false);
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [expandedEntity, setExpandedEntity] = useState<string | null>(null);
@@ -310,6 +311,7 @@ function OneClickPanel({
       const res = await payrollApi.getPreview({
         period,
         entity: entityParam === "__all__" ? undefined : entityParam,
+        include_leaves_encashment: includeLeaves,
       });
       setPreviewData(res.data);
     } catch (e: any) {
@@ -391,6 +393,7 @@ function OneClickPanel({
                 .executeRun(run.id, {
                   overrides: Object.values(overrides),
                   include_variable_bonus: includeBonus,
+                  include_leaves_encashment: includeLeaves,
                 })
                 .then((r: any) => {
                   if (r && r.arrearsLogs) {
@@ -835,7 +838,7 @@ function OneClickPanel({
                 </DropdownMenu>
               </div>
             </div>
-            <div className="grid sm:grid-cols-3 gap-2 pt-2">
+            <div className="grid sm:grid-cols-4 gap-2 pt-2">
               <label className="flex items-center gap-2 text-sm p-2 rounded border cursor-pointer">
                 <Checkbox checked={includeReimb} onCheckedChange={(v) => setIncludeReimb(!!v)} />
                 Reimbursements
@@ -847,6 +850,10 @@ function OneClickPanel({
               <label className="flex items-center gap-2 text-sm p-2 rounded border cursor-pointer">
                 <Checkbox checked={includeBonus} onCheckedChange={(v) => setIncludeBonus(!!v)} />
                 Variable Bonus
+              </label>
+              <label className="flex items-center gap-2 text-sm p-2 rounded border cursor-pointer">
+                <Checkbox checked={includeLeaves} onCheckedChange={(v) => setIncludeLeaves(!!v)} />
+                Leave Encashment
               </label>
             </div>
             <Button

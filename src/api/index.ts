@@ -465,9 +465,10 @@ export const payrollApi = {
   generateReturn: async (category: string) => {
     return apiCall(`/payroll/compliance/generate_return/?category=${encodeURIComponent(category)}`, "GET", undefined, true);
   },
-  getPreview: async (params: { period: string; entity?: string }) => {
+  getPreview: async (params: { period: string; entity?: string; include_leaves_encashment?: boolean }) => {
     let qs = `?period=${encodeURIComponent(params.period)}&_t=${Date.now()}`;
     if (params.entity) qs += `&entity=${encodeURIComponent(params.entity)}`;
+    if (params.include_leaves_encashment) qs += `&include_leaves_encashment=true`;
     return apiCall(`/payroll/preview/${qs}`);
   },
 };
