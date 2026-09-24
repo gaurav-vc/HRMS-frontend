@@ -11,4 +11,9 @@ export default defineConfig({
     ssr: false,
     server: { entry: "server" },
   },
+  vite: {
+    build: {
+      sourcemap: false,
+    }
+  }
 });

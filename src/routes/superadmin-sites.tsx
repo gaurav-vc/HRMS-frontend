@@ -160,6 +160,7 @@ function SitesPage() {
         contact_name: s.contactName,
         contact_phone: s.contactPhone,
         contact_email: s.contactEmail,
+        is_saturday_working: s.isSaturdayWorking !== undefined ? s.isSaturdayWorking : s.is_saturday_working,
       };
       
       delete payload.siteCode;
@@ -168,6 +169,7 @@ function SitesPage() {
       delete payload.contactName;
       delete payload.contactPhone;
       delete payload.contactEmail;
+      delete payload.isSaturdayWorking;
 
       // Clean up empty strings for optional fields that DRF expects to be null
       if (payload.activate_date === "") payload.activate_date = null;
@@ -395,6 +397,7 @@ function SiteDialog({ open, onOpenChange, site, onSave, organizations, mode, loc
     contactPhone: "",
     contactEmail: "",
     modules: [],
+    isSaturdayWorking: false,
   };
 
   const [form, setForm] = useState<any>(defaultForm);
@@ -478,6 +481,7 @@ function SiteDialog({ open, onOpenChange, site, onSave, organizations, mode, loc
       contactPhone: "+1 (555) 987-6543",
       contactEmail: "jane.smith@example.com",
       modules: MODULES.flatMap((g) => g.items),
+      isSaturdayWorking: false,
     });
   };
 
@@ -605,6 +609,14 @@ function SiteDialog({ open, onOpenChange, site, onSave, organizations, mode, loc
               />
             </div>
             <div className="space-y-2 flex flex-col justify-center items-end">
+              <div className="flex items-center space-x-4 mb-4">
+                <Label>Sat Working</Label>
+                <Switch
+                  disabled={mode === "view"}
+                  checked={form.isSaturdayWorking || form.is_saturday_working || false}
+                  onCheckedChange={(c) => setForm({ ...form, isSaturdayWorking: c })}
+                />
+              </div>
               <div className="flex items-center space-x-4">
                 <Label>Status</Label>
                 <Switch

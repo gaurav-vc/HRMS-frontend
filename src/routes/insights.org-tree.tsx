@@ -358,27 +358,16 @@ function OrgTreePage() {
 
   const renderTreeNodes = (nodes: any[], parentNodeName?: string) => {
     return nodes
-      .filter((n) => {
-        const tStr = n.node_type || n.type || n.nodeType || "";
-        return n.status !== "Archived" && tStr.toLowerCase() !== "employee";
-      })
+      .filter((n) => n.status !== "Archived")
       .map((node) => {
-        const employees = (node.children || []).filter((c: any) => {
-          const tStr = c.node_type || c.type || c.nodeType || "";
-          return tStr.toLowerCase() === "employee" && c.status !== "Archived";
-        });
-        const regularChildren = (node.children || []).filter((c: any) => {
-          const tStr = c.node_type || c.type || c.nodeType || "";
-          return tStr.toLowerCase() !== "employee";
-        });
-        const hasChildren = regularChildren.length > 0;
+        const hasChildren = node.children && node.children.length > 0;
 
         return (
           <TreeNode
             key={node.id}
-            label={<StyledNode node={node} parentNodeName={parentNodeName} employees={employees} />}
+            label={<StyledNode node={node} parentNodeName={parentNodeName} />}
           >
-            {hasChildren && renderTreeNodes(regularChildren, node.name)}
+            {hasChildren && renderTreeNodes(node.children, node.name)}
           </TreeNode>
         );
       });
@@ -436,14 +425,7 @@ function OrgTreePage() {
               {tree
                 .filter((n) => n.status !== "Archived")
                 .map((rootNode) => {
-                  const rootEmployees = (rootNode.children || []).filter((c: any) => {
-                    const tStr = c.node_type || c.type || c.nodeType || "";
-                    return tStr.toLowerCase() === "employee" && c.status !== "Archived";
-                  });
-                  const regularChildren = (rootNode.children || []).filter((c: any) => {
-                    const tStr = c.node_type || c.type || c.nodeType || "";
-                    return tStr.toLowerCase() !== "employee";
-                  });
+                  const hasChildren = rootNode.children && rootNode.children.length > 0;
 
                   return (
                     <Tree
@@ -451,9 +433,9 @@ function OrgTreePage() {
                       lineWidth={"3px"}
                       lineColor={"#818cf8"}
                       lineBorderRadius={"12px"}
-                      label={<StyledNode node={rootNode} employees={rootEmployees} />}
+                      label={<StyledNode node={rootNode} />}
                     >
-                      {regularChildren.length > 0 && renderTreeNodes(regularChildren)}
+                      {hasChildren && renderTreeNodes(rootNode.children)}
                     </Tree>
                   );
                 })}
