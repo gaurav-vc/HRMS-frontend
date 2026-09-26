@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   CalendarCheck2,
   QrCode,
@@ -59,6 +59,22 @@ function AttendancePage() {
   const gpsPunches = attendance.filter((a) =>
     a.punches?.some((p: any) => p.latitude && p.longitude),
   ).length;
+
+  const months = useMemo(() => {
+    const m = new Map<string, string>();
+    attendance.forEach((r) => {
+      const d = r.attendance_date || r.attendanceDate;
+      if (d) {
+        const date = new Date(d);
+        const label = date.toLocaleString("default", { month: "long", year: "numeric" });
+        const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+        m.set(value, label);
+      }
+    });
+    return Array.from(m.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => b.value.localeCompare(a.value));
+  }, [attendance]);
 
   return (
     <>
@@ -268,27 +284,161 @@ function AttendancePage() {
             })),
             predicate: (r, v) => String(r.employee) === String(v),
           },
+          {
+            label: "Month",
+            key: "month",
+            options: months,
+            predicate: (r, v) => {
+              const d = r.attendance_date || r.attendanceDate;
+              if (!d) return false;
+              const date = new Date(d);
+              const rv = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+              return rv === v;
+            },
+          },
         ]}
         columns={[
+          // --- CSV EXPORT ONLY COLUMNS ---
+          {
+            key: "emp_id",
+            header: "Emp ID",
+            exportOnly: true,
+            accessor: (r) => r.employee_code || r.employeeCode || "",
+          },
+          {
+            key: "emp_name",
+            header: "Employee Name",
+            exportOnly: true,
+            accessor: (r) => r.full_name || r.fullName || r.employee_name || r.employeeName || "",
+          },
+          {
+            key: "date_export",
+            header: "Date",
+            exportOnly: true,
+            accessor: (r) => {
+              const d = r.attendance_date || r.attendanceDate;
+              return d ? new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' }) : "";
+            },
+          },
+          {
+            key: "shift",
+            header: "Shift",
+            exportOnly: true,
+            accessor: (r) => r.shift_name || r.shiftName || "Not Assigned",
+          },
+          {
+            key: "shift_start",
+            header: "Shift Start",
+            exportOnly: true,
+            accessor: (r) => r.shift_start || r.shiftStart || "--:--",
+          },
+          {
+            key: "in_time",
+            header: "In Time",
+            exportOnly: true,
+            accessor: (r) => {
+              const t = r.first_check_in || r.firstCheckIn;
+              return t ? new Date(t).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "";
+            },
+          },
+          {
+            key: "shift_end",
+            header: "Shift End",
+            exportOnly: true,
+            accessor: (r) => r.shift_end || r.shiftEnd || "--:--",
+          },
+          {
+            key: "out_time",
+            header: "Out Time",
+            exportOnly: true,
+            accessor: (r) => {
+              const t = r.last_check_out || r.lastCheckOut;
+              return t ? new Date(t).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "";
+            },
+          },
+          {
+            key: "shift_hours",
+            header: "Shift Hours",
+            exportOnly: true,
+            accessor: (r) => r.shift_hours || r.shiftHours || "00:00",
+          },
+          {
+            key: "work_hours",
+            header: "Work Hours",
+            exportOnly: true,
+            accessor: (r) => r.total_work_hours || r.totalWorkHours || "00:00",
+          },
+          {
+            key: "ot_hours",
+            header: "OT Hours",
+            exportOnly: true,
+            accessor: (r) => r.overtime_hours || r.overtimeHours || "00:00",
+          },
+          {
+            key: "attendance_export",
+            header: "Attendance",
+            exportOnly: true,
+            accessor: (r) => r.attendance_status || r.attendanceStatus || "",
+          },
+          {
+            key: "status_export",
+            header: "Status",
+            exportOnly: true,
+            accessor: (r) => r.status_text || r.statusText || "—",
+          },
+          // --- UI ONLY COLUMNS ---
           {
             key: "date",
             header: "Date",
+            noExport: true,
             render: (r) =>
               new Date(r.attendance_date || r.attendanceDate).toLocaleDateString(undefined, {
                 month: "short",
                 day: "numeric",
                 year: "numeric",
               }),
-            accessor: (r) => r.attendance_date || r.attendanceDate,
+            accessor: (r) => {
+              const d = r.attendance_date || r.attendanceDate;
+              return d ? new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' }) : "";
+            },
             sortable: true,
           },
+          // UI Columns
           {
             key: "emp",
             header: "Employee",
+            noExport: true,
             accessor: (r) =>
-              `${r.employee_name || r.employeeName} (${r.employee_code || r.employeeCode})`,
-            render: (r) =>
-              `${r.employee_name || r.employeeName} (${r.employee_code || r.employeeCode})`,
+              `${r.full_name || r.fullName || r.employee_name || r.employeeName} (${r.employee_code || r.employeeCode})`,
+            render: (r) => (
+              <div className="flex flex-col">
+                <span className="font-semibold text-[15px]">{r.full_name || r.fullName || r.employee_name || r.employeeName}</span>
+                <span className="text-[11px] text-muted-foreground uppercase font-medium tracking-wide">
+                  {r.designation || r.employee_code || r.employeeCode}
+                </span>
+              </div>
+            ),
+          },
+          {
+            key: "shift_ui",
+            header: "Shift Info",
+            noExport: true,
+            render: (r) => {
+              const name = r.shift_name || r.shiftName || "Not Assigned";
+              const start = r.shift_start || r.shiftStart || "--:--";
+              const end = r.shift_end || r.shiftEnd || "--:--";
+              
+              if (name === "Not Assigned") {
+                return <span className="text-muted-foreground text-xs italic">No Shift</span>;
+              }
+              
+              return (
+                <div className="flex flex-col">
+                  <span className="font-semibold text-[13px] text-foreground">{name}</span>
+                  <span className="text-[11px] text-muted-foreground mt-0.5">{start} - {end}</span>
+                </div>
+              );
+            }
           },
           {
             key: "in",
@@ -326,7 +476,10 @@ function AttendancePage() {
                 </div>
               );
             },
-            accessor: (r) => r.first_check_in || r.firstCheckIn,
+            accessor: (r) => {
+              const t = r.first_check_in || r.firstCheckIn;
+              return t ? new Date(t).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "";
+            },
           },
           {
             key: "out",
@@ -364,11 +517,15 @@ function AttendancePage() {
                 </div>
               );
             },
-            accessor: (r) => r.last_check_out || r.lastCheckOut,
+            accessor: (r) => {
+              const t = r.last_check_out || r.lastCheckOut;
+              return t ? new Date(t).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "";
+            },
           },
           {
             key: "hours",
             header: "Total Hrs",
+            noExport: true,
             render: (r) =>
               r.total_work_hours || r.totalWorkHours
                 ? `${r.total_work_hours || r.totalWorkHours}h`
@@ -378,6 +535,7 @@ function AttendancePage() {
           {
             key: "qr",
             header: "QR",
+            noExport: true,
             render: (r) => {
               const p = r.punches?.find((x: any) => x.qr_token || x.qrToken);
               if (!p)
@@ -404,6 +562,14 @@ function AttendancePage() {
                   Not Verified
                 </Badge>
               );
+            },
+            accessor: (r) => {
+              const p = r.punches?.find((x: any) => x.qr_token || x.qrToken);
+              if (!p) return "Not Verified";
+              const status = p.verification_status || p.verificationStatus;
+              if (status === "VERIFIED") return "Verified";
+              if (status === "PENDING_ML_INSTALL") return "Pending ML";
+              return "Not Verified";
             },
           },
           {
@@ -436,10 +602,20 @@ function AttendancePage() {
                 </Badge>
               );
             },
+            accessor: (r) => {
+              const p = r.punches?.find((x: any) => x.source === "ALL" || x.source === "FACE");
+              if (!p) return "Not Verified";
+              const status = p.verification_status || p.verificationStatus;
+              if (status === "VERIFIED") return "Verified";
+              if (status === "PENDING_ML_INSTALL") return "Pending ML";
+              return "Not Verified";
+            },
           },
           {
             key: "status",
             header: "Status",
+            noExport: true,
+            accessor: (r) => r.attendance_status || r.attendanceStatus || "",
             render: (r) => (
               <Badge
                 variant={

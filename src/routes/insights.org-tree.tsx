@@ -334,16 +334,23 @@ function OrgTreePage() {
     );
 
     const renderContent = () => {
-      if (employees.length > 1) {
-        return (
-          <div className="flex flex-row justify-center items-center gap-4">
-            {employees.map((emp) => (
-              <NodeBox key={emp.id} employee={emp} />
-            ))}
-          </div>
-        );
-      }
-      return <NodeBox employee={employees[0]} />;
+      return (
+        <div className="flex flex-col items-center gap-4">
+          <NodeBox />
+          {employees.length > 0 && (
+            <div className="flex flex-col items-center gap-2 mt-2 pt-4 border-t w-full">
+              <span className="text-xs text-muted-foreground font-semibold tracking-wider uppercase">
+                Employees
+              </span>
+              <div className="flex flex-row flex-wrap justify-center gap-4 max-w-[1000px]">
+                {employees.map((emp) => (
+                  <NodeBox key={emp.id} employee={emp} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      );
     };
 
     return (
@@ -358,16 +365,27 @@ function OrgTreePage() {
 
   const renderTreeNodes = (nodes: any[], parentNodeName?: string) => {
     return nodes
-      .filter((n) => n.status !== "Archived")
+      .filter((n) => {
+        const tStr = n.node_type || n.type || n.nodeType || "";
+        return n.status !== "Archived" && tStr.toLowerCase() !== "employee";
+      })
       .map((node) => {
-        const hasChildren = node.children && node.children.length > 0;
+        const employees = (node.children || []).filter((c: any) => {
+          const tStr = c.node_type || c.type || c.nodeType || "";
+          return tStr.toLowerCase() === "employee" && c.status !== "Archived";
+        });
+        const regularChildren = (node.children || []).filter((c: any) => {
+          const tStr = c.node_type || c.type || c.nodeType || "";
+          return tStr.toLowerCase() !== "employee";
+        });
+        const hasChildren = regularChildren.length > 0;
 
         return (
           <TreeNode
             key={node.id}
-            label={<StyledNode node={node} parentNodeName={parentNodeName} />}
+            label={<StyledNode node={node} parentNodeName={parentNodeName} employees={employees} />}
           >
-            {hasChildren && renderTreeNodes(node.children, node.name)}
+            {hasChildren && renderTreeNodes(regularChildren, node.name)}
           </TreeNode>
         );
       });
@@ -423,9 +441,20 @@ function OrgTreePage() {
           <div className="overflow-auto pb-10 flex justify-center w-full">
             <div className="inline-block p-4">
               {tree
-                .filter((n) => n.status !== "Archived")
+                .filter((n) => {
+                  const tStr = n.node_type || n.type || n.nodeType || "";
+                  return n.status !== "Archived" && tStr.toLowerCase() !== "employee";
+                })
                 .map((rootNode) => {
-                  const hasChildren = rootNode.children && rootNode.children.length > 0;
+                  const rootEmployees = (rootNode.children || []).filter((c: any) => {
+                    const tStr = c.node_type || c.type || c.nodeType || "";
+                    return tStr.toLowerCase() === "employee" && c.status !== "Archived";
+                  });
+                  const regularChildren = (rootNode.children || []).filter((c: any) => {
+                    const tStr = c.node_type || c.type || c.nodeType || "";
+                    return tStr.toLowerCase() !== "employee";
+                  });
+                  const hasChildren = regularChildren.length > 0;
 
                   return (
                     <Tree
@@ -433,9 +462,9 @@ function OrgTreePage() {
                       lineWidth={"3px"}
                       lineColor={"#818cf8"}
                       lineBorderRadius={"12px"}
-                      label={<StyledNode node={rootNode} />}
+                      label={<StyledNode node={rootNode} employees={rootEmployees} />}
                     >
-                      {hasChildren && renderTreeNodes(rootNode.children)}
+                      {hasChildren && renderTreeNodes(regularChildren)}
                     </Tree>
                   );
                 })}

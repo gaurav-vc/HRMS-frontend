@@ -38,6 +38,7 @@ export interface Column<T> {
   sortable?: boolean;
   defaultHidden?: boolean;
   noExport?: boolean;
+  exportOnly?: boolean;
 }
 
 interface Props<T> {
@@ -123,7 +124,7 @@ export function DataTable<T>({
       localStorage.setItem(`${storageKey}:views`, JSON.stringify(v));
   };
 
-  const visibleCols = columns.filter((c) => !hidden.includes(c.key));
+  const visibleCols = columns.filter((c) => !hidden.includes(c.key) && !c.exportOnly);
 
   const filtered = useMemo(() => {
     let r = rows;
@@ -307,7 +308,7 @@ export function DataTable<T>({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-            {columns.map((c) => (
+            {columns.filter(c => !c.exportOnly).map((c) => (
               <DropdownMenuCheckboxItem
                 key={c.key}
                 checked={!hidden.includes(c.key)}
