@@ -891,11 +891,13 @@ function RoleForm({
                 <span className="truncate text-sm">
                   {form.accessScope === "Self"
                     ? "Self data only"
-                    : form.accessScope === "Corporate"
-                      ? "All data of the entities"
-                      : form.allowedEntities.length > 0
-                        ? `${form.allowedEntities.length} entities selected`
-                        : "Select entities..."}
+                    : form.accessScope === "Location"
+                      ? "Data for their assigned location/site"
+                      : form.accessScope === "Corporate"
+                        ? "All data of the entities"
+                        : form.allowedEntities.length > 0
+                          ? `${form.allowedEntities.length} entities selected`
+                          : "Select entities..."}
                 </span>
                 <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
               </Button>
@@ -914,6 +916,19 @@ function RoleForm({
                     />
                     <span className="font-medium text-sm group-hover:text-primary transition-colors">
                       Self data only
+                    </span>
+                  </label>
+                  <label className="flex items-center gap-3 p-2 hover:bg-background rounded-md cursor-pointer group transition-colors">
+                    <input
+                      type="radio"
+                      className="accent-primary w-4 h-4 cursor-pointer"
+                      checked={form.accessScope === "Location"}
+                      onChange={() =>
+                        setForm({ ...form, accessScope: "Location", allowedEntities: [] })
+                      }
+                    />
+                    <span className="font-medium text-sm group-hover:text-primary transition-colors">
+                      Their assigned Location / Site
                     </span>
                   </label>
                   <label className="flex items-center gap-3 p-2 hover:bg-background rounded-md cursor-pointer group transition-colors">
@@ -1700,7 +1715,9 @@ function AttendanceSettingsTab() {
         params = `?organization=${selectedId}`;
       } else if (scope === "site" && selectedId) {
         params = `?site=${selectedId}`;
-      } else if (scope !== "global") {
+      } else if (scope === "global") {
+        params = `?is_global=true`;
+      } else {
         setLoading(false);
         return;
       }

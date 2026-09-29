@@ -189,29 +189,19 @@ export function AppSidebar() {
   const { user } = useAuth();
   const role = user?.role ?? "employee";
   const [branding, setBranding] = useState<{ text: string; logo: string | null }>({
-    text: "PeoplePulse",
-    logo: null,
+    text: user?.branding_text || "PeoplePulse",
+    logo: user?.logo_url || null,
   });
 
   useEffect(() => {
     if (!user) return;
-    sitesApi.getAll().then((sites) => {
-      const mySite = sites.find(
-        (s: any) =>
-          (s.contactEmail && s.contactEmail.toLowerCase() === user.email.toLowerCase()) ||
-          (s.contact_email && s.contact_email.toLowerCase() === user.email.toLowerCase())
-      );
-      if (mySite) {
-        const text = mySite.branding_text ?? mySite.brandingText ?? "PeoplePulse";
-        setBranding({
-          text: text,
-          logo: mySite.logo || null,
-        });
-      }
-    }).catch(() => {});
+    setBranding({
+      text: user.branding_text || "PeoplePulse",
+      logo: user.logo_url || null,
+    });
   }, [user]);
 
-  const isSuperAdmin = user?.username === "Vibe_admin";
+  const isSuperAdmin = user?.role === "super_admin";
   const can = (it: Item) => {
     if (isSuperAdmin) return true;
     return canAccessRoute(it, user);
@@ -250,7 +240,7 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         {nav.map((group) => {
-          const items = user?.username === "Vibe_admin" ? group.items : group.items.filter(can);
+          const items = isSuperAdmin ? group.items : group.items.filter(can);
           if (!items.length) return null;
           return (
             <SidebarGroup key={group.label}>
