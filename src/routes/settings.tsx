@@ -13,6 +13,15 @@ import { Search, Plus, MoreHorizontal, ChevronDown, Check, Info } from "lucide-r
 import { useAuth } from "@/lib/auth-context";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
   rolesApi,
   employeesApi,
   departmentsApi,
@@ -164,6 +173,12 @@ function UsersAndRolesTab() {
   const [viewingRole, setViewingRole] = useState<any>(null);
   const [viewRoleModalOpen, setViewRoleModalOpen] = useState(false);
 
+  // New States for user selection and pagination
+  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
+  const [userPage, setUserPage] = useState(1);
+  const USERS_PER_PAGE = 10;
+  const [sendingEmails, setSendingEmails] = useState(false);
+
   const navigate = useNavigate();
 
   const openViewRoleModal = async (id: number) => {
@@ -228,6 +243,29 @@ function UsersAndRolesTab() {
   const openUserModal = (user: any = null) => {
     setEditingUser(user);
     setUserModalOpen(true);
+  };
+
+  const handleSendEmails = async () => {
+    if (selectedUsers.length === 0) return;
+    try {
+      setSendingEmails(true);
+      const res = await fetch(`${API_BASE_URL}/api/employees/trigger_onboarding_emails/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+        body: JSON.stringify({ employee_ids: selectedUsers }),
+      });
+      if (!res.ok) throw new Error("Failed to send emails");
+      const data = await res.json();
+      toast.success(`Successfully sent ${data.sent_count} login emails!`);
+      setSelectedUsers([]);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to trigger emails.");
+    } finally {
+      setSendingEmails(false);
+    }
   };
 
   const deleteUser = async (id: number) => {
@@ -350,13 +388,26 @@ function UsersAndRolesTab() {
           </>
         )}
         {activeTab === "users" && (
-          <>
+          <div className="flex gap-2 items-center">
+            {selectedUsers.length > 0 && (
+              <Button
+                onClick={handleSendEmails}
+                disabled={sendingEmails}
+                className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+              >
+                {sendingEmails ? "Sending..." : `Send Login Email (${selectedUsers.length})`}
+              </Button>
+            )}
             <Button
               onClick={() => openUserModal(null)}
               className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
             >
               <Plus className="h-4 w-4" /> Add User
             </Button>
+          </div>
+        )}
+        {activeTab === "users" && (
+          <>
             <Dialog
               open={userModalOpen}
               onOpenChange={(open) => {
@@ -528,7 +579,19 @@ function UsersAndRolesTab() {
 
         <TabsContent value="users" className="mt-6">
           <Card className="border shadow-sm rounded-lg overflow-hidden">
-            <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_120px] gap-4 py-3 px-4 border-b bg-muted/40 text-xs font-semibold text-muted-foreground uppercase">
+            <div className="grid grid-cols-[auto_2fr_1fr_1fr_1fr_1fr_1fr_120px] gap-4 py-3 px-4 border-b bg-muted/40 text-xs font-semibold text-muted-foreground uppercase items-center">
+              <div>
+                <Checkbox
+                  checked={
+                    employees.length > 0 &&
+                    selectedUsers.length === employees.length
+                  }
+                  onCheckedChange={(c) => {
+                    if (c) setSelectedUsers(employees.map(e => e.id));
+                    else setSelectedUsers([]);
+                  }}
+                />
+              </div>
               <div>User</div>
               <div>Employee ID</div>
               <div>Department</div>
@@ -551,11 +614,21 @@ function UsersAndRolesTab() {
                       .toLowerCase()
                       .includes(searchQuery.toLowerCase()),
                 )
+                .slice((userPage - 1) * USERS_PER_PAGE, userPage * USERS_PER_PAGE)
                 .map((e) => (
                   <div
                     key={e.id}
-                    className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_120px] gap-4 py-2 px-4 items-center hover:bg-muted/30 transition-colors"
+                    className="grid grid-cols-[auto_2fr_1fr_1fr_1fr_1fr_1fr_120px] gap-4 py-2 px-4 items-center hover:bg-muted/30 transition-colors"
                   >
+                    <div>
+                      <Checkbox
+                        checked={selectedUsers.includes(e.id)}
+                        onCheckedChange={(c) => {
+                          if (c) setSelectedUsers([...selectedUsers, e.id]);
+                          else setSelectedUsers(selectedUsers.filter(id => id !== e.id));
+                        }}
+                      />
+                    </div>
                     <div className="min-w-0">
                       <div className="font-medium text-sm truncate">
                         {e.firstName} {e.lastName}
@@ -622,9 +695,8 @@ function UsersAndRolesTab() {
             </div>
             <div className="p-4 border-t flex items-center justify-between text-xs text-muted-foreground bg-muted/20">
               <div>
-                Showing{" "}
-                {
-                  employees.filter(
+                {(() => {
+                  const filtered = employees.filter(
                     (e) =>
                       ((e.firstName || "") + " " + (e.lastName || ""))
                         .toLowerCase()
@@ -635,17 +707,63 @@ function UsersAndRolesTab() {
                       (e.dynamicRoleName || e.roleName || "")
                         .toLowerCase()
                         .includes(searchQuery.toLowerCase()),
-                  ).length
-                }{" "}
-                records
+                  );
+                  const total = filtered.length;
+                  const start = total === 0 ? 0 : (userPage - 1) * USERS_PER_PAGE + 1;
+                  const end = Math.min(userPage * USERS_PER_PAGE, total);
+                  return `Showing ${start}-${end} of ${total} records`;
+                })()}
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled>
-                  Previous
-                </Button>
-                <Button variant="outline" size="sm" disabled>
-                  Next
-                </Button>
+                {(() => {
+                  const filtered = employees.filter(
+                    (e) =>
+                      ((e.firstName || "") + " " + (e.lastName || ""))
+                        .toLowerCase()
+                        .includes(searchQuery.toLowerCase()) ||
+                      (e.code || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      (e.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      (e.departmentName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      (e.dynamicRoleName || e.roleName || "")
+                        .toLowerCase()
+                        .includes(searchQuery.toLowerCase()),
+                  );
+                  const totalPages = Math.ceil(filtered.length / USERS_PER_PAGE);
+                  if (totalPages <= 1) return null;
+                  return (
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious 
+                            href="#" 
+                            onClick={(e) => { e.preventDefault(); if (userPage > 1) setUserPage(userPage - 1); }} 
+                            className={userPage <= 1 ? "pointer-events-none opacity-50" : ""}
+                          />
+                        </PaginationItem>
+                        
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                          <PaginationItem key={page}>
+                            <PaginationLink 
+                              href="#" 
+                              isActive={page === userPage}
+                              onClick={(e) => { e.preventDefault(); setUserPage(page); }}
+                            >
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ))}
+
+                        <PaginationItem>
+                          <PaginationNext 
+                            href="#" 
+                            onClick={(e) => { e.preventDefault(); if (userPage < totalPages) setUserPage(userPage + 1); }}
+                            className={userPage >= totalPages ? "pointer-events-none opacity-50" : ""}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  );
+                })()}
               </div>
             </div>
           </Card>

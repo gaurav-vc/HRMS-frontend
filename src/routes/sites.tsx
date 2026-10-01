@@ -46,6 +46,7 @@ function SitesPage() {
         qr_enabled: qrEnabled,
         face_enabled: faceEnabled,
         site_code: rest.site_code || rest.siteCode,
+        is_sub_site: true,
       };
       
       if (editing && s.id) {

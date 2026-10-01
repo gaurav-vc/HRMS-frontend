@@ -609,14 +609,6 @@ function SiteDialog({ open, onOpenChange, site, onSave, organizations, mode, loc
               />
             </div>
             <div className="space-y-2 flex flex-col justify-center items-end">
-              <div className="flex items-center space-x-4 mb-4">
-                <Label>Sat Working</Label>
-                <Switch
-                  disabled={mode === "view"}
-                  checked={form.isSaturdayWorking || form.is_saturday_working || false}
-                  onCheckedChange={(c) => setForm({ ...form, isSaturdayWorking: c })}
-                />
-              </div>
               <div className="flex items-center space-x-4">
                 <Label>Status</Label>
                 <Switch
