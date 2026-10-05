@@ -23,14 +23,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "PeoplePulse — Enterprise HRMS & Payroll" },
+      { title: "PeoplePulse HRMS" },
       {
         name: "description",
         content:
           "Modern, enterprise-grade HRMS and Payroll platform for multi-entity organisations.",
       },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "icon", type: "image/png", href: "/Screenshot 2026-10-03 163702.png" }
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -224,9 +227,9 @@ function Shell() {
 
     if (user) {
       const isSuperAdmin = user.username === "Vibe_admin" || user.is_superuser;
-      const isSuperAdminRoute = 
-        pathname.startsWith("/superadmin-") || 
-        pathname.startsWith("/organizations") || 
+      const isSuperAdminRoute =
+        pathname.startsWith("/superadmin-") ||
+        pathname.startsWith("/organizations") ||
         pathname.startsWith("/billing-payments");
 
       if (isSuperAdmin && !isSuperAdminRoute && pathname !== "/auth") {
@@ -246,9 +249,9 @@ function Shell() {
   }
 
   const isSuperAdmin = user.username === "Vibe_admin" || user.is_superuser;
-  const isSuperAdminRoute = 
-    pathname.startsWith("/superadmin-") || 
-    pathname.startsWith("/organizations") || 
+  const isSuperAdminRoute =
+    pathname.startsWith("/superadmin-") ||
+    pathname.startsWith("/organizations") ||
     pathname.startsWith("/billing-payments");
 
   if (isSuperAdmin && !isSuperAdminRoute) return null;

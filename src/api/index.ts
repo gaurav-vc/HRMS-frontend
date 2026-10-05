@@ -20,8 +20,12 @@ import { redirect } from "@tanstack/react-router";
 const delay = (ms: number = 300) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const API_BASE_URL = import.meta.env.PROD
-  ? (typeof window !== 'undefined' && window.location.hostname.includes('vibesandbox')
-      ? "https://hrms.vibesandbox.live"
+  ? (typeof window !== 'undefined'
+      ? window.location.hostname.includes('lotusdevelopers')
+        ? "https://hrms.lotusdevelopers.com"
+        : window.location.hostname.includes('vibesandbox')
+          ? "https://hrms.vibesandbox.live"
+          : "https://hrms.vibecopilot.ai"
       : "https://hrms.vibecopilot.ai")
   : (typeof window !== 'undefined' 
       ? `http://${window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname}:8000` 
