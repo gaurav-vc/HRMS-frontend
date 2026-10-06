@@ -226,7 +226,7 @@ function Shell() {
     }
 
     if (user) {
-      const isSuperAdmin = user.username === "Vibe_admin" || user.is_superuser;
+      const isSuperAdmin = user.is_superuser;
       const isSuperAdminRoute =
         pathname.startsWith("/superadmin-") ||
         pathname.startsWith("/organizations") ||
@@ -248,7 +248,7 @@ function Shell() {
     return null;
   }
 
-  const isSuperAdmin = user.username === "Vibe_admin" || user.is_superuser;
+  const isSuperAdmin = user.is_superuser;
   const isSuperAdminRoute =
     pathname.startsWith("/superadmin-") ||
     pathname.startsWith("/organizations") ||

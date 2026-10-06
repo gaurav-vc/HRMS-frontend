@@ -17,7 +17,7 @@ export function MobileNav() {
   const { toggleSidebar } = useSidebar();
   const { user } = useAuth();
 
-  const isSuperAdminMode = user?.username === "Vibe_admin";
+  const isSuperAdminMode = user?.is_superuser;
 
   const navItems = isSuperAdminMode
     ? [

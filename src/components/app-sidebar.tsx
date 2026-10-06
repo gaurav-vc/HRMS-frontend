@@ -209,7 +209,7 @@ export function AppSidebar() {
   const isActive = (url: string) =>
     url === "/" ? pathname === "/" : pathname === url || pathname.startsWith(url + "/");
   
-  // Vibe_admin ONLY sees SUPER_ADMIN_NAV
+  // Super admins ONLY see SUPER_ADMIN_NAV
   const nav = isSuperAdmin ? SUPER_ADMIN_NAV : NAV;
 
   return (

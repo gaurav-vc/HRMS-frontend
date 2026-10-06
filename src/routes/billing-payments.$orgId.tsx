@@ -40,7 +40,7 @@ function BillingDetail() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
-  if (user?.username !== "Vibe_admin") {
+  if (!user?.is_superuser) {
     return <Navigate to="/" />;
   }
 

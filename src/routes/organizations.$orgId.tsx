@@ -51,7 +51,7 @@ function OrganizationDetailPage() {
     queryFn: () => sitesApi.getAll(),
   });
 
-  if (user?.username !== "Vibe_admin") {
+  if (!user?.is_superuser) {
     return <Navigate to="/" />;
   }
 

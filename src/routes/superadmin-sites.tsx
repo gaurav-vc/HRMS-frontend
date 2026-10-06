@@ -207,7 +207,7 @@ function SitesPage() {
     }
   };
 
-  if (user?.username !== "Vibe_admin") {
+  if (!user?.is_superuser) {
     return <Navigate to="/" />;
   }
 

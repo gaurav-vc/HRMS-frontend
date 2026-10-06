@@ -92,7 +92,7 @@ function GlobalSearch() {
           const routeResults: any[] = [];
 
           const nav =
-            user?.role === "super_admin" || user?.is_superuser || user?.username === "Vibe_admin"
+            user?.role === "super_admin" || user?.is_superuser
               ? SUPER_ADMIN_NAV
               : NAV;
           nav.forEach((group) => {

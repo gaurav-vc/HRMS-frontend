@@ -67,7 +67,7 @@ function OrganizationsPage() {
     setRows(initial || []);
   }, [initial]);
 
-  if (user?.username !== "Vibe_admin") {
+  if (!user?.is_superuser) {
     return <Navigate to="/" />;
   }
 
