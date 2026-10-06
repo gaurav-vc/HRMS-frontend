@@ -218,6 +218,27 @@ function Shell() {
   const router = useRouter();
 
   useEffect(() => {
+    const hostname = window.location.hostname;
+    let dynamicFavicon = "/Screenshot 2026-10-03 163702.png";
+
+    if (hostname === "hrms.lotusdevelopers.com") {
+      dynamicFavicon = "/lotus-favicon.png";
+    } else if (hostname === "hrms.vibecopilot.ai") {
+      dynamicFavicon = "/vc-favicon.png";
+    }
+
+    const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement | null;
+    if (link) {
+      link.href = dynamicFavicon;
+    } else {
+      const newLink = document.createElement("link");
+      newLink.rel = "icon";
+      newLink.href = dynamicFavicon;
+      document.head.appendChild(newLink);
+    }
+  }, []);
+
+  useEffect(() => {
     if (!init) return;
 
     if (!user && pathname !== "/auth") {
