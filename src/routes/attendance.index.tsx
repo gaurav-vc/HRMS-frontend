@@ -7,14 +7,20 @@ import {
   Navigation as NavigationIcon,
   ClipboardList,
   MapPin,
+  Upload,
+  Plus,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { StatCard } from "@/components/stat-card";
+import { toast } from "sonner";
+import { useRouter } from "@tanstack/react-router";
 import { attendanceApi, employeesApi } from "@/api";
 import { EmployeeAttendanceReport } from "@/components/employee-attendance-report";
 
@@ -40,6 +46,48 @@ function AttendancePage() {
   const [detailedRow, setDetailedRow] = useState<any>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportEmployeeId, setReportEmployeeId] = useState<number | null>(null);
+  const [uploadCsvOpen, setUploadCsvOpen] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const router = useRouter();
+
+  const handleUploadCsv = async () => {
+    if (!csvFile) {
+      toast.error("Please select a file first");
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const res = await attendanceApi.uploadCsv(csvFile);
+      toast.success(res.message || "CSV uploaded successfully");
+      if (res.errors && res.errors.length > 0) {
+        toast.warning(`${res.errors.length} errors occurred. Check console for details.`);
+        console.warn("CSV Upload Errors:", res.errors);
+      }
+      setUploadCsvOpen(false);
+      setCsvFile(null);
+      router.invalidate();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to upload CSV");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const downloadTemplate = () => {
+    const headers = "employee_code,date,in_time,out_time,status\n";
+    const today = new Date();
+    const dateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const sampleRow = `EMP001,${dateString},09:00:00,18:00:00,Present\n`;
+    const blob = new Blob([headers + sampleRow], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "attendance_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Compute some stats based on punch history
   const isVerified = (status: string) => status === "VERIFIED" || status === "PENDING_ML_INSTALL";
@@ -78,6 +126,34 @@ function AttendancePage() {
 
   return (
     <>
+      <Dialog open={uploadCsvOpen} onOpenChange={(o) => { if (!o) { setUploadCsvOpen(false); setCsvFile(null); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload Attendance CSV</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Select CSV File</Label>
+              <Input type="file" accept=".csv" onChange={(e) => setCsvFile(e.target.files?.[0] || null)} />
+            </div>
+            <div className="flex justify-between items-center">
+              <div className="text-xs text-muted-foreground flex-1 pr-4">
+                Ensure your CSV has columns such as: employee_code, date, in_time, out_time, status.
+              </div>
+              <Button variant="outline" size="sm" onClick={downloadTemplate}>
+                Download Template
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUploadCsvOpen(false)}>Cancel</Button>
+            <Button onClick={handleUploadCsv} disabled={isUploading || !csvFile}>
+              {isUploading ? "Uploading..." : "Upload"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!selectedPunch} onOpenChange={(o) => !o && setSelectedPunch(null)}>
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
@@ -206,7 +282,15 @@ function AttendancePage() {
         employees={employees}
       />
 
-      <PageHeader title="Attendance" description="Live attendance feed across all sites" />
+      <PageHeader 
+        title="Attendance" 
+        description="Live attendance feed across all sites" 
+        actions={
+          <Button onClick={() => setUploadCsvOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" /> Upload CSV
+          </Button>
+        }
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
         <StatCard

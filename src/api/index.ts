@@ -369,6 +369,11 @@ export const attendanceApi = {
   getRegularizations: async (): Promise<any[]> => apiCall("/attendance/regularization/"),
   approveRegularization: async (id: string | number, data: any): Promise<any> =>
     apiCall(`/attendance/regularization/${id}/`, "PATCH", data),
+  uploadCsv: async (file: File): Promise<any> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiCall("/attendance/upload_csv/", "POST", formData);
+  },
 
   // Shifts
   getShifts: async (): Promise<any[]> => apiCall("/attendance/shifts/"),
