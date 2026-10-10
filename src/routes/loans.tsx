@@ -185,7 +185,7 @@ function LoansPage() {
           const loanEmpId = r.employee || r.employeeId || r.employee_id;
           const isMyLoan = Boolean(myDbId && loanEmpId && myDbId == loanEmpId);
 
-          const canAction = (canUpdate || user?.is_superuser) && !isMyLoan;
+          const canAction = (canUpdate || user?.is_superuser || user?.role === "super_admin") && !isMyLoan;
 
           if (!canAction) return null;
 

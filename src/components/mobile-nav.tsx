@@ -17,7 +17,7 @@ export function MobileNav() {
   const { toggleSidebar } = useSidebar();
   const { user } = useAuth();
 
-  const isSuperAdminMode = user?.is_superuser;
+  const isSuperAdminMode = user?.is_superuser || user?.role === "super_admin";
 
   const navItems = isSuperAdminMode
     ? [

@@ -207,7 +207,7 @@ function SitesPage() {
     }
   };
 
-  if (!user?.is_superuser) {
+  if (!user?.is_superuser && user?.role !== "super_admin") {
     return <Navigate to="/" />;
   }
 

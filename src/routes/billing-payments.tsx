@@ -40,7 +40,7 @@ function BillingPaymentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const isExactParent = matchRoute({ to: "/billing-payments", fuzzy: false });
 
-  if (!user?.is_superuser) {
+  if (!user?.is_superuser && user?.role !== "super_admin") {
     return <Navigate to="/" />;
   }
 

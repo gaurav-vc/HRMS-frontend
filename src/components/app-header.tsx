@@ -444,9 +444,10 @@ export function AppHeader() {
             <Avatar className="h-7 w-7">
               {user?.avatar && <AvatarImage src={user.avatar} alt={user.name} className="object-cover" />}
               <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                {user?.name
+                {(user?.name || "U")
                   .split(" ")
                   .map((s) => s[0])
+                  .filter(Boolean)
                   .slice(0, 2)
                   .join("")}
               </AvatarFallback>

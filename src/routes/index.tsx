@@ -154,14 +154,14 @@ function Index() {
     if (!init) return;
     if (!user) {
       navigate({ to: "/auth" });
-    } else if (user.is_superuser) {
+    } else if (user.is_superuser || user.role === "super_admin") {
       navigate({ to: "/superadmin-dashboard" });
     }
   }, [user, init, navigate]);
 
   if (!init) return null;
   if (!user) return null;
-  if (user.is_superuser) return null;
+  if (user.is_superuser || user.role === "super_admin") return null;
 
   // Use dynamic permissions dashboard_type if available, otherwise fallback to standard role
   const dashType = user.permissions?.dashboard_type || user.role;

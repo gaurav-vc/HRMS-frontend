@@ -24,7 +24,7 @@ export const Route = createFileRoute("/superadmin-dashboard")({
 
 function SuperAdminDashboard() {
   const { user, init } = useAuth();
-  const isSuperAdmin = user?.is_superuser;
+  const isSuperAdmin = user?.is_superuser || user?.role === "super_admin";
   const { data: rawData, isLoading } = useQuery({
     queryKey: ["superadmin_dashboard_stats"],
     queryFn: () => api.getDashboardStats(),
@@ -37,15 +37,25 @@ function SuperAdminDashboard() {
     return <Navigate to="/" />;
   }
 
-  const stats = rawData?.superAdmin ||
-    rawData?.super_admin || {
-      totalRevenue: 0,
-      activeSites: 0,
-      totalCompany: 0,
-      moduleWiseRevenue: [],
-      companyWiseSite: [],
-      moduleWiseSite: [],
-    };
+  const defaultStats = {
+    totalRevenue: 0,
+    activeSites: 0,
+    totalCompany: 0,
+    moduleWiseRevenue: [],
+    companyWiseSite: [],
+    moduleWiseSite: [],
+    topOrgs: [],
+  };
+  const rawStats = rawData?.superAdmin || rawData?.super_admin || {};
+  const stats = { 
+    ...defaultStats, 
+    ...rawStats 
+  };
+  // Ensure array fields are definitely arrays to prevent map crashes
+  stats.moduleWiseRevenue = Array.isArray(stats.moduleWiseRevenue) ? stats.moduleWiseRevenue : [];
+  stats.companyWiseSite = Array.isArray(stats.companyWiseSite) ? stats.companyWiseSite : [];
+  stats.moduleWiseSite = Array.isArray(stats.moduleWiseSite) ? stats.moduleWiseSite : [];
+  stats.topOrgs = Array.isArray(stats.topOrgs) ? stats.topOrgs : [];
 
   if (isLoading) return <div className="p-8 text-center animate-pulse">Loading dashboard...</div>;
 
@@ -72,7 +82,7 @@ function SuperAdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-semibold text-slate-800">
-                Rs. {stats.totalRevenue.toLocaleString()}
+                Rs. {stats.totalRevenue?.toLocaleString() ?? 0}
               </div>
             </CardContent>
           </Card>
@@ -118,7 +128,7 @@ function SuperAdminDashboard() {
             </CardHeader>
             <CardContent className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={stats.companyWiseSite}>
+                <LineChart data={stats.companyWiseSite || []}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} />
                   <YAxis axisLine={false} tickLine={false} />
@@ -148,7 +158,7 @@ function SuperAdminDashboard() {
             </CardHeader>
             <CardContent className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.moduleWiseSite}>
+                <BarChart data={stats.moduleWiseSite || []}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} />
                   <YAxis axisLine={false} tickLine={false} />
@@ -178,7 +188,7 @@ function SuperAdminDashboard() {
             </CardHeader>
             <CardContent className="p-0">
               <ul className="divide-y">
-                {stats.moduleWiseRevenue.map((item: any, idx: number) => (
+                {(stats.moduleWiseRevenue || []).map((item: any, idx: number) => (
                   <li
                     key={idx}
                     className="flex justify-between items-center p-4 hover:bg-slate-50 transition-colors"

@@ -66,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 org_name: me.orgName || me.org_name,
                 branding_text: me.brandingText || me.branding_text,
                 logo_url: me.logoUrl || me.logo_url,
+                is_superuser: me.is_superuser,
               };
               setUser(updatedUser);
               if (typeof localStorage !== "undefined") {
@@ -131,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           org_name: me.orgName || me.org_name,
           branding_text: me.brandingText || me.branding_text,
           logo_url: me.logoUrl || me.logo_url,
+          is_superuser: me.is_superuser,
         },
         res.access,
         res.refresh,

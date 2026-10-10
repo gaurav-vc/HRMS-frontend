@@ -247,7 +247,7 @@ function Shell() {
     }
 
     if (user) {
-      const isSuperAdmin = user.is_superuser;
+      const isSuperAdmin = user.is_superuser || user.role === "super_admin";
       const isSuperAdminRoute =
         pathname.startsWith("/superadmin-") ||
         pathname.startsWith("/organizations") ||
@@ -269,7 +269,7 @@ function Shell() {
     return null;
   }
 
-  const isSuperAdmin = user.is_superuser;
+  const isSuperAdmin = user.is_superuser || user.role === "super_admin";
   const isSuperAdminRoute =
     pathname.startsWith("/superadmin-") ||
     pathname.startsWith("/organizations") ||

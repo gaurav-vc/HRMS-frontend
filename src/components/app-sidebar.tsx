@@ -201,7 +201,7 @@ export function AppSidebar() {
     });
   }, [user]);
 
-  const isSuperAdmin = user?.role === "super_admin";
+  const isSuperAdmin = user?.role === "super_admin" || user?.is_superuser;
   const can = (it: Item) => {
     if (isSuperAdmin) return true;
     return canAccessRoute(it, user);
