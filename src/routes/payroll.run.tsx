@@ -252,7 +252,8 @@ function OneClickPanel({
     { id: "lopDays", label: "LOP" },
     { id: "halfDays", label: "Half Days" },
     { id: "latePenalties", label: "Late Penalties" },
-    { id: "ot", label: "OT Overtime" },
+    { id: "ot", label: "OT (Hours)" },
+    { id: "overtimePay", label: "OT Pay" },
     { id: "daysPaid", label: "Payable Days" },
     { id: "totalAmount", label: "Total Amount" },
     { id: "arrears", label: "Arrears" },
@@ -264,7 +265,7 @@ function OneClickPanel({
     { id: "payableSalary", label: "Payable Salary" },
   ].filter((col) => {
     if (!canViewConfidential) {
-      return !["currentSalary", "totalAmount", "arrears", "deduction", "pf", "pt", "reimbursement", "incentive", "payableSalary"].includes(col.id);
+      return !["currentSalary", "totalAmount", "arrears", "deduction", "pf", "pt", "reimbursement", "incentive", "payableSalary", "overtimePay"].includes(col.id);
     }
     return true;
   });
@@ -545,6 +546,7 @@ function OneClickPanel({
                                 "incentive",
                                 "payableSalary",
                                 "currentSalary",
+                                "overtimePay",
                               ].includes(col.id);
                               return (
                                 <td
@@ -575,6 +577,21 @@ function OneClickPanel({
                                             updated.presentDays = Math.max(0, total - updated.lopDays - (updated.leaves || 0));
                                           }
                                           setEditForm(updated);
+                                        } else if (col.id === "ot") {
+                                          const currentCtc = Number(editForm.currentSalary || 0);
+                                          const total = Number(editForm.totalDays || 30) || 30;
+                                          const basicAmt = (currentCtc / 12) * 0.5;
+                                          const hourlyRate = total > 0 ? (basicAmt / total / 8) : 0;
+                                          const newOtPay = Math.round(hourlyRate * 1.5 * val * 100) / 100;
+                                          const oldOtPay = Number(editForm.overtimePay || 0);
+                                          const diff = newOtPay - oldOtPay;
+                                          setEditForm({
+                                            ...editForm,
+                                            ot: val,
+                                            overtimePay: newOtPay,
+                                            totalAmount: Math.round((Number(editForm.totalAmount || 0) + diff) * 100) / 100,
+                                            payableSalary: Math.round((Number(editForm.payableSalary || 0) + diff) * 100) / 100,
+                                          });
                                         } else {
                                           setEditForm({
                                             ...editForm,

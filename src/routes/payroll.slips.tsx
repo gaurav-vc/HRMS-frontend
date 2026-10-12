@@ -113,15 +113,41 @@ function SlipsPage() {
     navigate({ search: { period: val } });
   };
 
-  // Generate last 12 months for dropdown
-  const periodOptions = [];
-  const d = new Date();
-  for (let i = 0; i < 12; i++) {
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const y = d.getFullYear();
-    periodOptions.push(`${y}-${m}`);
-    d.setMonth(d.getMonth() - 1);
+  // Dynamically populate dropdown strictly from Payroll Runs and Payslips in the system.
+  // Whenever a payroll is run for a month, that month is automatically included in the dropdown list.
+  const periodOptionsSet = new Set<string>();
+
+  // 1. Add all periods where payroll has been run or payslips exist (from backend)
+  if (data?.availablePeriods && Array.isArray(data.availablePeriods)) {
+    data.availablePeriods.forEach((p: string) => {
+      if (p && typeof p === "string" && p.trim()) {
+        periodOptionsSet.add(p.trim());
+      }
+    });
   }
+
+  // 2. Also check diagnostics for any recorded payroll runs
+  if (data?.diagnostics?.payroll_runs && Array.isArray(data.diagnostics.payroll_runs)) {
+    data.diagnostics.payroll_runs.forEach((r: any) => {
+      if (r?.period && typeof r.period === "string" && r.period.trim()) {
+        periodOptionsSet.add(r.period.trim());
+      }
+    });
+  }
+
+  // 3. Ensure the current period is always present so the select box never renders blank
+  if (period && typeof period === "string" && period.trim()) {
+    periodOptionsSet.add(period.trim());
+  }
+
+  // Fallback to current month if no payroll has ever been run yet
+  if (periodOptionsSet.size === 0) {
+    const d = new Date();
+    periodOptionsSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+
+  // Sort descending so the latest run month is always at the top
+  const periodOptions = Array.from(periodOptionsSet).sort((a, b) => b.localeCompare(a));
 
   return (
     <>
@@ -525,8 +551,16 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
             <span className="font-bold text-slate-800 text-[13px]">{emp.daysAbsent ?? 0}</span>
           </div>
           <div className="flex items-center">
-            <span className="text-slate-500 w-28 text-[13px]">Overtime Hrs</span>
-            <span className="font-bold text-slate-800 text-[13px]">{emp.overtimeHours ?? 0}</span>
+            <span className="text-slate-500 w-28 text-[13px]">Late Marks</span>
+            <span className="font-bold text-slate-800 text-[13px]">
+              {Number(emp.lateMarks || 0) > 0 ? `${emp.lateMarks} marks` : "0"}
+            </span>
+          </div>
+          <div className="flex items-center">
+            <span className="text-slate-500 w-28 text-[13px]">Overtime</span>
+            <span className="font-bold text-slate-800 text-[13px]">
+              {Number(emp.overtimeHours || emp.ot || 0) > 0 ? `${emp.overtimeHours || emp.ot} hrs` : "0 hrs"}
+            </span>
           </div>
         </div>
         <div className="space-y-5">
@@ -560,10 +594,27 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
         <div className="absolute top-0 bottom-0 left-1/2 w-px bg-border"></div>
         <div>
           <div className="font-bold border-b pb-2 mb-2">Earnings & Reimbursements</div>
-          {earningsEntries.map(([k, v]) => (
-            <Row key={k} label={formatName(k)} v={v as number} />
-          ))}
+          {earningsEntries.map(([k, v]) => {
+            const isOt = k.toLowerCase().includes('overtime') || k.toLowerCase().includes('ot');
+            const otHrs = Number(emp.overtimeHours || emp.ot || 0);
+            const label = isOt && otHrs > 0 ? `Overtime Allowance (${otHrs} hrs)` : formatName(k);
+            return (
+              <Row 
+                key={k} 
+                label={label} 
+                v={v as number} 
+                className={isOt ? "text-amber-800 font-semibold" : ""} 
+              />
+            );
+          })}
           {earningsEntries.length === 0 && <Row label="Basic" v={emp.basic} />}
+          {!earningsEntries.some(([k]) => k.toLowerCase().includes('overtime') || k.toLowerCase().includes('ot')) && Number(emp.overtimePay || 0) > 0 && (
+            <Row 
+              label={`Overtime Allowance (${Number(emp.overtimeHours || emp.ot || 0)} hrs)`} 
+              v={emp.overtimePay} 
+              className="text-amber-800 font-semibold" 
+            />
+          )}
           
           {arrears > 0 && (
             <div className="mt-3 pt-2 border-t border-dashed">
@@ -593,16 +644,16 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
               ) && <Row label="Income Tax" v={tds || 0} />}
           </div>
 
-          {emp.daysAbsent > 0 && (
+          {(Number(emp.daysAbsent || 0) > 0 || Number(emp.lateMarks || 0) > 0 || Number(emp.lopDays || 0) > 0) && (
             <div className="bg-red-50/40 border border-red-100/60 rounded-md p-3 pb-2">
               <div className="font-bold text-red-800 border-b border-red-200/50 pb-2 mb-2 uppercase text-xs tracking-wider flex items-center justify-between">
-                <span>Administrative Penalties</span>
+                <span>Administrative Penalties & LOP</span>
                 <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-sm">
                   Adjusted
                 </span>
               </div>
 
-              {emp.lopDays ? (
+              {Number(emp.lopDays || 0) > 0 ? (
                 <div className="flex justify-between text-sm py-1 font-medium text-red-900">
                   <span>Loss of Pay ({emp.lopDays} days)</span>
                   <span>
@@ -616,24 +667,24 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
                 </div>
               ) : null}
 
-              {emp.lateMarks ? (
-                <div className="flex justify-between text-sm py-1 font-medium text-red-900">
-                  <span>Late Marks Penalty ({emp.lateMarks} marks)</span>
-                  <span>
-                    -{" "}
-                    {fmtINR(
-                      emp.gross && emp.daysPaid
-                        ? Math.round(
-                            (emp.gross / emp.daysPaid) *
-                              ((emp.daysAbsent || 0) - (emp.lopDays || 0)),
-                          )
-                        : 0,
-                    )}
-                  </span>
-                </div>
-              ) : null}
+              {Number(emp.lateMarks || 0) > 0 ? (() => {
+                const latePenalties = emp.latePenalties !== undefined ? emp.latePenalties : Math.floor(Number(emp.lateMarks) / 3) * 0.5;
+                const penaltyCost = emp.gross && emp.daysPaid && latePenalties > 0
+                  ? Math.round((emp.gross / emp.daysPaid) * latePenalties)
+                  : 0;
+                return (
+                  <div className="flex justify-between text-sm py-1 font-medium text-red-900">
+                    <span>
+                      Late Marks ({emp.lateMarks} marks
+                      {latePenalties > 0 ? ` = -${latePenalties}d penalty` : " • Within grace limit"}
+                      )
+                    </span>
+                    <span>{penaltyCost > 0 ? `- ${fmtINR(penaltyCost)}` : "₹0"}</span>
+                  </div>
+                );
+              })() : null}
 
-              {!emp.lopDays && !emp.lateMarks && (
+              {!emp.lopDays && !emp.lateMarks && Number(emp.daysAbsent || 0) > 0 && (
                 <div className="flex justify-between text-sm py-1 font-medium text-red-900">
                   <span>Loss of Pay / Absences ({emp.daysAbsent} days)</span>
                   <span>
@@ -648,8 +699,7 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
               )}
 
               <div className="text-[11px] text-red-600/80 mt-1 pt-1 border-t border-red-100/50">
-                Calculated dynamically based on attendance. This amount has already been
-                pre-deducted from the gross earnings above.
+                Calculated dynamically based on attendance. Salary has been pre-prorated for payable days.
               </div>
             </div>
           )}

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, MoreHorizontal, ChevronDown, Check, Info } from "lucide-react";
+import { Search, Plus, MoreHorizontal, ChevronDown, Check, Info, Send } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -1224,17 +1224,31 @@ function UserForm({
 
   const submit = async () => {
     try {
+      if (!form.firstName?.trim() || !form.lastName?.trim()) {
+        toast.error("First Name and Last Name are required");
+        return;
+      }
+      if (!form.email?.trim() && !form.phone?.trim()) {
+        toast.error("Either Email or Mobile number is required to register an employee");
+        return;
+      }
+
       setLoading(true);
       const payload: any = { ...form };
       payload.first_name = payload.firstName;
       payload.last_name = payload.lastName;
       payload.mfa_enabled = payload.mfaEnabled;
       payload.dynamic_role = payload.dynamicRole;
+      payload.send_credentials = true;
 
       delete payload.firstName;
       delete payload.lastName;
       delete payload.mfaEnabled;
       delete payload.dynamicRole;
+
+      if (!payload.email || !payload.email.trim()) {
+        payload.email = null;
+      }
 
       [
         "department",
@@ -1303,7 +1317,12 @@ function UserForm({
         </div>
         <div className="space-y-2">
           <Label>
-            Email <span className="text-destructive">*</span>
+            Email{" "}
+            {form.phone ? (
+              <span className="text-muted-foreground text-xs font-normal">(Optional if Mobile provided)</span>
+            ) : (
+              <span className="text-destructive">*</span>
+            )}
           </Label>
           <Input
             placeholder="user@logicon.io"
@@ -1313,12 +1332,33 @@ function UserForm({
           />
         </div>
         <div className="space-y-2">
-          <Label>Mobile</Label>
+          <Label>
+            Mobile{" "}
+            {form.email ? (
+              <span className="text-muted-foreground text-xs font-normal">(Optional if Email provided)</span>
+            ) : (
+              <span className="text-destructive">*</span>
+            )}
+          </Label>
           <Input
             placeholder="+91 98100 00000"
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
           />
+        </div>
+        <div className="col-span-2 bg-muted/40 p-3 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+          <div>
+            <p className="font-semibold text-foreground flex items-center gap-1.5">
+              <Send className="h-3.5 w-3.5 text-primary" />
+              Credentials Delivery Channel
+            </p>
+            <p className="text-muted-foreground mt-0.5">
+              Blue-collar staff without email will receive their login credentials via SMS to their mobile number.
+            </p>
+          </div>
+          <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary">
+            {form.phone && !form.email ? "SMS Dispatch" : form.email && !form.phone ? "Email Dispatch" : "Dual Dispatch"}
+          </span>
         </div>
       </div>
 
@@ -1399,12 +1439,14 @@ function UserForm({
             value={form.status}
             onChange={(e) => setForm({ ...form, status: e.target.value as "Active" | "Inactive" })}
           >
-            <option value="" disabled>
-              Select...
-            </option>
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
           </select>
+          <p className="text-xs text-muted-foreground mt-1">
+            {form.status === "Active"
+              ? "Active: User can log in to web/mobile and mark attendance."
+              : "Inactive: Account is deactivated. User cannot log in and is excluded from kiosk attendance."}
+          </p>
         </div>
         <div className="space-y-2 flex flex-col justify-center pt-6">
           <div className="flex items-center justify-between max-w-[200px]">

@@ -73,11 +73,19 @@ export function openPayslipPdf(emp: Employee | any, period: string) {
       </tr>
       <tr>
         <td>CTC</td><td>Rs. ${ctc.toFixed(2)}</td>
-        <td>Payable Days</td><td>31</td>
+        <td>Total Days</td><td>${emp.totalDays || 30}</td>
       </tr>
       <tr>
-        <td>Non Payable Days</td><td>0</td>
-        <td>Total Days</td><td>31</td>
+        <td>Payable Days</td><td>${emp.daysPaid ?? 30}</td>
+        <td>Days Present</td><td>${emp.daysPresent ?? 0}</td>
+      </tr>
+      <tr>
+        <td>Paid Leaves (AL)</td><td>${emp.paidLeaves ?? 0}</td>
+        <td>Non Payable / LOP</td><td>${emp.daysAbsent ?? 0}${Number(emp.lopDays || 0) > 0 ? ` (${emp.lopDays} LOP)` : ''}</td>
+      </tr>
+      <tr>
+        <td>Late Marks</td><td>${emp.lateMarks || 0} marks${Number(emp.latePenalties || 0) > 0 ? ` (-${emp.latePenalties}d)` : ''}</td>
+        <td>Overtime Hours</td><td>${emp.overtimeHours || emp.ot || 0} hrs</td>
       </tr>
       <tr>
         <td>PF No</td><td>N/A</td>
@@ -102,6 +110,7 @@ export function openPayslipPdf(emp: Employee | any, period: string) {
       <tr><td>Basic Pay</td><td>Rs. ${(basic || 0).toFixed(2)}</td></tr>
       <tr><td>HRA</td><td>Rs. ${(hra || 0).toFixed(2)}</td></tr>
       <tr><td>Allowance</td><td>Rs. ${(special || 0).toFixed(2)}</td></tr>
+      ${(Number(emp.overtimePay || emp.components?.['Overtime Allowance'] || 0) > 0) ? `<tr><td>Overtime Allowance (${emp.overtimeHours || emp.ot || 0} hrs)</td><td>Rs. ${Number(emp.overtimePay || emp.components?.['Overtime Allowance'] || 0).toFixed(2)}</td></tr>` : ''}
       <tr><td>Current Month SP</td><td>Rs. 0.00</td></tr>
       <tr><td>Conveyance</td><td>Rs. 0.00</td></tr>
     </tbody>

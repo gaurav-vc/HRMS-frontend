@@ -57,6 +57,7 @@ import { Route as AttendanceShiftsRouteImport } from './routes/attendance.shifts
 import { Route as AttendanceRosterRouteImport } from './routes/attendance.roster'
 import { Route as AttendanceRegularizeRouteImport } from './routes/attendance.regularize'
 import { Route as AttendanceQrRouteImport } from './routes/attendance.qr'
+import { Route as AttendanceKioskRouteImport } from './routes/attendance.kiosk'
 import { Route as AttendanceGpsRouteImport } from './routes/attendance.gps'
 import { Route as AttendanceFaceRouteImport } from './routes/attendance.face'
 
@@ -300,6 +301,11 @@ const AttendanceQrRoute = AttendanceQrRouteImport.update({
   path: '/qr',
   getParentRoute: () => AttendanceRoute,
 } as any)
+const AttendanceKioskRoute = AttendanceKioskRouteImport.update({
+  id: '/kiosk',
+  path: '/kiosk',
+  getParentRoute: () => AttendanceRoute,
+} as any)
 const AttendanceGpsRoute = AttendanceGpsRouteImport.update({
   id: '/gps',
   path: '/gps',
@@ -341,6 +347,7 @@ export interface FileRoutesByFullPath {
   '/superadmin-sites': typeof SuperadminSitesRoute
   '/attendance/face': typeof AttendanceFaceRoute
   '/attendance/gps': typeof AttendanceGpsRoute
+  '/attendance/kiosk': typeof AttendanceKioskRoute
   '/attendance/qr': typeof AttendanceQrRoute
   '/attendance/regularize': typeof AttendanceRegularizeRoute
   '/attendance/roster': typeof AttendanceRosterRoute
@@ -391,6 +398,7 @@ export interface FileRoutesByTo {
   '/superadmin-sites': typeof SuperadminSitesRoute
   '/attendance/face': typeof AttendanceFaceRoute
   '/attendance/gps': typeof AttendanceGpsRoute
+  '/attendance/kiosk': typeof AttendanceKioskRoute
   '/attendance/qr': typeof AttendanceQrRoute
   '/attendance/regularize': typeof AttendanceRegularizeRoute
   '/attendance/roster': typeof AttendanceRosterRoute
@@ -444,6 +452,7 @@ export interface FileRoutesById {
   '/superadmin-sites': typeof SuperadminSitesRoute
   '/attendance/face': typeof AttendanceFaceRoute
   '/attendance/gps': typeof AttendanceGpsRoute
+  '/attendance/kiosk': typeof AttendanceKioskRoute
   '/attendance/qr': typeof AttendanceQrRoute
   '/attendance/regularize': typeof AttendanceRegularizeRoute
   '/attendance/roster': typeof AttendanceRosterRoute
@@ -498,6 +507,7 @@ export interface FileRouteTypes {
     | '/superadmin-sites'
     | '/attendance/face'
     | '/attendance/gps'
+    | '/attendance/kiosk'
     | '/attendance/qr'
     | '/attendance/regularize'
     | '/attendance/roster'
@@ -548,6 +558,7 @@ export interface FileRouteTypes {
     | '/superadmin-sites'
     | '/attendance/face'
     | '/attendance/gps'
+    | '/attendance/kiosk'
     | '/attendance/qr'
     | '/attendance/regularize'
     | '/attendance/roster'
@@ -600,6 +611,7 @@ export interface FileRouteTypes {
     | '/superadmin-sites'
     | '/attendance/face'
     | '/attendance/gps'
+    | '/attendance/kiosk'
     | '/attendance/qr'
     | '/attendance/regularize'
     | '/attendance/roster'
@@ -997,6 +1009,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AttendanceQrRouteImport
       parentRoute: typeof AttendanceRoute
     }
+    '/attendance/kiosk': {
+      id: '/attendance/kiosk'
+      path: '/kiosk'
+      fullPath: '/attendance/kiosk'
+      preLoaderRoute: typeof AttendanceKioskRouteImport
+      parentRoute: typeof AttendanceRoute
+    }
     '/attendance/gps': {
       id: '/attendance/gps'
       path: '/gps'
@@ -1017,6 +1036,7 @@ declare module '@tanstack/react-router' {
 interface AttendanceRouteChildren {
   AttendanceFaceRoute: typeof AttendanceFaceRoute
   AttendanceGpsRoute: typeof AttendanceGpsRoute
+  AttendanceKioskRoute: typeof AttendanceKioskRoute
   AttendanceQrRoute: typeof AttendanceQrRoute
   AttendanceRegularizeRoute: typeof AttendanceRegularizeRoute
   AttendanceRosterRoute: typeof AttendanceRosterRoute
@@ -1027,6 +1047,7 @@ interface AttendanceRouteChildren {
 const AttendanceRouteChildren: AttendanceRouteChildren = {
   AttendanceFaceRoute: AttendanceFaceRoute,
   AttendanceGpsRoute: AttendanceGpsRoute,
+  AttendanceKioskRoute: AttendanceKioskRoute,
   AttendanceQrRoute: AttendanceQrRoute,
   AttendanceRegularizeRoute: AttendanceRegularizeRoute,
   AttendanceRosterRoute: AttendanceRosterRoute,

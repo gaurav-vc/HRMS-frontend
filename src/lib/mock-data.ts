@@ -51,6 +51,18 @@ export interface Site {
   branding_text?: string;
   brandingText?: string;
   logo?: string;
+  kioskEnabled?: boolean;
+  kiosk_enabled?: boolean;
+  kioskSimilarityThreshold?: number;
+  kiosk_similarity_threshold?: number;
+  kioskCooldownSeconds?: number;
+  kiosk_cooldown_seconds?: number;
+  kioskAutoPunch?: boolean;
+  kiosk_auto_punch?: boolean;
+  kioskToken?: string;
+  kiosk_token?: string;
+  kioskPin?: string;
+  kiosk_pin?: string;
 }
 export interface Department {
   id: string;
@@ -70,8 +82,11 @@ export interface Employee {
   code: string;
   firstName: string;
   lastName: string;
-  email: string;
-  phone: string;
+  email?: string;
+  phone?: string;
+  photo?: string;
+  photoUrl?: string;
+  photo_url?: string;
   entity: string | number;
   branch: string | number;
   site: string | number;

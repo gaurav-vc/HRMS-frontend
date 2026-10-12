@@ -227,6 +227,11 @@ export const employeesApi = {
     formData.append("file", file);
     return apiCall("/employees/bulk_import/", "POST", formData);
   },
+  uploadPhoto: async (employeeId: string | number, photoFile: File | Blob): Promise<any> => {
+    const formData = new FormData();
+    formData.append("photo", photoFile, "profile_photo.jpg");
+    return apiCall(`/employees/${employeeId}/update_photo/`, "POST", formData);
+  },
 
   // Documents
   getDocuments: async (employeeId: string | number) =>
@@ -299,10 +304,13 @@ export const entitiesApi = {
 
 export const sitesApi = {
   getAll: async (): Promise<Site[]> => apiCall("/sites/"),
+  getById: async (id: string | number): Promise<Site> => apiCall(`/sites/${id}/`),
   create: async (data: Partial<Site>): Promise<Site> => apiCall("/sites/", "POST", data),
   update: async (id: string | number, data: Partial<Site>): Promise<Site> =>
     apiCall(`/sites/${id}/`, "PUT", data),
   delete: async (id: string | number): Promise<void> => apiCall(`/sites/${id}/`, "DELETE"),
+  generateKioskToken: async (id: string | number): Promise<any> =>
+    apiCall(`/sites/${id}/generate_kiosk_token/`, "POST"),
 };
 export const orgEngineApi = {
   getTree: async (tenantId: number = 1): Promise<any> =>
@@ -417,6 +425,15 @@ export const designationsApi = {
   update: async (id: string | number, data: Partial<Designation>): Promise<Designation> =>
     apiCall(`/designations/${id}/`, "PUT", data),
   delete: async (id: string | number): Promise<void> => apiCall(`/designations/${id}/`, "DELETE"),
+};
+
+export const kioskApi = {
+  getConfig: async (token: string): Promise<any> =>
+    apiCall(`/attendance/kiosk/config/?token=${encodeURIComponent(token)}`),
+  punch: async (token: string, frameB64: string, punchType: string = "AUTO"): Promise<any> =>
+    apiCall("/attendance/kiosk/punch/", "POST", { token, frame: frameB64, punch_type: punchType }),
+  verifyPin: async (token: string, pin: string): Promise<any> =>
+    apiCall("/attendance/kiosk/verify-pin/", "POST", { token, pin }),
 };
 
 // Removed duplicate attendanceApi

@@ -75,10 +75,10 @@ function AttendancePage() {
   };
 
   const downloadTemplate = () => {
-    const headers = "employee_code,date,in_time,out_time,status\n";
+    const headers = "employee_code,date,in_time,out_time,status,OT - Hours\n";
     const today = new Date();
     const dateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    const sampleRow = `EMP001,${dateString},09:00:00,18:00:00,Present\n`;
+    const sampleRow = `EMP001,${dateString},09:00:00,18:00:00,Present,2.5\n`;
     const blob = new Blob([headers + sampleRow], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -138,7 +138,7 @@ function AttendancePage() {
             </div>
             <div className="flex justify-between items-center">
               <div className="text-xs text-muted-foreground flex-1 pr-4">
-                Ensure your CSV has columns such as: employee_code, date, in_time, out_time, status.
+                Ensure your CSV has columns such as: employee_code, date, in_time, out_time, status, OT - Hours (optional).
               </div>
               <Button variant="outline" size="sm" onClick={downloadTemplate}>
                 Download Template
@@ -615,6 +615,22 @@ function AttendancePage() {
                 ? `${r.total_work_hours || r.totalWorkHours}h`
                 : "—",
             accessor: (r) => r.total_work_hours || r.totalWorkHours,
+          },
+          {
+            key: "ot_hours_ui",
+            header: "OT Hrs",
+            noExport: true,
+            render: (r) => {
+              const ot = Number(r.overtime_hours || r.overtimeHours || 0);
+              return ot > 0 ? (
+                <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200 text-xs font-semibold">
+                  {ot}h
+                </Badge>
+              ) : (
+                <span className="text-muted-foreground text-xs">—</span>
+              );
+            },
+            accessor: (r) => Number(r.overtime_hours || r.overtimeHours || 0),
           },
           {
             key: "qr",

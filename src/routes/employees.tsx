@@ -15,7 +15,9 @@ import {
   Check,
   ChevronsUpDown,
   X,
+  Camera,
 } from "lucide-react";
+import { EmployeePhotoModal } from "@/components/employee-photo-modal";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -123,6 +125,8 @@ function EmployeesPage() {
   const [rows, setRows] = useState<Employee[]>(initial);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
+  const [selectedEmployeeForPhoto, setSelectedEmployeeForPhoto] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("directory");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const matchRoute = useMatchRoute();
@@ -193,9 +197,18 @@ function EmployeesPage() {
     try {
       const cleanData: any = { ...e };
 
-      if (!cleanData.firstName || !cleanData.lastName || !cleanData.email) {
-        toast.error("First Name, Last Name, and Email are required.");
+      if (!cleanData.firstName || !cleanData.lastName) {
+        toast.error("First Name and Last Name are required.");
         return;
+      }
+
+      if (!cleanData.email && !cleanData.phone) {
+        toast.error("Either an Email address or a Phone number is required.");
+        return;
+      }
+
+      if (!cleanData.email || cleanData.email.trim() === "") {
+        cleanData.email = null;
       }
 
       if (!cleanData.dob) cleanData.dob = null;
@@ -568,6 +581,17 @@ function EmployeesPage() {
           ]}
           actions={(r: any) => (
             <div className="flex justify-end gap-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                title="Update Profile Photo & Biometrics"
+                onClick={() => {
+                  setSelectedEmployeeForPhoto(r);
+                  setPhotoModalOpen(true);
+                }}
+              >
+                <Camera className="h-4 w-4 text-primary" />
+              </Button>
               <Link
                 to="/employees/$id"
                 params={{ id: String(r.id) }}
@@ -608,6 +632,12 @@ function EmployeesPage() {
         sites={sites}
         employees={rows}
         structures={structures}
+      />
+      <EmployeePhotoModal
+        open={photoModalOpen}
+        onOpenChange={setPhotoModalOpen}
+        employee={selectedEmployeeForPhoto}
+        onSuccess={() => router.invalidate()}
       />
     </div>
   );
@@ -754,19 +784,49 @@ function EmployeeDialog({
                       onChange={(e) => setForm({ ...form, lastName: e.target.value })}
                     />
                   </Field>
-                  <Field label="Email">
+                  <Field label="Email (Optional for Phone-only Staff)">
                     <Input
                       type="email"
+                      placeholder="e.g. employee@company.com"
                       value={form.email || ""}
                       onChange={(e) => setForm({ ...form, email: e.target.value })}
                     />
                   </Field>
-                  <Field label="Phone">
+                  <Field label="Phone (For SMS Login)">
                     <Input
+                      type="tel"
+                      placeholder="e.g. +91 9876543210"
                       value={form.phone || ""}
                       onChange={(e) => setForm({ ...form, phone: e.target.value })}
                     />
                   </Field>
+                  <div className="col-span-2 bg-muted/40 p-3 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                    <div>
+                      <p className="font-semibold text-foreground flex items-center gap-1.5">
+                        <Send className="h-3.5 w-3.5 text-primary" />
+                        Credentials Delivery Channel
+                      </p>
+                      <p className="text-muted-foreground mt-0.5">
+                        Workers without email receive their username & password via SMS.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={form.deliveryMethod || "auto"}
+                        onValueChange={(v) => setForm({ ...form, deliveryMethod: v, sendCredentials: true })}
+                      >
+                        <SelectTrigger className="w-36 h-8 text-xs bg-background">
+                          <SelectValue placeholder="Delivery" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto">Auto-Detect</SelectItem>
+                          <SelectItem value="sms">SMS to Phone</SelectItem>
+                          <SelectItem value="email">Email</SelectItem>
+                          <SelectItem value="both">Both (SMS + Email)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                   <Field label="Date of Birth">
                     <Input
                       type="date"
@@ -1059,6 +1119,15 @@ function EmployeeDialog({
                         <SelectItem value="Draft">Draft</SelectItem>
                       </SelectContent>
                     </Select>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      {form.status === "Active"
+                        ? "Active: User can log in to web/mobile & punch attendance."
+                        : form.status === "Inactive"
+                        ? "Inactive: Account is deactivated. Login is blocked & excluded from kiosk."
+                        : form.status === "On Leave"
+                        ? "On Leave: Active account on scheduled leave."
+                        : "Draft: Unsaved onboarding draft."}
+                    </p>
                   </Field>
                 </div>
               </div>

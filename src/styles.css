@@ -155,3 +155,26 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--color-muted-foreground);
 }
+
+@keyframes scan-beam {
+  0% {
+    top: 10%;
+    opacity: 0.2;
+  }
+  50% {
+    top: 85%;
+    opacity: 0.9;
+  }
+  100% {
+    top: 10%;
+    opacity: 0.2;
+  }
+}
+
+.animate-scan-beam {
+  animation: scan-beam 2.4s ease-in-out infinite;
+}
+
+.bg-radial-vignette {
+  background: radial-gradient(circle at center, transparent 40%, rgba(2, 6, 23, 0.75) 100%);
+}

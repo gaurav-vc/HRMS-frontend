@@ -241,12 +241,14 @@ function Shell() {
   useEffect(() => {
     if (!init) return;
 
-    if (!user && pathname !== "/auth") {
+    const isKioskRoute = pathname === "/attendance/kiosk";
+
+    if (!user && pathname !== "/auth" && !isKioskRoute) {
       router.navigate({ to: "/auth", replace: true });
       return;
     }
 
-    if (user) {
+    if (user && !isKioskRoute) {
       const isSuperAdmin = user.is_superuser || user.role === "super_admin";
       const isSuperAdminRoute =
         pathname.startsWith("/superadmin-") ||
@@ -263,7 +265,7 @@ function Shell() {
 
   if (!init) return null; // Wait for hydration!
 
-  if (pathname === "/auth") return <Outlet />;
+  if (pathname === "/auth" || pathname === "/attendance/kiosk") return <Outlet />;
 
   if (!user) {
     return null;
