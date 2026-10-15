@@ -48,6 +48,7 @@ function SeparationRequestPage() {
 
   // Form State
   const [selectedEmp, setSelectedEmp] = useState<string>("");
+  const [selectedReportingPerson, setSelectedReportingPerson] = useState<string>("");
   const [reason, setReason] = useState("");
   const [lwd, setLwd] = useState<Date>();
   const [notes, setNotes] = useState("");
@@ -73,6 +74,9 @@ function SeparationRequestPage() {
 
       if (matchedEmp) {
         setSelectedEmp(String(matchedEmp.id));
+        if (matchedEmp.manager) {
+          setSelectedReportingPerson(String(matchedEmp.manager));
+        }
       } else if (user?.employee_id) {
         setSelectedEmp(String(user.employee_id));
       }
@@ -90,9 +94,6 @@ function SeparationRequestPage() {
   }, [selectedEmp, allRequests]);
 
   const handleReset = () => {
-    if (user?.role === "super_admin" || user?.role === "group_hr" || user?.role === "entity_hr") {
-      setSelectedEmp("");
-    }
     setReason("");
     setLwd(undefined);
     setNotes("");
@@ -100,7 +101,11 @@ function SeparationRequestPage() {
 
   const handleSubmit = async () => {
     if (!selectedEmp) {
-      toast.error("Please select an employee.");
+      toast.error("Employee information not found. Please re-login.");
+      return;
+    }
+    if (!selectedReportingPerson) {
+      toast.error("Please select a reporting person to whom this separation request will be submitted.");
       return;
     }
     if (!reason || !lwd) {
@@ -115,7 +120,7 @@ function SeparationRequestPage() {
           (r.status === "Pending" || r.status === "Approved"),
       )
     ) {
-      toast.error("This employee already has an active separation request.");
+      toast.error("You already have an active separation request.");
       return;
     }
 
@@ -134,8 +139,9 @@ function SeparationRequestPage() {
         exit_type: mappedExitType,
         reason: combinedReason,
         last_working_day: format(lwd, "yyyy-MM-dd"),
+        reporting_person: parseInt(selectedReportingPerson),
       });
-      toast.success("Separation request submitted successfully.");
+      toast.success("Separation request submitted successfully to your reporting person.");
       handleReset();
       await fetchRequests();
     } catch (err: any) {
@@ -289,72 +295,76 @@ function SeparationRequestPage() {
           </div>
 
           <div className="space-y-4">
-            {user?.role === "super_admin" ||
-            user?.role === "group_hr" ||
-            user?.role === "entity_hr" ? (
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Employee</Label>
-                <Select value={selectedEmp} onValueChange={setSelectedEmp}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select an employee" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {employees.map((emp) => (
-                      <SelectItem key={emp.id} value={String(emp.id)}>
-                        {emp.firstName || emp.first_name} {emp.lastName || emp.last_name} (ID:{" "}
-                        {emp.code || emp.id})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Full name</Label>
+                <Input
+                  value={
+                    (() => {
+                      const emp = employees.find(
+                        (e) =>
+                          String(e.id) === selectedEmp ||
+                          String(e.code) === selectedEmp ||
+                          (e.employee_code && String(e.employee_code) === selectedEmp),
+                      );
+                      if (emp) {
+                        const fullName = `${emp.firstName || emp.first_name || ""} ${emp.lastName || emp.last_name || ""}`.trim();
+                        if (fullName) return fullName;
+                        if (emp.name) return emp.name;
+                      }
+                      if (user?.name) return user.name;
+                      if (user?.username) return user.username;
+                      return employees.length === 0 ? "Loading..." : "-";
+                    })()
+                  }
+                  readOnly
+                  className="bg-slate-50"
+                />
               </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Full name</Label>
-                  <Input
-                    value={
-                      (() => {
-                        const emp = employees.find(
-                          (e) =>
-                            String(e.id) === selectedEmp ||
-                            String(e.code) === selectedEmp ||
-                            (e.employee_code && String(e.employee_code) === selectedEmp),
-                        );
-                        if (emp) {
-                          const fullName = `${emp.firstName || emp.first_name || ""} ${emp.lastName || emp.last_name || ""}`.trim();
-                          if (fullName) return fullName;
-                          if (emp.name) return emp.name;
-                        }
-                        if (user?.name) return user.name;
-                        if (user?.username) return user.username;
-                        return employees.length === 0 ? "Loading..." : "-";
-                      })()
-                    }
-                    readOnly
-                    className="bg-slate-50"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Employee ID</Label>
-                  <Input
-                    value={
-                      (() => {
-                        const emp = employees.find(
-                          (e) =>
-                            String(e.id) === selectedEmp ||
-                            String(e.code) === selectedEmp ||
-                            (e.employee_code && String(e.employee_code) === selectedEmp),
-                        );
-                        return emp?.code || emp?.employee_code || user?.employee_id || selectedEmp || "-";
-                      })()
-                    }
-                    readOnly
-                    className="bg-slate-50"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label>Employee ID</Label>
+                <Input
+                  value={
+                    (() => {
+                      const emp = employees.find(
+                        (e) =>
+                          String(e.id) === selectedEmp ||
+                          String(e.code) === selectedEmp ||
+                          (e.employee_code && String(e.employee_code) === selectedEmp),
+                      );
+                      return emp?.code || emp?.employee_code || user?.employee_id || selectedEmp || "-";
+                    })()
+                  }
+                  readOnly
+                  className="bg-slate-50"
+                />
               </div>
-            )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Select Reporting Person (Manager)</Label>
+              <Select value={selectedReportingPerson} onValueChange={setSelectedReportingPerson}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select reporting person to send request to" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  {employees
+                    .filter((e) => String(e.id) !== selectedEmp)
+                    .map((emp) => {
+                      const name = `${emp.firstName || emp.first_name || ""} ${emp.lastName || emp.last_name || ""}`.trim() || emp.name || emp.code;
+                      const roleDesc = emp.designation_name || emp.role_name || emp.role || emp.code;
+                      return (
+                        <SelectItem key={emp.id} value={String(emp.id)}>
+                          {name} ({roleDesc})
+                        </SelectItem>
+                      );
+                    })}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Your separation request will be forwarded to this reporting person for review and approval.
+              </p>
+            </div>
 
             <div className="space-y-2">
               <Label>Reason</Label>

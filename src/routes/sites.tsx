@@ -68,27 +68,27 @@ function SitesPage() {
       
       if (editing && s.id) {
         await sitesApi.update(s.id, data);
-        toast.success("Site updated successfully");
+        toast.success("Sub Site updated successfully");
       } else {
         const { id, ...createData } = data;
         await sitesApi.create(createData);
-        toast.success("Site created successfully");
+        toast.success("Sub Site created successfully");
       }
       setOpen(false);
       setEditing(null);
       router.invalidate();
     } catch (err) {
-      toast.error("Failed to save site");
+      toast.error("Failed to save sub site");
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await sitesApi.delete(id);
-      toast.success("Site removed");
+      toast.success("Sub Site removed");
       router.invalidate();
     } catch (err) {
-      toast.error("Failed to delete site");
+      toast.error("Failed to delete sub site");
     }
   };
 
@@ -113,9 +113,9 @@ function SitesPage() {
   return (
     <div className="p-6 space-y-6 bg-[#f9fafb] min-h-screen">
       <div>
-        <h1 className="text-[28px] font-bold tracking-tight text-slate-900">Sites</h1>
+        <h1 className="text-[28px] font-bold tracking-tight text-slate-900">Sub Sites</h1>
         <p className="text-[15px] text-slate-500 mt-1">
-          Geofenced work locations with QR & face attendance settings
+          Geofenced work locations and subsites with QR & face attendance settings
         </p>
       </div>
 
@@ -132,7 +132,7 @@ function SitesPage() {
           setViewing(false);
           setOpen(true);
         }}
-        createLabel="New Site"
+        createLabel="New Sub Site"
         filters={[
           {
             label: "Branch",
@@ -145,7 +145,7 @@ function SitesPage() {
         columns={[
           {
             key: "name",
-            header: "Site",
+            header: "Sub Site",
             accessor: (r: any) => `${r.name} - ${r.address || r.city || ""}`,
             render: (r: any) => (
               <div className="flex flex-col py-1">
@@ -383,17 +383,17 @@ function SiteDialog({ open, onOpenChange, site, onSave, readOnly }: any) {
           &larr; Back
         </Button>
         <h2 className="text-xl font-bold text-slate-800">
-          {site ? (readOnly ? "View Site" : "Edit Site") : "Add New Site"}
+          {site ? (readOnly ? "View Sub Site" : "Edit Sub Site") : "Add New Sub Site"}
         </h2>
       </div>
 
       <div className="p-6 space-y-8 flex-1 bg-slate-50/50">
-        {/* Site Details */}
+        {/* Sub Site Details */}
         <section className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
-          <h3 className="font-semibold text-lg text-slate-800">Site Details</h3>
+          <h3 className="font-semibold text-lg text-slate-800">Sub Site Details</h3>
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label>Site Name *</Label>
+              <Label>Sub Site Name *</Label>
               <Input
                 name="name"
                 value={form.name || ""}
@@ -403,7 +403,7 @@ function SiteDialog({ open, onOpenChange, site, onSave, readOnly }: any) {
               />
             </div>
             <div className="space-y-2">
-              <Label>Site Code *</Label>
+              <Label>Sub Site Code *</Label>
               <Input
                 name="site_code"
                 value={form.site_code || ""}

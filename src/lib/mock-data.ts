@@ -8,7 +8,7 @@ export type Role =
   | "employee";
 
 export const ROLES: { value: Role; label: string }[] = [
-  { value: "super_admin", label: "Super Admin / CEO" },
+  { value: "super_admin", label: "Super Admin" },
   { value: "group_hr", label: "Group HR" },
   { value: "entity_hr", label: "Entity HR" },
   { value: "payroll_admin", label: "Payroll Admin" },
@@ -108,6 +108,13 @@ export interface Employee {
   ctc: number;
   avatar?: string;
   salaryStructure?: string | number | null;
+  salary_structure?: string | number | null;
+  first_name?: string;
+  last_name?: string;
+  name?: string;
+  department_name?: string;
+  designation_name?: string;
+  entity_name?: string;
   employeeType?: string;
   bonusApplicable?: boolean;
   bonusType?: string;

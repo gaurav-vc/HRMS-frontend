@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate, isRedirect, redirect } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Users,
   Wallet,
@@ -12,6 +12,7 @@ import {
   ScanFace,
   Navigation as NavigationIcon,
   ShieldAlert,
+  RefreshCw,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -149,42 +150,112 @@ function ExceptionAlertsWidget({ exceptions }: { exceptions: any[] }) {
 function Index() {
   const { user, init } = useAuth();
   const navigate = useNavigate();
+  const loaderData = Route.useLoaderData() as any;
+  const [data, setData] = useState<any>(loaderData);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const refreshStats = async (showLoading = false) => {
+    if (showLoading) setIsRefreshing(true);
+    try {
+      const res = await api.getDashboardStats();
+      if (res) {
+        setData(res);
+      }
+    } catch (e) {
+      console.error("Dashboard refresh error:", e);
+    } finally {
+      if (showLoading) setIsRefreshing(false);
+    }
+  };
+
+  // Real-time dynamic updates: Poll every 20 seconds & auto-refresh on window focus
+  useEffect(() => {
+    if (!user || user.is_superuser) return;
+    const interval = setInterval(() => {
+      refreshStats(false);
+    }, 20000);
+
+    const onFocus = () => refreshStats(false);
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [user]);
+
+  // Keep state synced with loaderData on route transitions
+  useEffect(() => {
+    if (loaderData) {
+      setData(loaderData);
+    }
+  }, [loaderData]);
 
   useEffect(() => {
     if (!init) return;
     if (!user) {
       navigate({ to: "/auth" });
-    } else if (user.is_superuser || user.role === "super_admin") {
+    } else if (user.is_superuser) {
       navigate({ to: "/superadmin-dashboard" });
     }
   }, [user, init, navigate]);
 
   if (!init) return null;
   if (!user) return null;
-  if (user.is_superuser || user.role === "super_admin") return null;
+  if (user.is_superuser) return null;
 
   // Use dynamic permissions dashboard_type if available, otherwise fallback to standard role
   const dashType = user.permissions?.dashboard_type || user.role;
 
-  if (dashType === "employee") return <EmployeeDashboard />;
-  if (dashType === "manager") return <ManagerDashboard />;
-  if (dashType === "payroll_admin") return <PayrollDashboard />;
-  return <ExecutiveDashboard role={dashType} />;
+  if (dashType === "employee") return <EmployeeDashboard data={data} isRefreshing={isRefreshing} onRefresh={() => refreshStats(true)} />;
+  if (dashType === "manager") return <ManagerDashboard data={data} isRefreshing={isRefreshing} onRefresh={() => refreshStats(true)} />;
+  if (dashType === "payroll_admin") return <PayrollDashboard data={data} isRefreshing={isRefreshing} onRefresh={() => refreshStats(true)} />;
+  return <ExecutiveDashboard role={dashType} data={data} isRefreshing={isRefreshing} onRefresh={() => refreshStats(true)} />;
 }
 
-function ExecutiveDashboard({ role }: { role: string }) {
-  const data = Route.useLoaderData() as any;
+function ExecutiveDashboard({
+  role,
+  data: propsData,
+  isRefreshing,
+  onRefresh,
+}: {
+  role: string;
+  data?: any;
+  isRefreshing?: boolean;
+  onRefresh?: () => void;
+}) {
+  const { user } = useAuth();
+  const loaderData = Route.useLoaderData() as any;
+  const data = propsData || loaderData;
   if (!data) return <div>Loading...</div>;
   const stat = data.executive || {};
 
-  let displayMonth = new Date().toLocaleString('default', { month: 'long' });
-  if (stat.recentRuns && stat.recentRuns.length > 0 && stat.recentRuns[0].period) {
-    const [year, month] = stat.recentRuns[0].period.split('-');
+  const roleTitle = user?.role_name
+    ? `${user.role_name} Cockpit`
+    : user?.is_superuser
+      ? "Super Admin Cockpit"
+      : "Executive Overview";
+
+  // Real-time dynamic payroll month: derive from backend payroll cycle or recent runs
+  let displayMonth = stat.payrollCycleMonth || new Date().toLocaleString("default", { month: "long" });
+  if (!stat.payrollCycleMonth && stat.recentRuns && stat.recentRuns.length > 0 && stat.recentRuns[0].period) {
+    const [year, month] = stat.recentRuns[0].period.split("-");
     if (year && month) {
       const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-      displayMonth = date.toLocaleString('default', { month: 'long' });
+      displayMonth = date.toLocaleString("default", { month: "long" });
     }
   }
+
+  // Dynamic turn-out calculation
+  const attendanceRate =
+    stat.totalHeadcount && stat.totalHeadcount > 0
+      ? Math.round(((stat.presentToday || 0) / stat.totalHeadcount) * 100)
+      : 0;
+
+  const totalPending =
+    stat.totalPendingApprovals !== undefined
+      ? stat.totalPendingApprovals
+      : (stat.pendingLeaves || 0) + (stat.pendingRegs || 0);
 
   return (
     <div className="space-y-6">
@@ -204,7 +275,7 @@ function ExecutiveDashboard({ role }: { role: string }) {
         <div className="relative grid md:grid-cols-[1fr_auto] gap-4 items-center">
           <div>
             <p className="text-xs uppercase tracking-widest opacity-80">
-              {role === "super_admin" ? "CEO Cockpit" : "Executive Overview"}
+              {roleTitle}
             </p>
             <h2 className="text-2xl md:text-3xl font-semibold mt-1">
               Welcome back — {displayMonth} payroll is ready for approval.
@@ -229,7 +300,6 @@ function ExecutiveDashboard({ role }: { role: string }) {
           <StatCard
             label="Total Headcount"
             value={String(stat.totalHeadcount || 0)}
-            delta="+3.2%"
             icon={Users}
           />
         </Link>
@@ -237,16 +307,14 @@ function ExecutiveDashboard({ role }: { role: string }) {
           <StatCard
             label="Present Today"
             value={`${stat.presentToday || 0}/${stat.totalHeadcount || 0}`}
-            delta="+1.4%"
             icon={CalendarCheck2}
             tone="success"
           />
         </Link>
         <Link to="/payroll/run" className="block hover:opacity-80 transition-opacity">
           <StatCard
-            label="June Net Payroll"
+            label={`${displayMonth} Net Payroll`}
             value={fmtINR(stat.lastRunNet || 0)}
-            delta="+0.8%"
             icon={Wallet}
             tone="info"
           />
@@ -254,8 +322,7 @@ function ExecutiveDashboard({ role }: { role: string }) {
         <Link to="/leave-inbox" className="block hover:opacity-80 transition-opacity">
           <StatCard
             label="Pending Approvals"
-            value={String(stat.pendingLeaves || 0)}
-            delta="-12%"
+            value={String(totalPending)}
             icon={AlertTriangle}
             tone="warning"
           />
@@ -403,8 +470,17 @@ function ExecutiveDashboard({ role }: { role: string }) {
   );
 }
 
-function ManagerDashboard() {
-  const data = Route.useLoaderData() as any;
+function ManagerDashboard({
+  data: propsData,
+  isRefreshing,
+  onRefresh,
+}: {
+  data?: any;
+  isRefreshing?: boolean;
+  onRefresh?: () => void;
+}) {
+  const loaderData = Route.useLoaderData() as any;
+  const data = propsData || loaderData;
   if (!data) return <div>Loading...</div>;
   const stat = data.manager || {};
   const exec = data.executive || {};
@@ -473,8 +549,17 @@ function ManagerDashboard() {
   );
 }
 
-function PayrollDashboard() {
-  const data = Route.useLoaderData() as any;
+function PayrollDashboard({
+  data: propsData,
+  isRefreshing,
+  onRefresh,
+}: {
+  data?: any;
+  isRefreshing?: boolean;
+  onRefresh?: () => void;
+}) {
+  const loaderData = Route.useLoaderData() as any;
+  const data = propsData || loaderData;
   if (!data) return <div>Loading...</div>;
   const stat = data.payroll || {};
 
@@ -483,7 +568,7 @@ function PayrollDashboard() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Active Cycle"
-          value={stat.activeCycle || "2026-06"}
+          value={stat.activeCycle || new Date().toISOString().slice(0, 7)}
           icon={Wallet}
           tone="info"
         />
@@ -556,8 +641,17 @@ function PayrollDashboard() {
   );
 }
 
-function EmployeeDashboard() {
-  const data = Route.useLoaderData() as any;
+function EmployeeDashboard({
+  data: propsData,
+  isRefreshing,
+  onRefresh,
+}: {
+  data?: any;
+  isRefreshing?: boolean;
+  onRefresh?: () => void;
+}) {
+  const loaderData = Route.useLoaderData() as any;
+  const data = propsData || loaderData;
   if (!data) return <div>Loading...</div>;
   const stat = data.employee || {};
 

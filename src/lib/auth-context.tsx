@@ -4,6 +4,7 @@ import { ROLES } from "./mock-data";
 import { authApi } from "@/api";
 
 interface User {
+  id?: number | string;
   name: string;
   username: string;
   email: string;
@@ -51,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const me = await authApi.getMe();
             if (mounted) {
                 const updatedUser = {
+                  id: me.id,
                   name:
                     `${me.firstName || me.first_name || ""} ${me.lastName || me.last_name || ""}`.trim() ||
                     me.email?.split("@")[0] ||
@@ -120,6 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const me = await authApi.getMe();
       persist(
         {
+          id: me.id,
           name: `${me.firstName || me.first_name || ""} ${me.lastName || me.last_name || ""}`.trim() || email.split("@")[0],
           username: me.username || email.split("@")[0],
           email: email,
@@ -157,13 +160,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = async () => {
     try {
       const me = await authApi.getMe();
-      if (user) {
-        const updatedUser = {
-          ...user,
-          avatar: me.photoUrl || me.photo_url,
-          name: `${me.firstName || me.first_name || ""} ${me.lastName || me.last_name || ""}`.trim() || user.name,
+      if (me) {
+        const updatedUser: User = {
+          id: me.id ?? user?.id,
+          name:
+            `${me.firstName || me.first_name || ""} ${me.lastName || me.last_name || ""}`.trim() ||
+            user?.name ||
+            me.email?.split("@")[0] ||
+            "User",
+          username: me.username || user?.username || "",
+          email: me.email || user?.email || "",
+          role: (me.role as Role) || user?.role || "employee",
+          permissions: me.permissions || {},
+          role_name: me.roleName || me.role_name || "",
+          employee_id: me.employeeId || me.employee_id || user?.employee_id,
+          avatar: me.photoUrl || me.photo_url || user?.avatar,
+          site_name: me.siteName || me.site_name || user?.site_name,
+          org_name: me.orgName || me.org_name || user?.org_name,
+          branding_text: me.brandingText || me.branding_text || user?.branding_text,
+          logo_url: me.logoUrl || me.logo_url || user?.logo_url,
+          is_superuser: me.is_superuser ?? user?.is_superuser,
         };
-        persist(updatedUser, typeof localStorage !== "undefined" ? localStorage.getItem("access_token") || undefined : undefined, typeof localStorage !== "undefined" ? localStorage.getItem("refresh_token") || undefined : undefined);
+        persist(
+          updatedUser,
+          typeof localStorage !== "undefined"
+            ? localStorage.getItem("access_token") || undefined
+            : undefined,
+          typeof localStorage !== "undefined"
+            ? localStorage.getItem("refresh_token") || undefined
+            : undefined,
+        );
       }
     } catch (e) {
       /* ignore */

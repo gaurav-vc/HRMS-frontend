@@ -51,7 +51,7 @@ function OrganizationDetailPage() {
     queryFn: () => sitesApi.getAll(),
   });
 
-  if (!user?.is_superuser && user?.role !== "super_admin") {
+  if (!user?.is_superuser) {
     return <Navigate to="/" />;
   }
 

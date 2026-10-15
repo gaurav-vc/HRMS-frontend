@@ -23,6 +23,11 @@ import {
   Eye,
   Mail,
   History,
+  Info,
+  ExternalLink,
+  Users,
+  Sliders,
+  Banknote,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -73,8 +78,30 @@ export const Route = createFileRoute("/payroll/run")({
 
 function RunPage() {
   const [isConfirming, setIsConfirming] = useState(false);
-  const { user } = useAuth();
-  const { payrollRuns } = Route.useLoaderData();
+  const { user, refreshUser } = useAuth();
+  const { payrollRuns: initialRuns } = Route.useLoaderData();
+  const [runs, setRuns] = useState<any[]>(initialRuns || []);
+
+  const refreshRuns = async () => {
+    try {
+      const latest = await payrollApi.getRuns();
+      setRuns(Array.isArray(latest) ? latest : (latest as any)?.results || []);
+    } catch {
+      // silent fallback
+    }
+  };
+
+  useEffect(() => {
+    setRuns(initialRuns || []);
+  }, [initialRuns]);
+
+  useEffect(() => {
+    if (refreshUser) {
+      refreshUser();
+    }
+    const timer = setInterval(refreshRuns, 15000);
+    return () => clearInterval(timer);
+  }, []);
 
   const canViewConfidential =
     user?.permissions?.can_view_confidential_payroll === true ||
@@ -94,11 +121,13 @@ function RunPage() {
     <>
       {!isConfirming && (
         <PageHeader
-          title={isMaker ? "Run Payroll — June 2026" : "Payroll Approvals"}
+          title={isMaker ? "Run Payroll" : canApprove ? "Payroll Approvals" : "Payroll"}
           description={
             isMaker
-              ? "One-click CEO mode or step-by-step HR wizard"
-              : "Review and approve pending payroll runs"
+              ? (user?.role_name ? `One-click ${user.role_name} mode or step-by-step HR wizard` : "One-click mode or step-by-step HR wizard")
+              : canApprove
+              ? "Review and approve pending payroll runs"
+              : "Access restricted"
           }
           actions={
             <Link to="/payroll">
@@ -113,7 +142,13 @@ function RunPage() {
       <Tabs defaultValue={isMaker ? "oneclick" : canApprove ? "approvals" : ""}>
         {!isConfirming && (isMaker || canApprove) && (
           <TabsList
-            className={`grid w-full max-w-xl h-11 ${isMaker ? "grid-cols-3" : "grid-cols-1"}`}
+            className={`grid w-full max-w-xl h-11 ${
+              isMaker && canApprove
+                ? "grid-cols-3"
+                : isMaker
+                ? "grid-cols-2"
+                : "grid-cols-1"
+            }`}
           >
             {isMaker && (
               <>
@@ -127,7 +162,7 @@ function RunPage() {
                 </TabsTrigger>
               </>
             )}
-            {(isMaker || canApprove) && (
+            {canApprove && (
               <TabsTrigger value="approvals" className="text-sm relative">
                 <ShieldCheck className="h-4 w-4 mr-1.5" />
                 Approvals
@@ -148,14 +183,15 @@ function RunPage() {
             </TabsContent>
           </>
         )}
-        {(isMaker || canApprove) && (
+        {canApprove && (
           <TabsContent value="approvals">
             <ApprovalsPanel
-              pendingRuns={payrollRuns.filter(
+              pendingRuns={runs.filter(
                 (r: any) => ["Maker-Submitted", "Disbursed", "Rejected", "Frozen"].includes(r.status) && r.employees > 0,
               )}
               canViewConfidential={canViewConfidential}
               canApprove={canApprove}
+              onRefresh={refreshRuns}
             />
           </TabsContent>
         )}
@@ -174,7 +210,136 @@ function RunPage() {
   );
 }
 
+interface MissingEmployeeItem {
+  id: number | string;
+  code: string;
+  name: string;
+  department?: string;
+  designation?: string;
+  entity?: string;
+  missing?: string[];
+  missing_salary_structure?: boolean;
+  missing_ctc?: boolean;
+}
+
+function MissingPayrollConfigModal({
+  isOpen,
+  onClose,
+  missingEmployees,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  missingEmployees: MissingEmployeeItem[];
+}) {
+  if (!isOpen || missingEmployees.length === 0) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-6 overflow-hidden">
+        <DialogHeader className="space-y-2">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+              <AlertCircle className="h-5 w-5" />
+            </div>
+            <div>
+              <DialogTitle className="text-xl font-semibold text-foreground">
+                Configuration Required Before Running Payroll
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground mt-0.5">
+                The following active employees are missing essential salary configurations. Please update these records before executing payroll.
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3.5 flex items-start gap-3">
+          <Info className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="text-xs text-amber-900 dark:text-amber-200 space-y-1">
+            <p className="font-semibold">
+              Payroll execution is temporarily held for accuracy and data integrity.
+            </p>
+            <p className="text-amber-800/80 dark:text-amber-300/80">
+              {missingEmployees.length} employee(s) need a Salary Structure or CTC configured. Once assigned, return here and run the payroll again.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto border border-border/80 rounded-lg custom-scrollbar min-h-[160px] max-h-[340px]">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead className="bg-muted text-muted-foreground uppercase text-[10px] sticky top-0 z-10 border-b">
+              <tr>
+                <th className="px-3.5 py-2.5 font-semibold">Employee</th>
+                <th className="px-3.5 py-2.5 font-semibold">Department</th>
+                <th className="px-3.5 py-2.5 font-semibold">Missing Requirements</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/60">
+              {missingEmployees.map((emp) => {
+                const missingList = emp.missing || [
+                  ...(emp.missing_salary_structure ? ["Salary Structure"] : []),
+                  ...(emp.missing_ctc ? ["CTC"] : []),
+                ];
+                return (
+                  <tr key={emp.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-3.5 py-2.5">
+                      <div className="font-medium text-foreground">{emp.name}</div>
+                      <div className="text-[11px] font-mono text-muted-foreground">{emp.code}</div>
+                    </td>
+                    <td className="px-3.5 py-2.5 text-muted-foreground">
+                      {emp.department || "General"}
+                    </td>
+                    <td className="px-3.5 py-2.5">
+                      <div className="flex flex-wrap gap-1.5">
+                        {(emp.missing_salary_structure || missingList.includes("Salary Structure")) && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                            <Sliders className="h-3 w-3" /> Missing Salary Structure
+                          </span>
+                        )}
+                        {(emp.missing_ctc || missingList.includes("CTC")) && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                            <Banknote className="h-3 w-3" /> Missing CTC
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <DialogFooter className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-3 border-t">
+          <div className="text-xs text-muted-foreground">
+            {missingEmployees.length} employee record(s) pending configuration
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button variant="outline" onClick={onClose} className="flex-1 sm:flex-initial">
+              Dismiss
+            </Button>
+            <Link
+              to="/employees"
+              onClick={onClose}
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <Users className="h-4 w-4" />
+              Manage All Employees
+            </Link>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 const STEPS = ["Cutoff", "Validate Inputs", "Calculate", "Review", "Approve & Disburse"];
+
+function getLastDayOfMonth(periodStr: string): string {
+  if (!periodStr) return "";
+  const [year, month] = periodStr.split("-").map(Number);
+  const lastDay = new Date(year, month, 0).getDate();
+  return `${periodStr}-${String(lastDay).padStart(2, "0")}`;
+}
 
 function OneClickPanel({
   onConfirmChange,
@@ -183,6 +348,7 @@ function OneClickPanel({
   onConfirmChange?: (b: boolean) => void;
   canViewConfidential?: boolean;
 }) {
+  const { user } = useAuth();
   const { employees, payrollRuns, entities } = Route.useLoaderData();
   const last =
     payrollRuns.length > 0
@@ -210,6 +376,64 @@ function OneClickPanel({
   const [editForm, setEditForm] = useState<any>(null);
   const [overrides, setOverrides] = useState<Record<number, any>>({});
   const [arrearsLogs, setArrearsLogs] = useState<string[]>([]);
+  const [missingEmployees, setMissingEmployees] = useState<MissingEmployeeItem[]>([]);
+  const [isMissingModalOpen, setIsMissingModalOpen] = useState(false);
+
+  const getMissingEmployees = () => {
+    // 1. First prioritize previewData if available from backend engine
+    if (previewData && previewData.length > 0) {
+      const missingFromPreview: MissingEmployeeItem[] = [];
+      previewData.forEach((d) => {
+        if (entityFilter === "__all__" || d.entity === entityFilter) {
+          if (d.missing_employees && Array.isArray(d.missing_employees)) {
+            missingFromPreview.push(...d.missing_employees);
+          }
+        }
+      });
+      const seen = new Set<string | number>();
+      return missingFromPreview.filter((item) => {
+        if (seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      });
+    }
+
+    // 2. Fallback to active employees in selectedEntities from loader only if preview has not run
+    const activeInSelected = employees.filter(
+      (e: any) =>
+        e.status === "Active" &&
+        (selectedEntities.length === 0 || selectedEntities.includes(String(e.entity))),
+    );
+
+    const missingList: MissingEmployeeItem[] = [];
+    for (const emp of activeInSelected as any[]) {
+      const missing: string[] = [];
+      if (!emp.ctc || Number(emp.ctc) <= 0) {
+        missing.push("CTC");
+      }
+      if (!emp.salary_structure && !emp.salaryStructure && !emp.salary_structure_name) {
+        missing.push("Salary Structure");
+      }
+      if (missing.length > 0) {
+        missingList.push({
+          id: emp.id,
+          code: emp.code || `EMP${emp.id}`,
+          name: `${emp.first_name || emp.firstName || ""} ${emp.last_name || emp.lastName || ""}`.trim() || emp.name || "Employee",
+          department: emp.department_name || (typeof emp.department === "string" ? emp.department : "") || "General",
+          designation: emp.designation_name || (typeof emp.designation === "string" ? emp.designation : "") || "N/A",
+          entity: emp.entity_name || String(emp.entity || ""),
+          missing,
+          missing_salary_structure: missing.includes("Salary Structure"),
+          missing_ctc: missing.includes("CTC"),
+        });
+      }
+    }
+    return missingList;
+  };
+
+  const missingInCurrentFilter = useMemo(() => {
+    return getMissingEmployees();
+  }, [previewData, entityFilter, employees, selectedEntities]);
 
   const handleEditSave = (entityName: string, empId: number) => {
     setPreviewData((prev) =>
@@ -315,6 +539,9 @@ function OneClickPanel({
         include_leaves_encashment: includeLeaves,
       });
       setPreviewData(res.data);
+      if (res.missing_employees && Array.isArray(res.missing_employees)) {
+        setMissingEmployees(res.missing_employees);
+      }
     } catch (e: any) {
       toast.error("Failed to fetch preview: " + e.message);
     } finally {
@@ -346,6 +573,13 @@ function OneClickPanel({
   );
 
   const startEngine = () => {
+    const missing = getMissingEmployees();
+    if (missing.length > 0) {
+      setMissingEmployees(missing);
+      setIsMissingModalOpen(true);
+      return;
+    }
+
     setPhase("running");
     setPct(0);
     setLogs([]);
@@ -411,9 +645,15 @@ function OneClickPanel({
           })
           .catch((e: any) => {
             console.error("Engine failed:", e);
-            toast.error("Failed to run engine: " + e.message, { duration: 10000 });
-            alert("ENGINE FAILED!\n\n" + e.message);
-            setPhase("setup");
+            const backendMissing = e.data?.missing_employees || e.response?.data?.missing_employees;
+            if (backendMissing && Array.isArray(backendMissing) && backendMissing.length > 0) {
+              setMissingEmployees(backendMissing);
+              setIsMissingModalOpen(true);
+              setPhase("confirm");
+            } else {
+              toast.error(e.message || "Failed to run engine", { duration: 8000 });
+              setPhase("confirm");
+            }
           });
       }
     }, 320);
@@ -500,6 +740,35 @@ function OneClickPanel({
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Notice Banner if actual missing fields exist */}
+              {missingInCurrentFilter.length > 0 && (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-900 dark:text-amber-200">
+                  <div className="flex items-center gap-2.5">
+                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold">
+                        {missingInCurrentFilter.length} employee(s) in this run are missing Salary Structure or CTC configuration.
+                      </p>
+                      <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
+                        Payroll execution is held to ensure calculation accuracy. Please configure these fields before running.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setMissingEmployees(missingInCurrentFilter);
+                      setIsMissingModalOpen(true);
+                    }}
+                    className="border-amber-500/30 text-amber-800 dark:text-amber-200 hover:bg-amber-500/15 shrink-0"
+                  >
+                    <Sliders className="h-3.5 w-3.5 mr-1.5" />
+                    View Missing Fields ({missingInCurrentFilter.length})
+                  </Button>
+                </div>
+              )}
+
               <div className="border border-border rounded-md overflow-x-auto overflow-y-auto max-h-[60vh] custom-scrollbar bg-card shadow-sm">
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-muted text-muted-foreground uppercase text-[10px] whitespace-nowrap sticky top-0 z-30 shadow-sm backdrop-blur-sm">
@@ -560,22 +829,46 @@ function OneClickPanel({
                                       value={editForm[col.id] || ""}
                                       onChange={(e) => {
                                         const val = parseFloat(e.target.value) || 0;
-                                        if (["presentDays", "lopDays", "leaves", "daysPaid"].includes(col.id)) {
+                                        if (["presentDays", "lopDays", "leaves", "daysPaid", "halfDays", "latePenalties"].includes(col.id)) {
                                           let updated = { ...editForm, [col.id]: val };
-                                          const total = updated.totalDays || 30;
-                                          if (col.id === "presentDays") {
-                                            updated.lopDays = Math.max(0, total - val - (updated.leaves || 0));
-                                            updated.daysPaid = Math.max(0, total - updated.lopDays);
+                                          const total = Number(updated.totalDays || 30) || 30;
+                                          const hDays = Number(col.id === "halfDays" ? val : (updated.halfDays || 0));
+                                          const lPenalties = Number(col.id === "latePenalties" ? val : (updated.latePenalties || 0));
+                                          
+                                          if (col.id === "daysPaid") {
+                                            updated.daysPaid = Math.max(0, Math.min(total, val));
+                                            updated.lopDays = Math.max(0, total - updated.daysPaid - (hDays * 0.5) - lPenalties);
                                           } else if (col.id === "lopDays") {
-                                            updated.presentDays = Math.max(0, total - val - (updated.leaves || 0));
-                                            updated.daysPaid = Math.max(0, total - val);
+                                            updated.lopDays = Math.max(0, val);
+                                            updated.daysPaid = Math.max(0, total - updated.lopDays - (hDays * 0.5) - lPenalties);
+                                          } else if (col.id === "halfDays") {
+                                            updated.halfDays = Math.max(0, val);
+                                            updated.daysPaid = Math.max(0, total - Number(updated.lopDays || 0) - (val * 0.5) - lPenalties);
+                                          } else if (col.id === "latePenalties") {
+                                            updated.latePenalties = Math.max(0, val);
+                                            updated.daysPaid = Math.max(0, total - Number(updated.lopDays || 0) - (hDays * 0.5) - val);
+                                          } else if (col.id === "presentDays") {
+                                            updated.presentDays = Math.max(0, val);
+                                            updated.lopDays = Math.max(0, total - val - Number(updated.leaves || 0) - (hDays * 0.5) - lPenalties);
+                                            updated.daysPaid = Math.max(0, total - updated.lopDays - (hDays * 0.5) - lPenalties);
                                           } else if (col.id === "leaves") {
-                                            updated.lopDays = Math.max(0, total - (updated.presentDays || 0) - val);
-                                            updated.daysPaid = Math.max(0, total - updated.lopDays);
-                                          } else if (col.id === "daysPaid") {
-                                            updated.lopDays = Math.max(0, total - val);
-                                            updated.presentDays = Math.max(0, total - updated.lopDays - (updated.leaves || 0));
+                                            updated.leaves = Math.max(0, val);
+                                            updated.lopDays = Math.max(0, total - Number(updated.presentDays || 0) - val - (hDays * 0.5) - lPenalties);
+                                            updated.daysPaid = Math.max(0, total - updated.lopDays - (hDays * 0.5) - lPenalties);
                                           }
+                                          
+                                          // Dynamically recalculate prorated gross and net for live preview
+                                          const currentCtc = Number(updated.currentSalary || 0);
+                                          const monthlyBase = currentCtc > 0 ? (currentCtc / 12) : Number(updated.totalAmount || 0);
+                                          const prorationRatio = total > 0 ? (updated.daysPaid / total) : 1;
+                                          const otAmt = Number(updated.overtimePay || 0);
+                                          const arrearsAmt = Number(updated.arrears || 0);
+                                          const reimbAmt = Number(updated.reimbursement || 0);
+                                          const incAmt = Number(updated.incentive || 0);
+                                          const proratedGross = Math.round((monthlyBase * prorationRatio + otAmt + arrearsAmt + reimbAmt + incAmt) * 100) / 100;
+                                          const dedAmt = Number(updated.deduction || 0);
+                                          updated.totalAmount = proratedGross;
+                                          updated.payableSalary = Math.max(0, Math.round((proratedGross - dedAmt) * 100) / 100);
                                           setEditForm(updated);
                                         } else if (col.id === "ot") {
                                           const currentCtc = Number(editForm.currentSalary || 0);
@@ -627,8 +920,20 @@ function OneClickPanel({
                                             ? `${emp.firstName} ${emp.lastName}`
                                             : "—")}
                                       </span>
-                                      {emp.error && (
-                                        <div className="flex items-start gap-1 p-1 bg-destructive/10 text-destructive text-[10px] rounded border border-destructive/20 w-48 whitespace-normal leading-tight">
+                                      {emp.missingFields && emp.missingFields.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-0.5">
+                                          {emp.missingFields.map((f: string) => (
+                                            <span
+                                              key={f}
+                                              className="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300 bg-amber-500/10 border border-amber-500/25 px-1.5 py-0.5 rounded"
+                                            >
+                                              Missing {f}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {emp.error && (!emp.missingFields || emp.missingFields.length === 0) && (
+                                        <div className="flex items-start gap-1 p-1 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-[10px] rounded border border-amber-500/20 w-48 whitespace-normal leading-tight">
                                           <AlertCircle className="h-3 w-3 shrink-0 mt-0.5" />
                                           <span>{emp.error}</span>
                                         </div>
@@ -727,17 +1032,39 @@ function OneClickPanel({
                     Cancel
                   </Button>
                   <Button
-                    onClick={startEngine}
-                    className="gap-2 px-8 bg-indigo-600 hover:bg-indigo-700"
+                    onClick={() => {
+                      const missing = getMissingEmployees();
+                      if (missing.length > 0) {
+                        setMissingEmployees(missing);
+                        setIsMissingModalOpen(true);
+                        return;
+                      }
+                      startEngine();
+                    }}
+                    className={`gap-2 px-8 ${missingInCurrentFilter.length > 0 ? "bg-amber-600 hover:bg-amber-700 text-white" : "bg-indigo-600 hover:bg-indigo-700 text-white"}`}
                     disabled={isLoadingPreview || previewData.length === 0}
                   >
-                    <Rocket className="h-4 w-4" />
-                    Process & Send to CEO for Review
+                    {missingInCurrentFilter.length > 0 ? (
+                      <>
+                        <AlertCircle className="h-4 w-4" />
+                        Resolve Missing Requirements ({missingInCurrentFilter.length})
+                      </>
+                    ) : (
+                      <>
+                        <Rocket className="h-4 w-4" />
+                        Process & Submit for Review
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
             </div>
           )}
+          <MissingPayrollConfigModal
+            isOpen={isMissingModalOpen}
+            onClose={() => setIsMissingModalOpen(false)}
+            missingEmployees={missingEmployees}
+          />
         </Card>
       </div>
     );
@@ -756,7 +1083,7 @@ function OneClickPanel({
         }}
       >
         <div className="text-xs uppercase tracking-widest text-primary mb-2 flex items-center gap-1">
-          <Sparkles className="h-3 w-3" /> CEO mode
+          <Sparkles className="h-3 w-3" /> {user?.role_name || (user?.is_superuser ? "Super Admin" : "Executive")} mode
         </div>
         <h2 className="text-3xl font-semibold leading-tight">
           Process the full payroll
@@ -774,7 +1101,16 @@ function OneClickPanel({
                 <Label className="text-xs">Pay Period</Label>
                 <Select value={period} onValueChange={(p) => {
                   setPeriod(p);
-                  setCutoff(`${p}-25`);
+                  if (cutoff === getLastDayOfMonth(period)) {
+                    setCutoff(getLastDayOfMonth(p));
+                  } else if (cutoff === `${period}-25`) {
+                    setCutoff(`${p}-25`);
+                  } else {
+                    const day = cutoff ? cutoff.split("-")[2] || "25" : "25";
+                    const maxDays = new Date(Number(p.split("-")[0]), Number(p.split("-")[1]), 0).getDate();
+                    const safeDay = String(Math.min(Number(day), maxDays)).padStart(2, "0");
+                    setCutoff(`${p}-${safeDay}`);
+                  }
                 }}>
                   <SelectTrigger>
                     <SelectValue />
@@ -790,14 +1126,31 @@ function OneClickPanel({
               </div>
               <div>
                 <Label className="text-xs">Attendance Cutoff Date</Label>
-                <div className="relative">
-                  <CalendarRange className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <div className="relative flex items-center">
+                  <CalendarRange className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                   <Input
+                    id="payroll-cutoff-input-setup"
                     type="date"
                     value={cutoff}
                     onChange={(e) => setCutoff(e.target.value)}
-                    className="pl-8"
+                    className="pl-8 pr-28 h-10 cursor-pointer"
                   />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const input = document.getElementById("payroll-cutoff-input-setup") as HTMLInputElement;
+                      if (input) {
+                        if (typeof input.showPicker === "function") {
+                          try { input.showPicker(); } catch (_) { input.focus(); }
+                        } else {
+                          input.focus();
+                        }
+                      }
+                    }}
+                    className="absolute right-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer shadow-xs flex items-center gap-1"
+                  >
+                    Select a Date
+                  </button>
                 </div>
               </div>
               <div className="sm:col-span-2">
@@ -931,6 +1284,11 @@ function OneClickPanel({
           ))}
         </div>
       </Card>
+      <MissingPayrollConfigModal
+        isOpen={isMissingModalOpen}
+        onClose={() => setIsMissingModalOpen(false)}
+        missingEmployees={missingEmployees}
+      />
     </div>
   );
 }
@@ -952,6 +1310,8 @@ function WizardPanel({ canViewConfidential }: { canViewConfidential?: boolean })
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [approved, setApproved] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [missingEmployees, setMissingEmployees] = useState<MissingEmployeeItem[]>([]);
+  const [isMissingModalOpen, setIsMissingModalOpen] = useState(false);
 
   // Estimations
   const filteredEmployees = employees; // wizard runs for all selected
@@ -963,7 +1323,43 @@ function WizardPanel({ canViewConfidential }: { canViewConfidential?: boolean })
   const dedEst = grossEst * 0.1;
   const netEst = grossEst - dedEst;
 
+  const getWizardMissingEmployees = () => {
+    const activeEmps = employees.filter((e: any) => e.status === "Active");
+    const missingList: MissingEmployeeItem[] = [];
+    for (const emp of activeEmps as any[]) {
+      const missing: string[] = [];
+      if (!emp.ctc || Number(emp.ctc) <= 0) {
+        missing.push("CTC");
+      }
+      if (!emp.salary_structure && !emp.salaryStructure && !emp.salary_structure_name) {
+        missing.push("Salary Structure");
+      }
+      if (missing.length > 0) {
+        missingList.push({
+          id: emp.id,
+          code: emp.code || `EMP${emp.id}`,
+          name: `${emp.first_name || emp.firstName || ""} ${emp.last_name || emp.lastName || ""}`.trim() || emp.name || "Employee",
+          department: emp.department_name || (typeof emp.department === "string" ? emp.department : "") || "General",
+          designation: emp.designation_name || (typeof emp.designation === "string" ? emp.designation : "") || "N/A",
+          entity: emp.entity_name || String(emp.entity || ""),
+          missing,
+          missing_salary_structure: missing.includes("Salary Structure"),
+          missing_ctc: missing.includes("CTC"),
+        });
+      }
+    }
+    return missingList;
+  };
+
   const handleApprove = () => {
+    const missing = getWizardMissingEmployees();
+    if (missing.length > 0) {
+      setMissingEmployees(missing);
+      setIsMissingModalOpen(true);
+      setConfirmOpen(false);
+      return;
+    }
+
     setIsProcessing(true);
     payrollApi
       .createRun({
@@ -987,7 +1383,14 @@ function WizardPanel({ canViewConfidential }: { canViewConfidential?: boolean })
       })
       .catch((e: any) => {
         setIsProcessing(false);
-        toast.error("Failed to disburse payroll: " + e.message);
+        const backendMissing = e.data?.missing_employees || e.response?.data?.missing_employees;
+        if (backendMissing && Array.isArray(backendMissing) && backendMissing.length > 0) {
+          setMissingEmployees(backendMissing);
+          setIsMissingModalOpen(true);
+          setConfirmOpen(false);
+        } else {
+          toast.error("Failed to disburse payroll: " + e.message);
+        }
       });
   };
 
@@ -1015,7 +1418,19 @@ function WizardPanel({ canViewConfidential }: { canViewConfidential?: boolean })
             </p>
             <div>
               <Label className="text-xs">Pay Period</Label>
-              <Select value={period} onValueChange={setPeriod}>
+              <Select value={period} onValueChange={(p) => {
+                setPeriod(p);
+                if (cutoff === getLastDayOfMonth(period)) {
+                  setCutoff(getLastDayOfMonth(p));
+                } else if (cutoff === `${period}-25`) {
+                  setCutoff(`${p}-25`);
+                } else {
+                  const day = cutoff ? cutoff.split("-")[2] || "25" : "25";
+                  const maxDays = new Date(Number(p.split("-")[0]), Number(p.split("-")[1]), 0).getDate();
+                  const safeDay = String(Math.min(Number(day), maxDays)).padStart(2, "0");
+                  setCutoff(`${p}-${safeDay}`);
+                }
+              }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -1030,7 +1445,32 @@ function WizardPanel({ canViewConfidential }: { canViewConfidential?: boolean })
             </div>
             <div>
               <Label className="text-xs">Cutoff Date</Label>
-              <Input type="date" value={cutoff} onChange={(e) => setCutoff(e.target.value)} />
+              <div className="relative flex items-center">
+                <CalendarRange className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  id="payroll-cutoff-input-wizard"
+                  type="date"
+                  value={cutoff}
+                  onChange={(e) => setCutoff(e.target.value)}
+                  className="pl-8 pr-28 h-10 cursor-pointer"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const input = document.getElementById("payroll-cutoff-input-wizard") as HTMLInputElement;
+                    if (input) {
+                      if (typeof input.showPicker === "function") {
+                        try { input.showPicker(); } catch (_) { input.focus(); }
+                      } else {
+                        input.focus();
+                      }
+                    }
+                  }}
+                  className="absolute right-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer shadow-xs flex items-center gap-1"
+                >
+                  Select a Date
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1039,20 +1479,37 @@ function WizardPanel({ canViewConfidential }: { canViewConfidential?: boolean })
             <h3 className="font-semibold">Validate inputs</h3>
             <div className="grid sm:grid-cols-3 gap-3">
               {[
-                ["Master data", `${empCount}/${empCount} valid`, "success"],
+                [
+                  "Master data",
+                  getWizardMissingEmployees().length > 0
+                    ? `${empCount - getWizardMissingEmployees().length}/${empCount} valid`
+                    : `${empCount}/${empCount} valid`,
+                  getWizardMissingEmployees().length > 0 ? "warning" : "success",
+                ],
                 ["Attendance", "100%", "success"],
                 ["Variable pay", "12 pending", "warning"],
               ].map(([l, v, t]) => (
                 <div
                   key={l}
-                  className={`p-3 rounded-md border ${t === "warning" ? "border-warning/40 bg-warning/10" : "border-success/40 bg-success/10"}`}
+                  onClick={() => {
+                    if (l === "Master data" && getWizardMissingEmployees().length > 0) {
+                      setMissingEmployees(getWizardMissingEmployees());
+                      setIsMissingModalOpen(true);
+                    }
+                  }}
+                  className={`p-3 rounded-md border ${t === "warning" ? "border-amber-500/40 bg-amber-500/10 cursor-pointer" : "border-success/40 bg-success/10"}`}
                 >
                   <div className="text-xs text-muted-foreground">{l}</div>
                   <div className="font-semibold">{v}</div>
                   {t === "warning" ? (
-                    <AlertCircle className="h-4 w-4 mt-1 text-warning-foreground" />
+                    <AlertCircle className="h-4 w-4 mt-1 text-amber-600 dark:text-amber-400" />
                   ) : (
                     <CheckCircle2 className="h-4 w-4 mt-1 text-success" />
+                  )}
+                  {l === "Master data" && getWizardMissingEmployees().length > 0 && (
+                    <div className="text-[10px] text-amber-700 dark:text-amber-300 mt-1 font-medium">
+                      Click to view missing configurations
+                    </div>
                   )}
                 </div>
               ))}
@@ -1100,7 +1557,7 @@ function WizardPanel({ canViewConfidential }: { canViewConfidential?: boolean })
           <div className="space-y-3">
             <h3 className="font-semibold">Approve & disburse</h3>
             <p className="text-sm text-muted-foreground">
-              CFO/CEO approval is required before disbursement.
+              Approver review is required before disbursement.
             </p>
             {approved ? (
               <div className="p-4 rounded-md border bg-success/10 border-success/30 flex items-center gap-3">
@@ -1157,6 +1614,11 @@ function WizardPanel({ canViewConfidential }: { canViewConfidential?: boolean })
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <MissingPayrollConfigModal
+        isOpen={isMissingModalOpen}
+        onClose={() => setIsMissingModalOpen(false)}
+        missingEmployees={missingEmployees}
+      />
     </Card>
   );
 }
@@ -1176,10 +1638,12 @@ function ApprovalsPanel({
   pendingRuns,
   canApprove,
   canViewConfidential,
+  onRefresh,
 }: {
   pendingRuns: any[];
   canApprove: boolean;
   canViewConfidential: boolean;
+  onRefresh?: () => void;
 }) {
   const [comment, setComment] = useState("");
   const [runComments, setRunComments] = useState<Record<number, string>>({});
@@ -1240,6 +1704,7 @@ function ApprovalsPanel({
         "✅ All pending payrolls approved successfully! They have been moved to Finance.",
         { duration: 5000 },
       );
+      if (onRefresh) onRefresh();
       setTimeout(() => window.location.reload(), 1500);
     } catch (e: any) {
       toast.error(e.message);
@@ -1256,6 +1721,7 @@ function ApprovalsPanel({
     try {
       await Promise.all(pendingRuns.map((run: any) => payrollApi.rejectRun(run.id, comment)));
       toast.success("❌ All pending payrolls rejected successfully.", { duration: 5000 });
+      if (onRefresh) onRefresh();
       setTimeout(() => window.location.reload(), 1500);
     } catch (e: any) {
       toast.error(e.message);
@@ -1268,6 +1734,7 @@ function ApprovalsPanel({
     try {
       await payrollApi.approveRun(runId);
       toast.success("✅ Payroll approved successfully!", { duration: 5000 });
+      if (onRefresh) onRefresh();
       setTimeout(() => window.location.reload(), 1500);
     } catch (e: any) {
       toast.error(e.message);
@@ -1285,6 +1752,7 @@ function ApprovalsPanel({
     try {
       await payrollApi.rejectRun(runId, runComment);
       toast.success("❌ Payroll rejected successfully.", { duration: 5000 });
+      if (onRefresh) onRefresh();
       setTimeout(() => window.location.reload(), 1500);
     } catch (e: any) {
       toast.error(e.message);

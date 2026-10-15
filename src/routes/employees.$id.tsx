@@ -108,27 +108,13 @@ export const Route = createFileRoute("/employees/$id")({
         employeesApi.getById(params.id).catch((e) => {
           throw new Error(`getById failed: ${e.message}`);
         }),
-        employeesApi.getAll().catch((e) => {
-          throw new Error(`getAll failed: ${e.message}`);
-        }),
-        departmentsApi.getAll().catch((e) => {
-          throw new Error(`depts failed: ${e.message}`);
-        }),
-        designationsApi.getAll().catch((e) => {
-          throw new Error(`desgs failed: ${e.message}`);
-        }),
-        branchesApi.getAll().catch((e) => {
-          throw new Error(`branches failed: ${e.message}`);
-        }),
-        sitesApi.getAll().catch((e) => {
-          throw new Error(`sites failed: ${e.message}`);
-        }),
-        entitiesApi.getAll().catch((e) => {
-          throw new Error(`entities failed: ${e.message}`);
-        }),
-        payrollApi.getStructures().catch((e) => {
-          throw new Error(`structures failed: ${e.message}`);
-        }),
+        employeesApi.getAll().catch(() => []),
+        departmentsApi.getAll().catch(() => []),
+        designationsApi.getAll().catch(() => []),
+        branchesApi.getAll().catch(() => []),
+        sitesApi.getAll().catch(() => []),
+        entitiesApi.getAll().catch(() => []),
+        payrollApi.getStructures().catch(() => []),
         employeesApi.getDocuments(params.id).catch(() => []),
       ]);
     return { e, allEmps, depts, desgs, branches, sites, entities, structures, documents };
@@ -716,11 +702,11 @@ function TabButton({ active, onClick, icon, label }: any) {
   );
 }
 
-function FieldRO({ label, value }: { label: string; value: string }) {
+function FieldRO({ label, value }: { label: string; value?: string | null }) {
   return (
     <div>
       <div className="text-xs uppercase text-muted-foreground tracking-wider">{label}</div>
-      <div className="text-sm font-medium mt-0.5">{value}</div>
+      <div className="text-sm font-medium mt-0.5">{value || "—"}</div>
     </div>
   );
 }

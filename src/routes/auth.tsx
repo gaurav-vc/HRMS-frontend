@@ -42,7 +42,7 @@ function AuthPage() {
         window.location.reload();
         return;
       }
-      if (user.role === "super_admin" || user.role_name === "Super Admin") {
+      if (user.is_superuser) {
         navigate({ to: "/superadmin-dashboard" });
       } else {
         navigate({ to: "/" });
@@ -136,7 +136,7 @@ function AuthPage() {
           <h1 className="text-4xl font-semibold leading-tight">
             The HRMS your
             <br />
-            CEO actually opens.
+            leadership actually opens.
           </h1>
           <p className="text-sidebar-foreground/70 max-w-md">
             Multi-entity payroll, attendance with QR + face + GPS, compliance, and a one-click run —

@@ -67,7 +67,7 @@ export const NAV: Group[] = [
     items: [
       { title: "Entities", url: "/entities", icon: Building2 },
       { title: "Branches", url: "/branches", icon: GitBranch },
-      { title: "Sites", url: "/sites", icon: MapPin },
+      { title: "Sub Sites", url: "/sites", icon: MapPin },
       { title: "Departments", url: "/departments", icon: Users2 },
       { title: "Designations", url: "/designations", icon: Briefcase },
     ],
@@ -153,9 +153,15 @@ export const SUPER_ADMIN_NAV: Group[] = [
 
 export const canAccessRoute = (it: Item, user: any) => {
   // If user has explicit permissions (e.g. from a custom role)
-  if (user?.permissions && user.permissions[it.title]) {
-    const v = user.permissions[it.title].view;
-    return v === true || v === "self" || v === "selected_entities";
+  if (user?.permissions) {
+    let perm = user.permissions[it.title];
+    if (!perm && (it.title === "Sub Sites" || it.title === "Subsites")) {
+      perm = user.permissions["Sub Sites"] || user.permissions["Subsites"] || user.permissions["Sites"];
+    }
+    if (perm) {
+      const v = perm.view;
+      return v === true || v === "self" || v === "selected_entities";
+    }
   }
   
   // Default fallback for normal employees
@@ -201,7 +207,7 @@ export function AppSidebar() {
     });
   }, [user]);
 
-  const isSuperAdmin = user?.role === "super_admin" || user?.is_superuser;
+  const isSuperAdmin = Boolean(user?.is_superuser);
   const can = (it: Item) => {
     if (isSuperAdmin) return true;
     return canAccessRoute(it, user);
@@ -215,7 +221,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-4 py-4 border-b border-sidebar-border">
-        <Link to="/" className="flex items-center gap-2">
+        <Link to={isSuperAdmin ? "/superadmin-dashboard" : "/"} className="flex items-center gap-2">
           {branding.logo ? (
             <div className="h-10 w-auto flex items-center justify-center overflow-hidden shrink-0">
               <img src={getMediaUrl(branding.logo)} alt="Logo" className="max-h-full max-w-[80px] object-contain" />

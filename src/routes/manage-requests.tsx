@@ -180,7 +180,14 @@ function ManageRequestsPage() {
                           LWD: {req.last_working_day} • Reason: {req.reason || req.exit_type}
                         </p>
                         {req.status === "Pending" &&
-                          ((["super_admin", "group_hr", "entity_hr", "site_admin", "manager"].includes(user?.role || "")) || (emp?.manager === user?.employee_id)) && (
+                          (Boolean(user?.permissions?.can_approve) ||
+                           Boolean(user?.permissions?.["Manage Exits"]?.update) ||
+                           (emp && (
+                             String(emp.manager) === String(user?.id) ||
+                             String(emp.manager) === String(user?.employee_id) ||
+                             String(emp.manager_id) === String(user?.id) ||
+                             String(emp.manager_id) === String(user?.employee_id)
+                           ))) && (
                             <div className="flex gap-2 mt-3">
                               <Button
                                 size="sm"

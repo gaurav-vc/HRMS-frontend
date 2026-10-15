@@ -249,7 +249,7 @@ function Shell() {
     }
 
     if (user && !isKioskRoute) {
-      const isSuperAdmin = user.is_superuser || user.role === "super_admin";
+      const isSuperAdmin = Boolean(user.is_superuser);
       const isSuperAdminRoute =
         pathname.startsWith("/superadmin-") ||
         pathname.startsWith("/organizations") ||
@@ -271,7 +271,7 @@ function Shell() {
     return null;
   }
 
-  const isSuperAdmin = user.is_superuser || user.role === "super_admin";
+  const isSuperAdmin = Boolean(user.is_superuser);
   const isSuperAdminRoute =
     pathname.startsWith("/superadmin-") ||
     pathname.startsWith("/organizations") ||

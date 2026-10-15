@@ -24,7 +24,7 @@ export const Route = createFileRoute("/superadmin-dashboard")({
 
 function SuperAdminDashboard() {
   const { user, init } = useAuth();
-  const isSuperAdmin = user?.is_superuser || user?.role === "super_admin";
+  const isSuperAdmin = Boolean(user?.is_superuser);
   const { data: rawData, isLoading } = useQuery({
     queryKey: ["superadmin_dashboard_stats"],
     queryFn: () => api.getDashboardStats(),

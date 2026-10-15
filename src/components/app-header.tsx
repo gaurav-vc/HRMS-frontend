@@ -91,10 +91,9 @@ function GlobalSearch() {
           const q = query.toLowerCase();
           const routeResults: any[] = [];
 
-          const nav =
-            user?.role === "super_admin" || user?.is_superuser
-              ? SUPER_ADMIN_NAV
-              : NAV;
+          const nav = Boolean(user?.is_superuser)
+            ? SUPER_ADMIN_NAV
+            : NAV;
           nav.forEach((group) => {
             group.items.forEach((item) => {
               if (item.title.toLowerCase().includes(q) && canAccessRoute(item, user)) {
@@ -126,7 +125,7 @@ function GlobalSearch() {
     <div className="relative hidden lg:block w-64" ref={containerRef}>
       <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
       <Input
-        placeholder="Search employees, sites…"
+        placeholder={user?.is_superuser ? "Search pages, sites, organizations…" : "Search employees, sites…"}
         className="pl-8 h-9 bg-muted/50 border-muted focus-visible:bg-background"
         value={query}
         onChange={(e) => {
@@ -193,7 +192,7 @@ function NotificationBell() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || user.is_superuser) return;
     
     const fetchNotifs = () => {
       notificationsApi
@@ -216,6 +215,8 @@ function NotificationBell() {
       .then(() => setNotifs((n) => n.filter((x) => x.id !== id)))
       .catch(() => {});
   };
+
+  if (user?.is_superuser) return null;
 
   return (
     <DropdownMenu>
@@ -362,7 +363,7 @@ function NotificationBell() {
                           >
                             View Employee Details →
                           </span>
-                          {(user?.role === "super_admin" ||
+                          {(user?.is_superuser ||
                             user?.permissions?.can_add_ctc === true) && (
                             <span
                               className="text-xs text-blue-600 font-medium cursor-pointer hover:underline"
@@ -455,7 +456,7 @@ export function AppHeader() {
             <div className="hidden md:block text-left leading-tight">
               <div className="text-xs font-medium">{user?.name}</div>
               <div className="text-[10px] text-muted-foreground">
-                {user?.role_name || roleLabel(user?.role ?? "employee")}
+                {user?.role_name || (user?.role && user.role !== "employee" ? roleLabel(user.role) : "Employee")}
               </div>
             </div>
           </Button>
@@ -463,11 +464,13 @@ export function AppHeader() {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
           <DropdownMenuItem onClick={() => setIsProfileOpen(true)}>Profile</DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to="/payroll/slips" search={{ period: undefined }} className="w-full cursor-pointer">
-              My Payslips
-            </Link>
-          </DropdownMenuItem>
+          {!user?.is_superuser && (
+            <DropdownMenuItem asChild>
+              <Link to="/payroll/slips" search={{ period: undefined }} className="w-full cursor-pointer">
+                My Payslips
+              </Link>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={logout}>
             <LogOut className="h-4 w-4 mr-2" />

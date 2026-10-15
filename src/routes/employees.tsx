@@ -694,7 +694,7 @@ function EmployeeDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { user } = useAuth();
-  const canAddCTC = user?.role === "super_admin" || user?.permissions?.can_add_ctc === true;
+  const canAddCTC = Boolean(user?.is_superuser) || user?.permissions?.can_add_ctc === true;
 
   const searchParams = Route.useSearch();
 

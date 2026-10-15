@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,8 +18,14 @@ interface ProfileModalProps {
 }
 
 export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState<"profile" | "security">("profile");
+
+  useEffect(() => {
+    if (open && refreshUser) {
+      refreshUser();
+    }
+  }, [open]);
 
   // Profile tab state
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -206,7 +212,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-slate-500 text-xs uppercase tracking-wider">Role</Label>
-                    <div className="font-medium mt-1">{user?.role_name || roleLabel(user?.role || "employee")}</div>
+                    <div className="font-medium mt-1">{user?.role_name || (user?.role && user.role !== "employee" ? roleLabel(user.role) : "Employee")}</div>
                   </div>
                   <div>
                     <Label className="text-slate-500 text-xs uppercase tracking-wider">Employee ID</Label>

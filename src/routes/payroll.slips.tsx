@@ -381,373 +381,405 @@ function SlipsPage() {
 }
 
 function Payslip({ emp, period }: { emp: any; period: string }) {
-  const { gross, net, pf, pt, tds, ded, components, arrears } = emp;
+  const { components = {}, actual_components = {} } = emp;
 
-  // Exclude deductions to only show earnings
+  // Format month and year, e.g. "April 2025"
+  const formatPeriodMonth = (periodStr: string): string => {
+    if (!periodStr) return "";
+    try {
+      const parts = periodStr.split("-");
+      if (parts.length < 2) return periodStr;
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10);
+      const date = new Date(year, month - 1, 1);
+      return date.toLocaleString("en-US", { month: "long", year: "numeric" });
+    } catch {
+      return periodStr;
+    }
+  };
+
+  const formatDate = (dateStr: string): string => {
+    if (!dateStr) return "N/A";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const fmt = (val: number | string | undefined | null): string => {
+    const num = parseFloat(String(val ?? 0));
+    if (isNaN(num)) return "0.00";
+    return num.toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const numberToWords = (num: number): string => {
+    const val = Math.round(Number(num) || 0);
+    if (val <= 0) return "Zero Rupee Only";
+
+    const ones = [
+      "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+      "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+      "Seventeen", "Eighteen", "Nineteen"
+    ];
+    const tens = [
+      "", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"
+    ];
+
+    const convertTwoDigits = (n: number): string => {
+      if (n === 0) return "";
+      if (n < 20) return ones[n];
+      const t = tens[Math.floor(n / 10)];
+      const o = ones[n % 10];
+      return o ? `${t} ${o}` : t;
+    };
+
+    const convertThreeDigits = (n: number): string => {
+      const h = Math.floor(n / 100);
+      const rem = n % 100;
+      const hStr = h > 0 ? `${ones[h]} Hundred` : "";
+      const remStr = convertTwoDigits(rem);
+      if (hStr && remStr) return `${hStr} ${remStr}`;
+      return hStr || remStr;
+    };
+
+    let remaining = val;
+    const parts: string[] = [];
+
+    // Crores
+    const crore = Math.floor(remaining / 10000000);
+    if (crore > 0) {
+      parts.push(`${convertThreeDigits(crore)} Crore`);
+      remaining %= 10000000;
+    }
+
+    // Lakhs
+    const lakh = Math.floor(remaining / 100000);
+    if (lakh > 0) {
+      parts.push(`${convertTwoDigits(lakh)} Lakh`);
+      remaining %= 100000;
+    }
+
+    // Thousands
+    const thousand = Math.floor(remaining / 1000);
+    if (thousand > 0) {
+      parts.push(`${convertTwoDigits(thousand)} Thousand`);
+      remaining %= 1000;
+    }
+
+    // Hundreds & units
+    if (remaining > 0) {
+      parts.push(convertThreeDigits(remaining));
+    }
+
+    return `${parts.join(" ")} Rupee Only`;
+  };
+
   const isDeduction = (k: string) =>
-    ["pf", "pt", "tds", "provident", "professional", "tax", "deduction"].some((d) =>
+    ["pf", "pt", "tds", "provident", "professional", "tax", "deduction", "esi", "loan", "advance"].some((d) =>
       k.toLowerCase().includes(d),
     );
 
-  const isArrears = (k: string) => k.toLowerCase().includes("arrear");
+  // Standard enterprise earnings sequence
+  const standardEarnings = [
+    { key: "basic", label: "Basic", aliases: ["basic"] },
+    { key: "hra", label: "HRA", aliases: ["hra", "house rent"] },
+    { key: "conveyance", label: "Conveyance Allowance", aliases: ["conveyance", "transport"] },
+    { key: "cca", label: "CCA", aliases: ["cca", "city compensatory"] },
+    { key: "special", label: "Special Allowance", aliases: ["special", "allowance"] },
+    { key: "leave encashment", label: "Leave Encashment", aliases: ["leave encashment", "encashment"] },
+  ];
 
-  const earningsEntries = Object.entries(components || {}).filter(([k]) => !isDeduction(k) && !isArrears(k));
-  const deductionEntries = Object.entries(components || {}).filter(([k]) => isDeduction(k));
-
-  // Capitalize properly
-  const formatName = (s: string) =>
-    s
-      .split(" ")
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(" ");
-
-  const numberToWords = (num: number): string => {
-    const a = [
-      "",
-      "One ",
-      "Two ",
-      "Three ",
-      "Four ",
-      "Five ",
-      "Six ",
-      "Seven ",
-      "Eight ",
-      "Nine ",
-      "Ten ",
-      "Eleven ",
-      "Twelve ",
-      "Thirteen ",
-      "Fourteen ",
-      "Fifteen ",
-      "Sixteen ",
-      "Seventeen ",
-      "Eighteen ",
-      "Nineteen ",
-    ];
-    const b = [
-      "",
-      "",
-      "Twenty",
-      "Thirty",
-      "Forty",
-      "Fifty",
-      "Sixty",
-      "Seventy",
-      "Eighty",
-      "Ninety",
-    ];
-    const numStr = num.toString().replace(/[, ]/g, "");
-    if (numStr !== parseFloat(numStr).toString()) return "not a number";
-    let x = numStr.indexOf(".");
-    if (x === -1) x = numStr.length;
-    if (x > 15) return "too big";
-    const n = numStr.split("");
-    let str = "";
-    let sk = 0;
-    for (let i = 0; i < x; i++) {
-      if ((x - i) % 3 === 2) {
-        if (n[i] === "1") {
-          str += a[Number(n[i] + n[i + 1])] + " ";
-          i++;
-          sk = 1;
-        } else if (n[i] !== "0") {
-          str += b[Number(n[i])] + " ";
-          sk = 1;
-        }
-      } else if (n[i] !== "0") {
-        str += a[Number(n[i])] + " ";
-        if ((x - i) % 3 === 0) str += "Hundred ";
-        sk = 1;
-      }
-      if ((x - i) % 3 === 1) {
-        if (sk)
-          str +=
-            x - i - 1 === 3
-              ? "Thousand "
-              : x - i - 1 === 5
-                ? "Lakh "
-                : x - i - 1 === 7
-                  ? "Crore "
-                  : "";
-        sk = 0;
+  const findCompEntry = (aliases: string[]) => {
+    for (const [k, v] of Object.entries(components)) {
+      const lower = k.toLowerCase().trim();
+      if (aliases.some((a) => lower === a || lower.includes(a))) {
+        return { key: k, val: Number(v || 0) };
       }
     }
-    return str.trim() + " Only";
+    return null;
   };
+
+  const findActualComp = (targetKey: string, earnedVal: number) => {
+    const found = Object.entries(actual_components).find(
+      ([k]) => k.toLowerCase() === targetKey.toLowerCase() || k.toLowerCase().includes(targetKey.toLowerCase()),
+    );
+    if (found && Number(found[1]) > 0) return Number(found[1]);
+    const daysPaid = Number(emp.daysPaid ?? 30);
+    const totalDays = Number(emp.totalDays || 30) || 30;
+    if (daysPaid > 0 && daysPaid < totalDays && earnedVal > 0) {
+      return Math.round((earnedVal / daysPaid) * totalDays * 100) / 100;
+    }
+    return earnedVal;
+  };
+
+  // Build earnings rows
+  const earningsList: { name: string; actual: number; earned: number }[] = [];
+  const processedKeys = new Set<string>();
+
+  standardEarnings.forEach((std) => {
+    let earned = 0;
+    const match = findCompEntry(std.aliases);
+    if (match) {
+      earned = match.val;
+      processedKeys.add(match.key);
+    } else if (std.key === "basic") {
+      earned = Number(emp.basic || 0);
+    } else if (std.key === "hra") {
+      earned = Number(emp.hra || 0);
+    } else if (std.key === "special") {
+      earned = Number(emp.special || 0);
+    }
+
+    const actual = findActualComp(std.key, earned);
+    earningsList.push({ name: std.label, actual, earned });
+
+    Object.keys(components).forEach((k) => {
+      const lower = k.toLowerCase().trim();
+      if (std.aliases.some((a) => lower === a || lower.includes(a))) {
+        processedKeys.add(k);
+      }
+    });
+  });
+
+  // Append any extra earnings from components (e.g. LTA, Convenience, etc.)
+  Object.entries(components).forEach(([k, v]) => {
+    if (!isDeduction(k) && !processedKeys.has(k)) {
+      processedKeys.add(k);
+      const earned = Number(v || 0);
+      const actual = findActualComp(k, earned);
+      earningsList.push({ name: k, actual, earned });
+    }
+  });
+
+  if (
+    Number(emp.overtimePay || 0) > 0 &&
+    !earningsList.some((e) => e.name.toLowerCase().includes("overtime") || e.name.toLowerCase().includes("ot"))
+  ) {
+    const otAmt = Number(emp.overtimePay);
+    earningsList.push({ name: "Overtime Allowance", actual: otAmt, earned: otAmt });
+  }
+
+  // Build deductions rows
+  const deductionsList: { name: string; amount: number | null }[] = [];
+  const processedDedKeys = new Set<string>();
+
+  const standardDeductions = [
+    { key: "pf", label: "PF", aliases: ["pf", "provident", "epf"], directVal: emp.pf },
+    { key: "pt", label: "Professional Tax", aliases: ["pt", "professional tax", "professional", "prof tax"], directVal: emp.pt },
+    { key: "tds", label: "Income Tax (TDS)", aliases: ["tds", "income tax", "tax deducted"], directVal: emp.tds },
+  ];
+
+  standardDeductions.forEach((std) => {
+    const match = findCompEntry(std.aliases);
+    let amt: number | null = null;
+    if (match && match.val > 0) {
+      amt = match.val;
+      processedDedKeys.add(match.key);
+    } else if (Number(std.directVal) > 0) {
+      amt = Number(std.directVal);
+    } else if (std.key === "pf" && (emp.pf_applicable || !Object.keys(components).some(isDeduction))) {
+      amt = Number(emp.pf) > 0 ? Number(emp.pf) : 1800;
+    }
+
+    Object.keys(components).forEach((k) => {
+      const lower = k.toLowerCase().trim();
+      if (std.aliases.some((a) => lower === a || lower.includes(a))) {
+        processedDedKeys.add(k);
+      }
+    });
+
+    if (amt !== null && amt > 0) {
+      deductionsList.push({ name: std.label, amount: amt });
+    }
+  });
+
+  // Append any extra deductions (Loans, ESI, Custom Deductions)
+  Object.entries(components).forEach(([k, v]) => {
+    if (isDeduction(k) && !processedDedKeys.has(k) && Number(v) > 0) {
+      processedDedKeys.add(k);
+      deductionsList.push({ name: k, amount: Number(v) });
+    }
+  });
+
+  // Pad empty lines so the table rows align symmetrically with the vertical divider
+  const maxRows = Math.max(earningsList.length, deductionsList.length, 6);
+  while (earningsList.length < maxRows) {
+    earningsList.push({ name: "", actual: 0, earned: 0 });
+  }
+  while (deductionsList.length < maxRows) {
+    deductionsList.push({ name: "", amount: null });
+  }
+
+  const totalActual = earningsList.reduce((sum, r) => sum + (r.name ? r.actual : 0), 0);
+  const totalEarned = earningsList.reduce((sum, r) => sum + (r.name ? r.earned : 0), 0) || Number(emp.gross || 0);
+  const totalDeductions = deductionsList.reduce((sum, r) => sum + (r.amount || 0), 0) || Number(emp.ded || 0);
+  const netPay = Number(emp.net || (totalEarned - totalDeductions));
+
+  const entityTitle = emp.entityName || emp.companyName || "LOTUS DEVELOPERS";
 
   return (
     <div
       id="payslip-capture"
-      className="rounded-xl border border-border/60 overflow-hidden bg-white text-slate-900 shadow-sm mx-auto"
+      className="w-full max-w-[850px] mx-auto bg-white text-black p-5 font-sans text-xs border border-black shadow-none print:m-0 print:border-black print:max-w-none select-text"
+      style={{ color: "#000", backgroundColor: "#fff", fontFamily: 'Arial, Helvetica, sans-serif' }}
     >
-      {/* Header Section */}
-      <div className="px-6 pt-4 pb-4 border-b border-border/40 bg-slate-50/50">
-        <div className="flex justify-between items-start mb-3">
-          <div>
-            <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-1">
-              {emp.entityName || "Unknown Entity"}
-            </h1>
-            <div className="text-xs text-slate-500">
-              42 Tech Park, Bengaluru • GSTIN 27AABCA1234A1Z5
-            </div>
+      {/* Entity Header & Title */}
+      <div className="text-center pb-3 pt-0.5">
+        <h1 className="text-base sm:text-lg font-bold uppercase tracking-wider text-black m-0 leading-tight">
+          {entityTitle}
+        </h1>
+        <div className="text-xs sm:text-sm font-normal text-black mt-1">
+          Payslip for the month of {formatPeriodMonth(period)}
+        </div>
+      </div>
+
+      {/* Top Information Box */}
+      <div className="border border-black grid grid-cols-2 text-[11px] leading-relaxed">
+        {/* Left Column */}
+        <div className="border-r border-black p-2.5 space-y-1">
+          <div className="grid grid-cols-[140px_1fr]">
+            <span>Name :</span>
+            <span className="font-semibold">{emp.firstName} {emp.lastName}</span>
           </div>
-          <div className="text-right mt-2">
-            <div className="text-sm font-semibold text-primary uppercase tracking-wider bg-primary/10 px-3 py-1 rounded-full inline-block shadow-sm">
-              Payslip for {period}
-            </div>
+          <div className="grid grid-cols-[140px_1fr]">
+            <span>EmpCode :</span>
+            <span className="font-semibold">{emp.code || "N/A"}</span>
+          </div>
+          <div className="grid grid-cols-[140px_1fr]">
+            <span>DOJ :</span>
+            <span>{formatDate(emp.doj)}</span>
+          </div>
+          <div className="grid grid-cols-[140px_1fr]">
+            <span>Department :</span>
+            <span>{emp.department || "Department"}</span>
+          </div>
+          <div className="grid grid-cols-[140px_1fr]">
+            <span>Designation :</span>
+            <span>{emp.designation || "Designation"}</span>
+          </div>
+          <div className="grid grid-cols-[140px_1fr]">
+            <span>No. of. Workingdays :</span>
+            <span>{emp.totalDays || 30}</span>
+          </div>
+          <div className="grid grid-cols-[140px_1fr]">
+            <span>Holidays :</span>
+            <span>{fmt(emp.holidays || emp.daysOff || 0)}</span>
+          </div>
+          <div className="grid grid-cols-[140px_1fr]">
+            <span>No. of. Days Paid :</span>
+            <span>{fmt(emp.daysPaid ?? 30)}</span>
           </div>
         </div>
 
-        {/* Employee Summary Card inside Header */}
-        <div className="grid sm:grid-cols-2 gap-4 bg-white p-4 rounded-lg border border-border/40 shadow-sm">
-          <div>
-            <div className="font-bold text-lg">
-              {emp.firstName} {emp.lastName}
-            </div>
-            <div className="text-sm font-medium text-slate-600 mb-1">
-              {emp.designation || "Software Engineer"} • {emp.department || "Engineering"}
-            </div>
-            <div className="text-xs text-slate-500">
-              Employee ID: <span className="font-semibold text-slate-700">{emp.code}</span>
-            </div>
+        {/* Right Column */}
+        <div className="p-2.5 space-y-1">
+          <div className="grid grid-cols-[140px_1fr]">
+            <span>Location :</span>
+            <span>{emp.location || emp.entityName || "Bangalore"}</span>
           </div>
-          <div className="flex sm:justify-end items-center gap-6 text-sm">
-            <div className="text-right">
-              <div className="text-slate-500 text-xs uppercase mb-0.5">Date of Joining</div>
-              <div className="font-medium">{emp.doj || "01-Apr-2023"}</div>
-            </div>
-            <div className="w-px h-8 bg-border/60"></div>
-            <div className="text-right">
-              <div className="text-slate-500 text-xs uppercase mb-0.5">UAN Number</div>
-              <div className="font-medium">{emp.uan || "100456789012"}</div>
-            </div>
+          <div className="grid grid-cols-[140px_1fr]">
+            <span>Bank Name :</span>
+            <span>{emp.bankName || "N/A"}</span>
+          </div>
+          <div className="grid grid-cols-[140px_1fr]">
+            <span>Bank Account No. :</span>
+            <span>{emp.bankAccount || "N/A"}</span>
+          </div>
+          <div className="grid grid-cols-[140px_1fr]">
+            <span>LOP Days :</span>
+            <span>{fmt(emp.lopDays || 0)}</span>
+          </div>
+          <div className="grid grid-cols-[140px_1fr]">
+            <span>PAN NO :</span>
+            <span>{emp.pan || "N/A"}</span>
+          </div>
+          <div className="grid grid-cols-[140px_1fr]">
+            <span>Extra days (OT Days) :</span>
+            <span>{fmt(emp.extraDays ?? (Number(emp.overtimeHours || emp.ot || 0) / 8))}</span>
           </div>
         </div>
       </div>
 
-      {/* Attendance & Basic Info Grid */}
-      <div className="p-4 px-6 grid grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50/30 border-b border-border/40 text-sm">
-        <div className="space-y-5">
-          <div className="flex items-center">
-            <span className="text-slate-500 w-28 text-[13px]">Days Paid</span>
-            <span className="font-bold text-slate-800 text-[13px]">{emp.daysPaid ?? 0}</span>
+      {/* Earnings & Deductions Table */}
+      <div className="border-x border-b border-black text-[11px]">
+        {/* Table Header */}
+        <div className="grid grid-cols-2 border-b border-black font-bold">
+          <div className="grid grid-cols-[1fr_85px_85px] px-2.5 py-1.5 border-r border-black">
+            <span>Earnings</span>
+            <span className="text-right">Actual</span>
+            <span className="text-right">Earned</span>
           </div>
-          <div className="flex items-center">
-            <span className="text-slate-500 w-28 text-[13px]">Days Present</span>
-            <span className="font-bold text-slate-800 text-[13px]">{emp.daysPresent ?? 0}</span>
-          </div>
-          <div className="flex items-center">
-            <span className="text-slate-500 w-28 text-[13px]">Paid Leaves</span>
-            <span className="font-bold text-slate-800 text-[13px]">{emp.paidLeaves ?? 0}</span>
+          <div className="grid grid-cols-[1fr_95px] px-2.5 py-1.5">
+            <span>Deductions</span>
+            <span className="text-right">Amount</span>
           </div>
         </div>
-        <div className="space-y-5">
-          <div className="flex items-center">
-            <span className="text-slate-500 w-28 text-[13px]">Weekly Off</span>
-            <span className="font-bold text-slate-800 text-[13px]">{emp.daysOff ?? 0}</span>
-          </div>
-          <div className="flex items-center">
-            <span className="text-slate-500 w-28 text-[13px]">LWP / Absent</span>
-            <span className="font-bold text-slate-800 text-[13px]">{emp.daysAbsent ?? 0}</span>
-          </div>
-          <div className="flex items-center">
-            <span className="text-slate-500 w-28 text-[13px]">Late Marks</span>
-            <span className="font-bold text-slate-800 text-[13px]">
-              {Number(emp.lateMarks || 0) > 0 ? `${emp.lateMarks} marks` : "0"}
-            </span>
-          </div>
-          <div className="flex items-center">
-            <span className="text-slate-500 w-28 text-[13px]">Overtime</span>
-            <span className="font-bold text-slate-800 text-[13px]">
-              {Number(emp.overtimeHours || emp.ot || 0) > 0 ? `${emp.overtimeHours || emp.ot} hrs` : "0 hrs"}
-            </span>
-          </div>
-        </div>
-        <div className="space-y-5">
-          <div className="flex items-center">
-            <span className="text-slate-500 w-24 text-[13px]">Bank Name</span>
-            <span className="font-bold text-slate-800 text-[13px]">
-              {emp.bankName || "HDFC Bank"}
-            </span>
-          </div>
-          <div className="flex items-center">
-            <span className="text-slate-500 w-24 text-[13px]">Account No</span>
-            <span className="font-bold text-slate-800 text-[13px]">
-              ****{(emp.bankAccount || "0000").slice(-4)}
-            </span>
-          </div>
-        </div>
-        <div className="space-y-5">
-          <div className="flex items-center">
-            <span className="text-slate-500 w-20 text-[13px]">PAN</span>
-            <span className="font-bold text-slate-800 text-[13px]">{emp.pan || "ABCDE1234F"}</span>
-          </div>
-          <div className="flex items-center">
-            <span className="text-slate-500 w-20 text-[13px]">Manager</span>
-            <span className="font-bold text-slate-800 text-[13px]">
-              {emp.managerName || "Jane Doe"}
-            </span>
-          </div>
-        </div>
-      </div>
-      <div className="p-4 px-6 grid grid-cols-2 gap-6 relative">
-        <div className="absolute top-0 bottom-0 left-1/2 w-px bg-border"></div>
-        <div>
-          <div className="font-bold border-b pb-2 mb-2">Earnings & Reimbursements</div>
-          {earningsEntries.map(([k, v]) => {
-            const isOt = k.toLowerCase().includes('overtime') || k.toLowerCase().includes('ot');
-            const otHrs = Number(emp.overtimeHours || emp.ot || 0);
-            const label = isOt && otHrs > 0 ? `Overtime Allowance (${otHrs} hrs)` : formatName(k);
-            return (
-              <Row 
-                key={k} 
-                label={label} 
-                v={v as number} 
-                className={isOt ? "text-amber-800 font-semibold" : ""} 
-              />
-            );
-          })}
-          {earningsEntries.length === 0 && <Row label="Basic" v={emp.basic} />}
-          {!earningsEntries.some(([k]) => k.toLowerCase().includes('overtime') || k.toLowerCase().includes('ot')) && Number(emp.overtimePay || 0) > 0 && (
-            <Row 
-              label={`Overtime Allowance (${Number(emp.overtimeHours || emp.ot || 0)} hrs)`} 
-              v={emp.overtimePay} 
-              className="text-amber-800 font-semibold" 
-            />
-          )}
-          
-          {arrears > 0 && (
-            <div className="mt-3 pt-2 border-t border-dashed">
-              <Row label="Arrears" v={arrears} className="font-semibold text-primary" />
-            </div>
-          )}
-        </div>
-        <div className="flex flex-col gap-4">
-          <div>
-            <div className="font-bold text-slate-800 border-b pb-2 mb-2 uppercase text-xs tracking-wider">
-              Statutory Deductions
-            </div>
-            {deductionEntries.length > 0 ? (
-              deductionEntries.map(([k, v]) => (
-                <Row key={k} label={formatName(k)} v={v as number} />
-              ))
-            ) : (
-              <>
-                <Row label="PF Employee" v={pf} />
-                <Row label="Professional Tax" v={pt} />
-                <Row label="Income Tax (TDS)" v={tds || 0} />
-              </>
-            )}
-            {deductionEntries.length > 0 &&
-              !deductionEntries.some(
-                ([k]) => k.toLowerCase().includes("tax") || k.toLowerCase().includes("tds"),
-              ) && <Row label="Income Tax" v={tds || 0} />}
-          </div>
 
-          {(Number(emp.daysAbsent || 0) > 0 || Number(emp.lateMarks || 0) > 0 || Number(emp.lopDays || 0) > 0) && (
-            <div className="bg-red-50/40 border border-red-100/60 rounded-md p-3 pb-2">
-              <div className="font-bold text-red-800 border-b border-red-200/50 pb-2 mb-2 uppercase text-xs tracking-wider flex items-center justify-between">
-                <span>Administrative Penalties & LOP</span>
-                <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-sm">
-                  Adjusted
-                </span>
+        {/* Table Rows */}
+        <div className="grid grid-cols-2">
+          {/* Earnings Column */}
+          <div className="border-r border-black">
+            {earningsList.map((row, idx) => (
+              <div key={idx} className="grid grid-cols-[1fr_85px_85px] px-2.5 py-1 min-h-[22px]">
+                <span className="truncate pr-1">{row.name}</span>
+                <span className="text-right font-mono tabular-nums">{row.name ? fmt(row.actual) : ""}</span>
+                <span className="text-right font-mono tabular-nums">{row.name ? fmt(row.earned) : ""}</span>
               </div>
+            ))}
+          </div>
 
-              {Number(emp.lopDays || 0) > 0 ? (
-                <div className="flex justify-between text-sm py-1 font-medium text-red-900">
-                  <span>Loss of Pay ({emp.lopDays} days)</span>
-                  <span>
-                    -{" "}
-                    {fmtINR(
-                      emp.gross && emp.daysPaid
-                        ? Math.round((emp.gross / emp.daysPaid) * emp.lopDays)
-                        : 0,
-                    )}
-                  </span>
-                </div>
-              ) : null}
-
-              {Number(emp.lateMarks || 0) > 0 ? (() => {
-                const latePenalties = emp.latePenalties !== undefined ? emp.latePenalties : Math.floor(Number(emp.lateMarks) / 3) * 0.5;
-                const penaltyCost = emp.gross && emp.daysPaid && latePenalties > 0
-                  ? Math.round((emp.gross / emp.daysPaid) * latePenalties)
-                  : 0;
-                return (
-                  <div className="flex justify-between text-sm py-1 font-medium text-red-900">
-                    <span>
-                      Late Marks ({emp.lateMarks} marks
-                      {latePenalties > 0 ? ` = -${latePenalties}d penalty` : " • Within grace limit"}
-                      )
-                    </span>
-                    <span>{penaltyCost > 0 ? `- ${fmtINR(penaltyCost)}` : "₹0"}</span>
-                  </div>
-                );
-              })() : null}
-
-              {!emp.lopDays && !emp.lateMarks && Number(emp.daysAbsent || 0) > 0 && (
-                <div className="flex justify-between text-sm py-1 font-medium text-red-900">
-                  <span>Loss of Pay / Absences ({emp.daysAbsent} days)</span>
-                  <span>
-                    -{" "}
-                    {fmtINR(
-                      emp.gross && emp.daysPaid
-                        ? Math.round((emp.gross / emp.daysPaid) * emp.daysAbsent)
-                        : 0,
-                    )}
-                  </span>
-                </div>
-              )}
-
-              <div className="text-[11px] text-red-600/80 mt-1 pt-1 border-t border-red-100/50">
-                Calculated dynamically based on attendance. Salary has been pre-prorated for payable days.
+          {/* Deductions Column */}
+          <div>
+            {deductionsList.map((row, idx) => (
+              <div key={idx} className="grid grid-cols-[1fr_95px] px-2.5 py-1 min-h-[22px]">
+                <span className="truncate pr-1">{row.name}</span>
+                <span className="text-right font-mono tabular-nums">{row.name && row.amount !== null ? fmt(row.amount) : ""}</span>
               </div>
-            </div>
-          )}
+            ))}
+          </div>
         </div>
-      </div>
-      <div className="grid grid-cols-2 gap-6 border-y-2 border-black font-bold p-2 px-5">
-        <div className="flex justify-between">
-          <span>Total Earnings</span>
-          <span>{fmtINR(gross)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Total Deductions</span>
-          <span>{fmtINR(ded)}</span>
-        </div>
-      </div>
-      <div className="flex justify-end p-2 px-5 font-bold border-b-2 border-black">
-        <div className="flex justify-between w-1/2 pl-3">
-          <span>Net Pay</span>
-          <span>{fmtINR(net)}</span>
-        </div>
-      </div>
-      <div className="p-3 px-5 border-b-2 border-black font-semibold text-sm">
-        Rupees: {numberToWords(Math.round(net))}
-      </div>
-      <div className="p-3 px-5 font-semibold text-sm">
-        Amount credited to {emp.bankName || "Bank"} Saving Account No ****
-        {(emp.bankAccount || "0000").slice(-4)}
-      </div>
-      <div className="p-5 border-t border-dashed grid sm:grid-cols-2 gap-8 items-end">
-        <div />
-        <div className="flex flex-col items-end justify-end">
-          <div className="border-b-2 border-black w-48 mb-2"></div>
-          <div className="text-sm font-bold">Authorized Signatory</div>
-          <div className="text-xs text-muted-foreground">HRMS PeoplePulse</div>
-        </div>
-      </div>
-      <div className="text-[10px] text-muted-foreground pb-3 pt-2 text-center border-t bg-muted/5">
-        This is a system-generated payslip.
-      </div>
-    </div>
-  );
-}
 
-function Row({ label, v, className }: { label: string; v: number; className?: string }) {
-  return (
-    <div className={`flex justify-between text-sm py-1 border-b border-dashed last:border-0 ${className || ""}`}>
-      <span className={className ? "" : "text-muted-foreground"}>{label}</span>
-      <span>{fmtINR(v)}</span>
+        {/* Total Row */}
+        <div className="grid grid-cols-2 border-t border-black font-bold">
+          <div className="grid grid-cols-[1fr_85px_85px] px-2.5 py-1.5 border-r border-black">
+            <span>Total Earnings:</span>
+            <span className="text-right font-mono tabular-nums">{fmt(totalActual)}</span>
+            <span className="text-right font-mono tabular-nums">{fmt(totalEarned)}</span>
+          </div>
+          <div className="grid grid-cols-[1fr_95px] px-2.5 py-1.5">
+            <span>Total Deductions:</span>
+            <span className="text-right font-mono tabular-nums">{fmt(totalDeductions)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Net Pay Box */}
+      <div className="border-x border-b border-black p-2.5 text-[11px]">
+        <div className="flex justify-between items-center font-normal">
+          <span>Net Pay for the month ( Total Earnings - Total Deductions) :</span>
+          <span className="font-semibold text-xs font-mono tabular-nums">{fmt(netPay)}</span>
+        </div>
+        <div className="font-medium mt-1">
+          {numberToWords(netPay)}
+        </div>
+      </div>
+
+      {/* Remarks Box */}
+      <div className="border-x border-b border-black p-2.5 min-h-[44px] text-[11px]">
+        <span className="font-bold">Remarks :</span>
+        <span className="ml-2">{emp.remarks || ""}</span>
+      </div>
+
+      {/* Footer */}
+      <div className="py-2.5 text-center text-[10px] text-black">
+        This is a system generated payslip and does not require signature
+      </div>
     </div>
   );
 }

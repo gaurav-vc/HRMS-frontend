@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect, Fragment, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
@@ -68,17 +68,22 @@ function SettingsPage() {
         title="Settings"
         description="Organisation, payroll, attendance, notifications, and user roles"
       />
-      <Tabs defaultValue="pay">
+      <Tabs defaultValue="att">
         <TabsList>
+          {/* Dummy Payroll tab commented out
           <TabsTrigger value="pay">Payroll</TabsTrigger>
+          */}
           <TabsTrigger value="att">Attendance</TabsTrigger>
           <TabsTrigger value="leaves">Leaves</TabsTrigger>
+          {/* Dummy Notifications tab commented out
           <TabsTrigger value="notif">Notifications</TabsTrigger>
+          */}
           <TabsTrigger value="roles">Roles & Users</TabsTrigger>
           <TabsTrigger value="permissions">Role Permissions</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>
         </TabsList>
 
+        {/* Dummy Payroll tab commented out
         <TabsContent value="pay">
           <Card className="p-6 space-y-4">
             <Toggle label="Auto-process payroll on cutoff date" />
@@ -89,6 +94,7 @@ function SettingsPage() {
             <Button onClick={() => toast.success("Saved")}>Save</Button>
           </Card>
         </TabsContent>
+        */}
 
         <TabsContent value="att">
           <Card className="p-6 mt-4 border shadow-sm rounded-lg">
@@ -102,6 +108,7 @@ function SettingsPage() {
           </Card>
         </TabsContent>
 
+        {/* Dummy Notifications tab commented out
         <TabsContent value="notif">
           <Card className="p-6 space-y-4">
             <Toggle label="Email payslips automatically" defaultChecked />
@@ -110,6 +117,7 @@ function SettingsPage() {
             <Button onClick={() => toast.success("Saved")}>Save</Button>
           </Card>
         </TabsContent>
+        */}
 
         <TabsContent value="roles">
           <Card className="p-6 mt-4">
@@ -1184,6 +1192,7 @@ function UserForm({
   initialData?: any;
   onClose: () => void;
 }) {
+  const { refreshUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState(
     initialData
@@ -1239,7 +1248,7 @@ function UserForm({
       payload.last_name = payload.lastName;
       payload.mfa_enabled = payload.mfaEnabled;
       payload.dynamic_role = payload.dynamicRole;
-      payload.send_credentials = true;
+      payload.send_credentials = false;
 
       delete payload.firstName;
       delete payload.lastName;
@@ -1266,6 +1275,11 @@ function UserForm({
       if (initialData && initialData.id) {
         await employeesApi.update(initialData.id, payload);
         toast.success("User updated successfully!");
+        if (refreshUser) {
+          try {
+            await refreshUser();
+          } catch {}
+        }
       } else {
         await employeesApi.create(payload);
         toast.success("User created and synced to Org Tree");
@@ -1350,14 +1364,14 @@ function UserForm({
           <div>
             <p className="font-semibold text-foreground flex items-center gap-1.5">
               <Send className="h-3.5 w-3.5 text-primary" />
-              Credentials Delivery Channel
+              Credentials Delivery
             </p>
             <p className="text-muted-foreground mt-0.5">
-              Blue-collar staff without email will receive their login credentials via SMS to their mobile number.
+              Login credentials are not sent automatically on save. You can dispatch them at any time by selecting the user's checkbox and clicking &quot;Send Login Email&quot; in the Users list.
             </p>
           </div>
           <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary">
-            {form.phone && !form.email ? "SMS Dispatch" : form.email && !form.phone ? "Email Dispatch" : "Dual Dispatch"}
+            Manual Dispatch
           </span>
         </div>
       </div>
@@ -1484,7 +1498,7 @@ const MODULES = [
   { group: "Overview", items: ["Dashboard"] },
   {
     group: "Organisation",
-    items: ["Entities", "Branches", "Sites", "Departments", "Designations", "Roles & Users"],
+    items: ["Entities", "Branches", "Sub Sites", "Departments", "Designations", "Roles & Users"],
   },
   {
     group: "People",
@@ -1529,19 +1543,62 @@ const MODULES = [
   { group: "Insights", items: ["Organization Tree", "Reports", "Settings"] },
 ];
 
+function TriStateCheckbox({
+  checked,
+  indeterminate,
+  onChange,
+  title,
+  className = "",
+  id,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  onChange: (checked: boolean) => void;
+  title?: string;
+  className?: string;
+  id?: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.indeterminate = !!indeterminate;
+    }
+  }, [indeterminate]);
+
+  return (
+    <input
+      ref={ref}
+      id={id}
+      type="checkbox"
+      checked={checked}
+      title={title}
+      onChange={(e) => onChange(e.target.checked)}
+      className={cn(
+        "w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer transition-all",
+        className
+      )}
+    />
+  );
+}
+
 function RolePermissionsTab() {
+  const { refreshUser } = useAuth();
   const [roles, setRoles] = useState<any[]>([]);
   const [entities, setEntities] = useState<any[]>([]);
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [permissions, setPermissions] = useState<any>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    rolesApi.getAll().then((res) => {
-      setRoles(res);
-      if (res.length > 0) setSelectedRole(String(res[0].id));
-    }).catch(() => {});
+    rolesApi
+      .getAll()
+      .then((res) => {
+        setRoles(res);
+        if (res.length > 0) setSelectedRole(String(res[0].id));
+      })
+      .catch(() => {});
     entitiesApi.getAll().then((res) => setEntities(res)).catch(() => {});
   }, []);
 
@@ -1549,10 +1606,184 @@ function RolePermissionsTab() {
     if (!selectedRole) return;
     const role = roles.find((r) => String(r.id) === selectedRole);
     if (role) {
-      setPermissions(role.permissions || {});
+      const p = { ...(role.permissions || {}) };
+      if (p["Sites"] && !p["Sub Sites"]) {
+        p["Sub Sites"] = p["Sites"];
+      }
+      setPermissions(p);
     }
   }, [selectedRole, roles]);
 
+  const allModuleNames = useMemo(() => MODULES.flatMap((g) => g.items), []);
+
+  // Filter modules based on search query
+  const filteredModules = useMemo(() => {
+    if (!searchQuery.trim()) return MODULES;
+    const q = searchQuery.toLowerCase().trim();
+    return MODULES.map((group) => {
+      const groupMatches = group.group.toLowerCase().includes(q);
+      const matchingItems = group.items.filter((item) => item.toLowerCase().includes(q));
+      return {
+        group: group.group,
+        items: groupMatches ? group.items : matchingItems,
+      };
+    }).filter((group) => group.items.length > 0);
+  }, [searchQuery]);
+
+  // Master Select All calculations
+  const totalMasterCount = useMemo(() => {
+    let count = 0;
+    for (const mod of allModuleNames) {
+      const p = permissions[mod];
+      if (p) {
+        if (p.view) count++;
+        if (p.create) count++;
+        if (p.update) count++;
+        if (p.delete) count++;
+      }
+    }
+    return count;
+  }, [permissions, allModuleNames]);
+
+  const maxMasterCount = allModuleNames.length * 4;
+  const isMasterChecked = totalMasterCount === maxMasterCount && maxMasterCount > 0;
+  const isMasterIndeterminate = totalMasterCount > 0 && !isMasterChecked;
+
+  // Master Toggle: selects or clears all 4 CRUD actions for all modules
+  const handleMasterToggle = (checked: boolean) => {
+    setPermissions((prev: any) => {
+      const next = { ...prev };
+      allModuleNames.forEach((mod) => {
+        next[mod] = {
+          view: checked,
+          create: checked,
+          update: checked,
+          delete: checked,
+        };
+      });
+      return next;
+    });
+  };
+
+  // Quick Action: Read-Only for all modules
+  const handleReadOnlyAll = () => {
+    setPermissions((prev: any) => {
+      const next = { ...prev };
+      allModuleNames.forEach((mod) => {
+        next[mod] = {
+          view: true,
+          create: false,
+          update: false,
+          delete: false,
+        };
+      });
+      return next;
+    });
+  };
+
+  // Column Select All states and handler
+  const getColumnState = (action: "view" | "create" | "update" | "delete") => {
+    let count = 0;
+    for (const mod of allModuleNames) {
+      if (permissions[mod]?.[action]) count++;
+    }
+    const isChecked = count === allModuleNames.length && allModuleNames.length > 0;
+    const isIndeterminate = count > 0 && !isChecked;
+    return { isChecked, isIndeterminate, count };
+  };
+
+  const handleColumnToggle = (action: string, checked: boolean) => {
+    setPermissions((prev: any) => {
+      const next = { ...prev };
+      allModuleNames.forEach((mod) => {
+        const current = next[mod] || {
+          view: false,
+          create: false,
+          update: false,
+          delete: false,
+        };
+        const updatedMod = { ...current, [action]: checked };
+        if (checked) {
+          if (action !== "view") {
+            updatedMod.view = true;
+          }
+        } else {
+          if (action === "view") {
+            updatedMod.create = false;
+            updatedMod.update = false;
+            updatedMod.delete = false;
+          }
+        }
+        next[mod] = updatedMod;
+      });
+      return next;
+    });
+  };
+
+  // Group Select All states and handler
+  const getGroupState = (items: string[]) => {
+    let count = 0;
+    for (const mod of items) {
+      const p = permissions[mod];
+      if (p) {
+        if (p.view) count++;
+        if (p.create) count++;
+        if (p.update) count++;
+        if (p.delete) count++;
+      }
+    }
+    const max = items.length * 4;
+    const isChecked = count === max && max > 0;
+    const isIndeterminate = count > 0 && !isChecked;
+    return { isChecked, isIndeterminate, count, max };
+  };
+
+  const handleGroupToggle = (items: string[], checked: boolean) => {
+    setPermissions((prev: any) => {
+      const next = { ...prev };
+      items.forEach((mod) => {
+        next[mod] = {
+          view: checked,
+          create: checked,
+          update: checked,
+          delete: checked,
+        };
+      });
+      return next;
+    });
+  };
+
+  // Row-level Select All for an individual module
+  const getModuleState = (mod: string) => {
+    const p = permissions[mod] || {
+      view: false,
+      create: false,
+      update: false,
+      delete: false,
+    };
+    let count = 0;
+    if (p.view) count++;
+    if (p.create) count++;
+    if (p.update) count++;
+    if (p.delete) count++;
+    const isChecked = count === 4;
+    const isIndeterminate = count > 0 && !isChecked;
+    return { isChecked, isIndeterminate, count, perms: p };
+  };
+
+  const handleModuleAllToggle = (mod: string, checked: boolean) => {
+    setPermissions((prev: any) => ({
+      ...prev,
+      [mod]: {
+        view: checked,
+        create: checked,
+        update: checked,
+        delete: checked,
+      },
+    }));
+  };
+
+  // Individual action toggle (preserving dependent logic)
   const handleToggle = (moduleName: string, action: string, checked: boolean) => {
     setPermissions((prev: any) => {
       const current = prev[moduleName] || {
@@ -1594,16 +1825,28 @@ function RolePermissionsTab() {
   const savePermissions = async () => {
     try {
       setSaving(true);
-      await rolesApi.update(selectedRole, { permissions });
+      const finalPerms = { ...permissions };
+      if (finalPerms["Sub Sites"]) {
+        finalPerms["Sites"] = finalPerms["Sub Sites"];
+      }
+      await rolesApi.update(selectedRole, { permissions: finalPerms });
       toast.success("Permissions updated successfully");
       // Update local state roles
-      setRoles(roles.map((r) => (String(r.id) === selectedRole ? { ...r, permissions } : r)));
+      setRoles(roles.map((r) => (String(r.id) === selectedRole ? { ...r, permissions: finalPerms } : r)));
+      if (refreshUser) {
+        await refreshUser();
+      }
     } catch (e: any) {
       toast.error(e.message || "Failed to save permissions");
     } finally {
       setSaving(false);
     }
   };
+
+  const viewColState = getColumnState("view");
+  const createColState = getColumnState("create");
+  const updateColState = getColumnState("update");
+  const deleteColState = getColumnState("delete");
 
   if (roles.length === 0) {
     return (
@@ -1615,14 +1858,14 @@ function RolePermissionsTab() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <h2 className="text-lg font-medium">Permission Matrix</h2>
           <p className="text-sm text-muted-foreground">
             Configure detailed access rights for each module.
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <Select value={selectedRole} onValueChange={setSelectedRole}>
             <SelectTrigger className="w-[250px]">
               <SelectValue placeholder="Select a role..." />
@@ -1638,102 +1881,260 @@ function RolePermissionsTab() {
           <Button
             onClick={savePermissions}
             disabled={saving || !selectedRole}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
           >
-            Save Permissions
+            {saving ? "Saving..." : "Save Permissions"}
           </Button>
         </div>
       </div>
 
-      <div className="border rounded-md overflow-hidden">
+      {/* Quick Action Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-muted/20 border rounded-lg">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => handleMasterToggle(true)}
+            className="text-xs h-8 font-medium cursor-pointer"
+          >
+            Select All Modules
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleReadOnlyAll}
+            className="text-xs h-8 font-medium cursor-pointer"
+          >
+            Read-Only All
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => handleMasterToggle(false)}
+            className="text-xs h-8 text-muted-foreground hover:text-destructive cursor-pointer"
+          >
+            Clear All
+          </Button>
+        </div>
+
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search modules..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-8 pl-8 pr-7 text-xs bg-background"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2 top-2 text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="border rounded-md overflow-hidden bg-background shadow-xs">
         <table className="w-full text-sm text-left">
-          <thead className="bg-muted/40 border-b">
+          <thead className="bg-muted/50 border-b">
             <tr>
-              <th className="px-6 py-3 font-medium text-muted-foreground">Module</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground text-center">View</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground text-center">Create</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground text-center">Update</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground text-center">Delete</th>
+              <th className="px-6 py-3 font-medium text-muted-foreground w-2/5">
+                <div className="flex items-center gap-2.5">
+                  <TriStateCheckbox
+                    id="master-select-all"
+                    checked={isMasterChecked}
+                    indeterminate={isMasterIndeterminate}
+                    onChange={handleMasterToggle}
+                    title="Select / Deselect all modules"
+                  />
+                  <label htmlFor="master-select-all" className="cursor-pointer select-none font-semibold text-foreground">
+                    Module
+                  </label>
+                </div>
+              </th>
+              <th className="px-4 py-3 font-medium text-muted-foreground text-center">
+                <div className="flex flex-col items-center gap-0.5">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Select All</span>
+                  <span className="text-[10px] text-muted-foreground/75 font-normal">(Individual Module)</span>
+                </div>
+              </th>
+              <th className="px-4 py-3 font-medium text-muted-foreground text-center">
+                <div className="flex items-center justify-center gap-1.5">
+                  <TriStateCheckbox
+                    id="col-view"
+                    checked={viewColState.isChecked}
+                    indeterminate={viewColState.isIndeterminate}
+                    onChange={(checked) => handleColumnToggle("view", checked)}
+                    title="Toggle View for all modules"
+                  />
+                  <label htmlFor="col-view" className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wider">
+                    View
+                  </label>
+                </div>
+              </th>
+              <th className="px-4 py-3 font-medium text-muted-foreground text-center">
+                <div className="flex items-center justify-center gap-1.5">
+                  <TriStateCheckbox
+                    id="col-create"
+                    checked={createColState.isChecked}
+                    indeterminate={createColState.isIndeterminate}
+                    onChange={(checked) => handleColumnToggle("create", checked)}
+                    title="Toggle Create for all modules"
+                  />
+                  <label htmlFor="col-create" className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wider">
+                    Create
+                  </label>
+                </div>
+              </th>
+              <th className="px-4 py-3 font-medium text-muted-foreground text-center">
+                <div className="flex items-center justify-center gap-1.5">
+                  <TriStateCheckbox
+                    id="col-update"
+                    checked={updateColState.isChecked}
+                    indeterminate={updateColState.isIndeterminate}
+                    onChange={(checked) => handleColumnToggle("update", checked)}
+                    title="Toggle Update for all modules"
+                  />
+                  <label htmlFor="col-update" className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wider">
+                    Update
+                  </label>
+                </div>
+              </th>
+              <th className="px-4 py-3 font-medium text-muted-foreground text-center">
+                <div className="flex items-center justify-center gap-1.5">
+                  <TriStateCheckbox
+                    id="col-delete"
+                    checked={deleteColState.isChecked}
+                    indeterminate={deleteColState.isIndeterminate}
+                    onChange={(checked) => handleColumnToggle("delete", checked)}
+                    title="Toggle Delete for all modules"
+                  />
+                  <label htmlFor="col-delete" className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wider">
+                    Delete
+                  </label>
+                </div>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y">
-            {MODULES.map((group, gIdx) => (
-              <Fragment key={gIdx}>
-                <tr className="bg-muted/10">
-                  <td
-                    colSpan={5}
-                    className="px-6 py-2 font-semibold text-xs uppercase tracking-wider text-primary bg-primary/5"
-                  >
-                    {group.group}
-                  </td>
-                </tr>
-                {group.items.map((mod) => {
-                  const modsPerms = permissions[mod] || {
-                    view: false,
-                    create: false,
-                    update: false,
-                    delete: false,
-                  };
-                  return (
-                    <tr key={mod} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-6 py-3 font-medium">
-                        <div>{mod}</div>
-                        {mod === "Dashboard" && (
-                          <div className="mt-2">
-                            <Select
-                              value={permissions.dashboard_type || "employee"}
-                              onValueChange={(val) => handleSpecialToggle("dashboard_type", val)}
-                            >
-                              <SelectTrigger className="w-[180px] h-8 text-xs bg-background">
-                                <SelectValue placeholder="Select dashboard" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="executive">Executive / CEO</SelectItem>
-                                <SelectItem value="payroll_admin">Payroll Admin</SelectItem>
-                                <SelectItem value="manager">Manager</SelectItem>
-                                <SelectItem value="employee">Employee</SelectItem>
-                              </SelectContent>
-                            </Select>
+            {filteredModules.map((group, gIdx) => {
+              const groupState = getGroupState(group.items);
+              return (
+                <Fragment key={gIdx}>
+                  <tr className="bg-muted/20 border-t border-b border-muted">
+                    <td colSpan={2} className="px-6 py-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <TriStateCheckbox
+                          id={`group-${group.group}`}
+                          checked={groupState.isChecked}
+                          indeterminate={groupState.isIndeterminate}
+                          onChange={(checked) => handleGroupToggle(group.items, checked)}
+                          title={`Select / Deselect all in ${group.group}`}
+                        />
+                        <label
+                          htmlFor={`group-${group.group}`}
+                          className="font-bold text-xs uppercase tracking-wider text-primary cursor-pointer select-none flex items-center gap-2"
+                        >
+                          <span>{group.group}</span>
+                          <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal bg-background/80">
+                            {group.items.length} {group.items.length === 1 ? "module" : "modules"}
+                          </Badge>
+                        </label>
+                      </div>
+                    </td>
+                    <td colSpan={4} className="px-4 py-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleGroupToggle(group.items, !groupState.isChecked)}
+                        className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors cursor-pointer mr-2"
+                      >
+                        {groupState.isChecked ? "Deselect Group" : "Select Group"}
+                      </button>
+                    </td>
+                  </tr>
+                  {group.items.map((mod) => {
+                    const modState = getModuleState(mod);
+                    const modsPerms = modState.perms;
+                    return (
+                      <tr key={mod} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-6 py-3 font-medium">
+                          <div className="text-sm text-foreground">{mod}</div>
+                          {mod === "Dashboard" && (
+                            <div className="mt-2">
+                              <Select
+                                value={permissions.dashboard_type || "employee"}
+                                onValueChange={(val) => handleSpecialToggle("dashboard_type", val)}
+                              >
+                                <SelectTrigger className="w-[180px] h-8 text-xs bg-background">
+                                  <SelectValue placeholder="Select dashboard" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="executive">Executive</SelectItem>
+                                  <SelectItem value="payroll_admin">Payroll Admin</SelectItem>
+                                  <SelectItem value="manager">Manager</SelectItem>
+                                  <SelectItem value="employee">Employee</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                        </td>
+                        {/* Individual module Select All */}
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center">
+                            <TriStateCheckbox
+                              id={`row-all-${mod}`}
+                              checked={modState.isChecked}
+                              indeterminate={modState.isIndeterminate}
+                              onChange={(checked) => handleModuleAllToggle(mod, checked)}
+                              title={`Toggle all permissions for ${mod}`}
+                              className="accent-primary"
+                            />
                           </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-3 text-center">
-                        <input
-                          type="checkbox"
-                          checked={modsPerms.view}
-                          onChange={(e) => handleToggle(mod, "view", e.target.checked)}
-                          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
-                        />
-                      </td>
-                      <td className="px-6 py-3 text-center">
-                        <input
-                          type="checkbox"
-                          checked={modsPerms.create}
-                          onChange={(e) => handleToggle(mod, "create", e.target.checked)}
-                          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
-                        />
-                      </td>
-                      <td className="px-6 py-3 text-center">
-                        <input
-                          type="checkbox"
-                          checked={modsPerms.update}
-                          onChange={(e) => handleToggle(mod, "update", e.target.checked)}
-                          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
-                        />
-                      </td>
-                      <td className="px-6 py-3 text-center">
-                        <input
-                          type="checkbox"
-                          checked={modsPerms.delete}
-                          onChange={(e) => handleToggle(mod, "delete", e.target.checked)}
-                          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </Fragment>
-            ))}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={modsPerms.view}
+                            onChange={(e) => handleToggle(mod, "view", e.target.checked)}
+                            className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={modsPerms.create}
+                            onChange={(e) => handleToggle(mod, "create", e.target.checked)}
+                            className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={modsPerms.update}
+                            onChange={(e) => handleToggle(mod, "update", e.target.checked)}
+                            className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={modsPerms.delete}
+                            onChange={(e) => handleToggle(mod, "delete", e.target.checked)}
+                            className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -1773,7 +2174,7 @@ function RolePermissionsTab() {
 
           <div className="flex items-center justify-between p-3 border rounded-md bg-background">
             <div className="space-y-0.5">
-              <Label className="text-sm font-medium">Approve Payroll (CEO)</Label>
+              <Label className="text-sm font-medium">Approve Payroll</Label>
               <div className="text-xs text-muted-foreground">
                 Receive review notifications and accept/reject.
               </div>
@@ -1799,7 +2200,7 @@ function RolePermissionsTab() {
 
           <div className="flex items-center justify-between p-3 border rounded-md bg-background">
             <div className="space-y-0.5">
-              <Label className="text-sm font-medium">Add Compensation (CEO/Admin)</Label>
+              <Label className="text-sm font-medium">Add Compensation</Label>
               <div className="text-xs text-muted-foreground">
                 Exclusive permission to add CTC, Bonus, and PF for new employees.
               </div>
@@ -2578,18 +2979,38 @@ function BrandingTab() {
 
   useEffect(() => {
     if (!user) return;
-    sitesApi.getAll().then((sites) => {
-      // Find site where this user is contact_email or matching their employee site
-      const mySite = sites.find(
-        (s: any) =>
-          (s.contactEmail && s.contactEmail.toLowerCase() === user.email.toLowerCase()) ||
-          (s.contact_email && s.contact_email.toLowerCase() === user.email.toLowerCase())
-      );
-      if (mySite) {
-        setSite(mySite);
-        setBrandingText(mySite.branding_text || "");
-        if (mySite.logo) {
-          setPreview(getMediaUrl(mySite.logo));
+    sitesApi.getAll().then((sites: any) => {
+      const allSites = Array.isArray(sites) ? sites : (sites as any)?.results || [];
+      if (allSites.length > 0) {
+        // Exclude sub-sites; target the main site created in Super Admin sites (is_sub_site is false)
+        const nonSubSites = allSites.filter((s: any) => !s.is_sub_site && !s.isSubSite);
+        const candidates = nonSubSites.length > 0 ? nonSubSites : allSites;
+
+        const mainSite =
+          candidates.find(
+            (s: any) =>
+              (s.modules && s.modules.length > 0) ||
+              s.productType ||
+              s.product_type ||
+              s.activateDate ||
+              s.activate_date
+          ) ||
+          candidates.find(
+            (s: any) =>
+              (user.site_name && s.name && s.name.toLowerCase() === user.site_name.toLowerCase()) ||
+              (s.contactEmail && s.contactEmail.toLowerCase() === user.email?.toLowerCase()) ||
+              (s.contact_email && s.contact_email.toLowerCase() === user.email?.toLowerCase())
+          ) ||
+          [...candidates].sort((a: any, b: any) => (a.id || 0) - (b.id || 0))[0] ||
+          allSites[0];
+
+        if (mainSite) {
+          setSite(mainSite);
+          setBrandingText(mainSite.branding_text || mainSite.brandingText || user.branding_text || "");
+          const logo = mainSite.logo || user.logo_url;
+          if (logo) {
+            setPreview(getMediaUrl(logo));
+          }
         }
       }
       setLoading(false);
@@ -2633,13 +3054,22 @@ function BrandingTab() {
   };
 
   if (loading) return <div className="text-slate-500">Loading your site settings...</div>;
-  if (!site) return <div className="text-slate-500">No site associated with your account. Only Site Admins can configure branding.</div>;
+  if (!site) return <div className="text-slate-500">No main site available to configure branding for your account.</div>;
 
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <h3 className="text-lg font-medium text-slate-900">Site Branding</h3>
-        <p className="text-sm text-slate-500">Personalize your site's logo and title. These changes will reflect across your site's emails and dashboard.</p>
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg font-medium text-slate-900">Site Branding</h3>
+          {site?.name && (
+            <Badge variant="outline" className="text-xs font-normal">
+              Main Site: {site.name}
+            </Badge>
+          )}
+        </div>
+        <p className="text-sm text-slate-500">
+          Personalize your main site's logo and title. These changes will reflect across your site's emails, sidebar, and dashboard.
+        </p>
       </div>
       <div className="space-y-4 max-w-md">
         <div className="space-y-2">

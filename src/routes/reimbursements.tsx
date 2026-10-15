@@ -198,9 +198,14 @@ function ReimbPage() {
         actions={(r) => {
           const empId = r.employee || r.employeeId || r.employee_id;
           const emp = employees.find((e: any) => e.id == empId);
-          const isManager = emp?.manager === user?.employee_id;
-          const isHR = ["super_admin", "group_hr", "entity_hr", "site_admin", "manager"].includes(user?.role || "");
-          const canApprove = (isManager || isHR) && user?.employee_id !== empId;
+          const isManager = emp && (
+            String(emp.manager) === String(user?.id) ||
+            String(emp.manager) === String(user?.employee_id) ||
+            String(emp.manager_id) === String(user?.id) ||
+            String(emp.manager_id) === String(user?.employee_id)
+          );
+          const hasApprovalPerm = Boolean(user?.permissions?.can_approve) || Boolean(user?.permissions?.["Reimbursements"]?.update);
+          const canApprove = (isManager || hasApprovalPerm) && String(user?.employee_id) !== String(empId);
 
           return r.status === "Pending" ? (
             canApprove ? (

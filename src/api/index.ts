@@ -173,8 +173,9 @@ const apiCall = async (url: string, method: string = "GET", body?: any, isBlob: 
 
   if (!res.ok) {
     let errMsg = res.statusText;
+    let errBody: any = null;
     try {
-      const errBody = await res.json();
+      errBody = await res.json();
       if (errBody && errBody.message) errMsg = errBody.message;
       else if (errBody && errBody.error) errMsg = errBody.error;
       else if (errBody && errBody.detail) errMsg = errBody.detail;
@@ -182,7 +183,10 @@ const apiCall = async (url: string, method: string = "GET", body?: any, isBlob: 
     } catch (e) {
       /* ignore */
     }
-    throw new Error(errMsg);
+    const err = new Error(errMsg);
+    (err as any).data = errBody;
+    (err as any).response = { data: errBody, status: res.status };
+    throw err;
   }
   if (method === "DELETE") return null;
   return isBlob ? res.blob() : res.json();
@@ -496,6 +500,9 @@ export const payrollApi = {
     if (params.entity) qs += `&entity=${encodeURIComponent(params.entity)}`;
     if (params.include_leaves_encashment) qs += `&include_leaves_encashment=true`;
     return apiCall(`/payroll/preview/${qs}`);
+  },
+  validatePrerequisites: async (payload: { entity_ids?: string[] | number[]; entity?: string | number; period?: string }): Promise<any> => {
+    return apiCall("/payroll/runs/validate_prerequisites/", "POST", payload);
   },
 };
 

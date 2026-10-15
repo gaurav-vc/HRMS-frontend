@@ -58,7 +58,7 @@ const MODULES = [
   { group: "Overview", items: ["Dashboard"] },
   {
     group: "Organisation",
-    items: ["Entities", "Branches", "Sites", "Departments", "Designations", "Roles & Users"],
+    items: ["Entities", "Branches", "Sub Sites", "Departments", "Designations", "Roles & Users"],
   },
   {
     group: "People",
@@ -207,7 +207,7 @@ function SitesPage() {
     }
   };
 
-  if (!user?.is_superuser && user?.role !== "super_admin") {
+  if (!user?.is_superuser) {
     return <Navigate to="/" />;
   }
 
