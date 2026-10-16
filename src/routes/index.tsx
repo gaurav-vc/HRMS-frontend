@@ -204,8 +204,9 @@ function Index() {
   if (!user) return null;
   if (user.is_superuser) return null;
 
-  // Use dynamic permissions dashboard_type if available, otherwise fallback to standard role
-  const dashType = user.permissions?.dashboard_type || user.role;
+  // Dynamic dashboard type resolution: check user.dashboard_type, user.permissions?.dashboard_type, then user.role
+  const rawDash = user.dashboard_type || user.permissions?.dashboard_type || user.role || "employee";
+  const dashType = String(rawDash).toLowerCase();
 
   if (dashType === "employee") return <EmployeeDashboard data={data} isRefreshing={isRefreshing} onRefresh={() => refreshStats(true)} />;
   if (dashType === "manager") return <ManagerDashboard data={data} isRefreshing={isRefreshing} onRefresh={() => refreshStats(true)} />;

@@ -12,6 +12,7 @@ interface User {
   avatar?: string;
   permissions?: any;
   role_name?: string;
+  dashboard_type?: string;
   employee_id?: string | number;
   is_superuser?: boolean;
   site_name?: string;
