@@ -812,6 +812,10 @@ function RoleForm({
           canManageUsers: initialData?.can_manage_users ?? initialData?.canManageUsers ?? false,
           canApprove: initialData?.can_approve ?? initialData?.canApprove ?? false,
           crossDepartmentAccess: initialData?.cross_department_access ?? initialData?.crossDepartmentAccess ?? false,
+          canRunPayroll: Boolean(initialData?.permissions?.can_run_payroll),
+          canApprovePayroll: Boolean(initialData?.permissions?.can_approve_payroll || initialData?.can_approve),
+          canViewConfidentialPayroll: Boolean(initialData?.permissions?.can_view_confidential_payroll),
+          canAddCtc: Boolean(initialData?.permissions?.can_add_ctc),
         }
       : {
           name: "",
@@ -826,6 +830,10 @@ function RoleForm({
           crossDepartmentAccess: false,
           permissions: {},
           allowedEntities: [],
+          canRunPayroll: false,
+          canApprovePayroll: false,
+          canViewConfidentialPayroll: false,
+          canAddCtc: false,
         },
   );
 
@@ -867,10 +875,29 @@ function RoleForm({
       }
       delete payload.allowedEntities;
 
+      // Special workflow permissions (dynamically configurable for ANY role)
+      payload.permissions.can_run_payroll = Boolean(form.canRunPayroll);
+      payload.permissions.can_approve_payroll = Boolean(form.canApprovePayroll);
+      payload.permissions.can_view_confidential_payroll = Boolean(form.canViewConfidentialPayroll);
+      payload.permissions.can_add_ctc = Boolean(form.canAddCtc);
+
+      if (form.canRunPayroll) {
+        payload.permissions["Run Payroll"] = { ...(payload.permissions["Run Payroll"] || {}), view: true, create: true };
+      }
+      if (form.canApprovePayroll) {
+        payload.can_approve = true;
+        payload.permissions["Run Payroll"] = { ...(payload.permissions["Run Payroll"] || {}), view: true, update: true };
+      }
+
+      delete payload.canRunPayroll;
+      delete payload.canApprovePayroll;
+      delete payload.canViewConfidentialPayroll;
+      delete payload.canAddCtc;
+
       // Map camelCase to snake_case for backend
       payload.dashboard_type = payload.dashboardType;
       payload.can_manage_users = payload.canManageUsers;
-      payload.can_approve = payload.canApprove;
+      payload.can_approve = Boolean(form.canApprove || form.canApprovePayroll);
       payload.cross_department_access = payload.crossDepartmentAccess;
       payload.access_scope = payload.accessScope;
       payload.reporting_to = payload.reportingTo;
@@ -878,7 +905,6 @@ function RoleForm({
 
       delete payload.dashboardType;
       delete payload.canManageUsers;
-      delete payload.canApprove;
       delete payload.crossDepartmentAccess;
       delete payload.accessScope;
       delete payload.reportingTo;
@@ -1157,6 +1183,61 @@ function RoleForm({
               onCheckedChange={(v) => setForm({ ...form, crossDepartmentAccess: v })}
               className="data-[state=checked]:bg-primary"
             />
+          </div>
+        </div>
+
+        <div className="col-span-2 p-4 border rounded-md bg-muted/10 space-y-3 mt-2">
+          <div className="space-y-0.5">
+            <Label className="text-sm font-semibold">Special Workflow Permissions</Label>
+            <p className="text-xs text-muted-foreground">
+              Dynamically configure payroll execution, approvals, and compensation access for this role.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-4 pt-1">
+            <div className="flex items-center justify-between p-2.5 border rounded-md bg-background">
+              <div className="space-y-0.5">
+                <Label className="text-xs font-medium">Run Payroll</Label>
+                <div className="text-[11px] text-muted-foreground">Calculate & execute payroll runs</div>
+              </div>
+              <Switch
+                checked={form.canRunPayroll}
+                onCheckedChange={(v) => setForm({ ...form, canRunPayroll: v })}
+                className="data-[state=checked]:bg-primary"
+              />
+            </div>
+            <div className="flex items-center justify-between p-2.5 border rounded-md bg-background">
+              <div className="space-y-0.5">
+                <Label className="text-xs font-medium">Approve Payroll</Label>
+                <div className="text-[11px] text-muted-foreground">Review & approve pending runs</div>
+              </div>
+              <Switch
+                checked={form.canApprovePayroll}
+                onCheckedChange={(v) => setForm({ ...form, canApprovePayroll: v })}
+                className="data-[state=checked]:bg-primary"
+              />
+            </div>
+            <div className="flex items-center justify-between p-2.5 border rounded-md bg-background">
+              <div className="space-y-0.5">
+                <Label className="text-xs font-medium">View Confidential Payroll</Label>
+                <div className="text-[11px] text-muted-foreground">See raw gross & net amounts</div>
+              </div>
+              <Switch
+                checked={form.canViewConfidentialPayroll}
+                onCheckedChange={(v) => setForm({ ...form, canViewConfidentialPayroll: v })}
+                className="data-[state=checked]:bg-primary"
+              />
+            </div>
+            <div className="flex items-center justify-between p-2.5 border rounded-md bg-background">
+              <div className="space-y-0.5">
+                <Label className="text-xs font-medium">Add Compensation</Label>
+                <div className="text-[11px] text-muted-foreground">Assign CTC, bonus & PF</div>
+              </div>
+              <Switch
+                checked={form.canAddCtc}
+                onCheckedChange={(v) => setForm({ ...form, canAddCtc: v })}
+                className="data-[state=checked]:bg-primary"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -1851,10 +1932,19 @@ function RolePermissionsTab() {
       if (finalPerms["Sub Sites"]) {
         finalPerms["Sites"] = finalPerms["Sub Sites"];
       }
-      await rolesApi.update(selectedRole, { permissions: finalPerms });
+      if (finalPerms.can_run_payroll) {
+        finalPerms["Run Payroll"] = { ...(finalPerms["Run Payroll"] || {}), view: true, create: true };
+      }
+      if (finalPerms.can_approve_payroll) {
+        finalPerms["Run Payroll"] = { ...(finalPerms["Run Payroll"] || {}), view: true, update: true };
+      }
+      await rolesApi.update(selectedRole, {
+        permissions: finalPerms,
+        can_approve: Boolean(finalPerms.can_approve_payroll || finalPerms.can_approve),
+      });
       toast.success("Permissions updated successfully");
       // Update local state roles
-      setRoles(roles.map((r) => (String(r.id) === selectedRole ? { ...r, permissions: finalPerms } : r)));
+      setRoles(roles.map((r) => (String(r.id) === selectedRole ? { ...r, permissions: finalPerms, can_approve: Boolean(finalPerms.can_approve_payroll || finalPerms.can_approve) } : r)));
       if (refreshUser) {
         await refreshUser();
       }

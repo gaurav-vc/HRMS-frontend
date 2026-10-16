@@ -167,7 +167,20 @@ export const canAccessRoute = (it: Item, user: any) => {
     }
   }
 
-  // 2. If user has explicit permissions (e.g. from role)
+  // 2. Special workflow permission checks
+  if (it.title === "Run Payroll") {
+    return Boolean(
+      user?.permissions?.can_run_payroll === true ||
+      user?.permissions?.can_run_payroll === "true" ||
+      user?.permissions?.can_run_payroll === 1 ||
+      user?.permissions?.can_approve_payroll === true ||
+      user?.permissions?.can_approve_payroll === "true" ||
+      user?.permissions?.can_approve_payroll === 1 ||
+      user?.permissions?.can_process_payroll === true
+    );
+  }
+
+  // 3. If user has explicit permissions (e.g. from role)
   if (user?.permissions) {
     let perm = user.permissions[it.title];
     if (!perm && (it.title === "Sub Sites" || it.title === "Subsites")) {

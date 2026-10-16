@@ -103,27 +103,34 @@ function RunPage() {
     return () => clearInterval(timer);
   }, []);
 
-  const canViewConfidential =
+  const canViewConfidential = Boolean(
     user?.permissions?.can_view_confidential_payroll === true ||
-    user?.permissions?.can_view_confidential === true ||
-    user?.permissions?.can_view_confidential_payroll === "true";
-  const canApprove =
-    user?.permissions?.can_approve_payroll === true ||
-    user?.permissions?.can_approve_payroll === "true";
+    user?.permissions?.can_view_confidential_payroll === "true" ||
+    user?.permissions?.can_view_confidential_payroll === 1
+  );
 
-  // Role based check for Maker
-  const isMaker =
+  // Strict IAM boundary: Only visible when special permission toggle is explicitly enabled
+  const isMaker = Boolean(
     user?.permissions?.can_run_payroll === true ||
-    user?.permissions?.can_process_payroll === true ||
-    user?.permissions?.can_run_payroll === "true";
+    user?.permissions?.can_run_payroll === "true" ||
+    user?.permissions?.can_run_payroll === 1
+  );
+
+  const canApprove = Boolean(
+    user?.permissions?.can_approve_payroll === true ||
+    user?.permissions?.can_approve_payroll === "true" ||
+    user?.permissions?.can_approve_payroll === 1
+  );
 
   return (
     <>
       {!isConfirming && (
         <PageHeader
-          title={isMaker ? "Run Payroll" : canApprove ? "Payroll Approvals" : "Payroll"}
+          title={isMaker && canApprove ? "Run & Approve Payroll" : isMaker ? "Run Payroll" : canApprove ? "Payroll Approvals" : "Payroll"}
           description={
-            isMaker
+            isMaker && canApprove
+              ? "Execute new payroll runs or review and approve pending runs"
+              : isMaker
               ? (user?.role_name ? `One-click ${user.role_name} mode or step-by-step HR wizard` : "One-click mode or step-by-step HR wizard")
               : canApprove
               ? "Review and approve pending payroll runs"
@@ -139,7 +146,7 @@ function RunPage() {
           }
         />
       )}
-      <Tabs defaultValue={isMaker ? "oneclick" : canApprove ? "approvals" : ""}>
+      <Tabs defaultValue={!isMaker && canApprove ? "approvals" : isMaker ? "oneclick" : canApprove ? "approvals" : ""}>
         {!isConfirming && (isMaker || canApprove) && (
           <TabsList
             className={`grid w-full max-w-xl h-11 ${
@@ -154,7 +161,7 @@ function RunPage() {
               <>
                 <TabsTrigger value="oneclick" className="text-sm">
                   <Sparkles className="h-4 w-4 mr-1.5" />
-                  One-Click
+                  Run Payroll (1-Click)
                 </TabsTrigger>
                 <TabsTrigger value="wizard" className="text-sm">
                   <FileCheck2 className="h-4 w-4 mr-1.5" />
@@ -165,7 +172,7 @@ function RunPage() {
             {canApprove && (
               <TabsTrigger value="approvals" className="text-sm relative">
                 <ShieldCheck className="h-4 w-4 mr-1.5" />
-                Approvals
+                Approve Payroll
               </TabsTrigger>
             )}
           </TabsList>
