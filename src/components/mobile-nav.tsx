@@ -11,17 +11,17 @@ import {
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth-context";
+import { isSuperAdminUser } from "@/lib/mock-data";
 
 export function MobileNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { toggleSidebar } = useSidebar();
   const { user } = useAuth();
 
-  const isSuperAdminMode = Boolean(user?.is_superuser);
+  const isSuperAdminMode = isSuperAdminUser(user);
 
   const navItems = isSuperAdminMode
     ? [
-        { title: "Dashboard", url: "/superadmin-dashboard", icon: LayoutDashboard },
         { title: "Orgs", url: "/organizations", icon: Network },
         { title: "Sites", url: "/superadmin-sites", icon: MapPin },
         { title: "Billing", url: "/billing-payments", icon: CreditCard },

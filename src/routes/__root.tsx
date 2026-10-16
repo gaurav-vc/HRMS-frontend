@@ -12,6 +12,7 @@ import React, { Component, useEffect, type ReactNode, type ErrorInfo } from "rea
 
 import appCss from "../styles.css?url";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { isSuperAdminUser } from "@/lib/mock-data";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileNav } from "@/components/mobile-nav";
@@ -249,14 +250,15 @@ function Shell() {
     }
 
     if (user && !isKioskRoute) {
-      const isSuperAdmin = Boolean(user.is_superuser);
+      const isSuperAdmin = isSuperAdminUser(user);
       const isSuperAdminRoute =
-        pathname.startsWith("/superadmin-") ||
         pathname.startsWith("/organizations") ||
-        pathname.startsWith("/billing-payments");
+        pathname.startsWith("/superadmin-sites") ||
+        pathname.startsWith("/billing-payments") ||
+        pathname.startsWith("/superadmin-");
 
       if (isSuperAdmin && !isSuperAdminRoute && pathname !== "/auth") {
-        router.navigate({ to: "/superadmin-dashboard", replace: true });
+        router.navigate({ to: "/organizations", replace: true });
       } else if (!isSuperAdmin && isSuperAdminRoute && pathname !== "/auth") {
         router.navigate({ to: "/", replace: true });
       }
@@ -271,11 +273,12 @@ function Shell() {
     return null;
   }
 
-  const isSuperAdmin = Boolean(user.is_superuser);
+  const isSuperAdmin = isSuperAdminUser(user);
   const isSuperAdminRoute =
-    pathname.startsWith("/superadmin-") ||
     pathname.startsWith("/organizations") ||
-    pathname.startsWith("/billing-payments");
+    pathname.startsWith("/superadmin-sites") ||
+    pathname.startsWith("/billing-payments") ||
+    pathname.startsWith("/superadmin-");
 
   if (isSuperAdmin && !isSuperAdminRoute) return null;
   if (!isSuperAdmin && isSuperAdminRoute) return null;

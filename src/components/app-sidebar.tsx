@@ -48,7 +48,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth-context";
-import type { Role } from "@/lib/mock-data";
+import { type Role, isSuperAdminUser } from "@/lib/mock-data";
 
 export interface Item {
   title: string;
@@ -143,7 +143,6 @@ export const SUPER_ADMIN_NAV: Group[] = [
   {
     label: "Super Admin",
     items: [
-      { title: "Dashboard", url: "/superadmin-dashboard", icon: LayoutDashboard },
       { title: "Organizations", url: "/organizations", icon: Network },
       { title: "Sites", url: "/superadmin-sites", icon: MapPin },
       { title: "Billing & Payments", url: "/billing-payments", icon: CreditCard },
@@ -207,7 +206,7 @@ export function AppSidebar() {
     });
   }, [user]);
 
-  const isSuperAdmin = Boolean(user?.is_superuser);
+  const isSuperAdmin = isSuperAdminUser(user);
   const can = (it: Item) => {
     if (isSuperAdmin) return true;
     return canAccessRoute(it, user);
@@ -221,7 +220,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-4 py-4 border-b border-sidebar-border">
-        <Link to={isSuperAdmin ? "/superadmin-dashboard" : "/"} className="flex items-center gap-2">
+        <Link to={isSuperAdmin ? "/organizations" : "/"} className="flex items-center gap-2">
           {branding.logo ? (
             <div className="h-10 w-auto flex items-center justify-center overflow-hidden shrink-0">
               <img src={getMediaUrl(branding.logo)} alt="Logo" className="max-h-full max-w-[80px] object-contain" />

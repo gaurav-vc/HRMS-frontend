@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
+import { isSuperAdminUser } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/billing-payments")({
   component: BillingPaymentsPage,
@@ -40,8 +41,8 @@ function BillingPaymentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const isExactParent = matchRoute({ to: "/billing-payments", fuzzy: false });
 
-  if (!user?.is_superuser) {
-    return <Navigate to="/" />;
+  if (!isSuperAdminUser(user)) {
+    return <Navigate to="/" replace />;
   }
 
   if (!isExactParent) {

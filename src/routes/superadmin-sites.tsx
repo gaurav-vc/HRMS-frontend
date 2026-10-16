@@ -27,6 +27,7 @@ import { Switch } from "@/components/ui/switch";
 import { z } from "zod";
 import { sitesApi, organizationsApi } from "@/api";
 import { useAuth } from "@/lib/auth-context";
+import { isSuperAdminUser } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/superadmin-sites")({
   validateSearch: z.object({
@@ -117,6 +118,10 @@ function SitesPage() {
     setRows(initial || []);
   }, [initial]);
 
+  if (!isSuperAdminUser(user)) {
+    return <Navigate to="/" replace />;
+  }
+
   const loadSites = async () => {
     try {
       const data = await sitesApi.getAll();
@@ -154,6 +159,7 @@ function SitesPage() {
       // Map camelCase fields to snake_case for DRF
       const payload = { 
         ...s,
+        is_sub_site: false,
         site_code: s.siteCode,
         product_type: s.productType,
         activate_date: s.activateDate,

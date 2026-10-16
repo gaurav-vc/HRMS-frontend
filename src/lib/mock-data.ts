@@ -16,6 +16,18 @@ export const ROLES: { value: Role; label: string }[] = [
   { value: "employee", label: "Employee" },
 ];
 
+export const isSuperAdminUser = (u: any): boolean => {
+  if (!u) return false;
+  return Boolean(
+    u.is_superuser === true ||
+    u.is_superuser === "true" ||
+    u.is_superuser === 1 ||
+    u.role === "super_admin" ||
+    u.role_name === "Super Admin" ||
+    (typeof u.username === "string" && u.username.toLowerCase().includes("super"))
+  );
+};
+
 export interface Entity {
   id: string;
   name: string;

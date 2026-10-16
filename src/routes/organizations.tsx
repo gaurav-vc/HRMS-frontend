@@ -32,6 +32,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { organizationsApi } from "@/api";
 import { useAuth } from "@/lib/auth-context";
+import { isSuperAdminUser } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/organizations")({
   component: OrganizationsPage,
@@ -67,7 +68,7 @@ function OrganizationsPage() {
     setRows(initial || []);
   }, [initial]);
 
-  if (!user?.is_superuser) {
+  if (!isSuperAdminUser(user)) {
     return <Navigate to="/" />;
   }
 

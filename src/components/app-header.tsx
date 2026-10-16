@@ -31,7 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth, roleLabel } from "@/lib/auth-context";
-import { ROLES, type Role } from "@/lib/mock-data";
+import { ROLES, type Role, isSuperAdminUser } from "@/lib/mock-data";
 import { notificationsApi, searchApi } from "@/api";
 import { NAV, SUPER_ADMIN_NAV, canAccessRoute } from "@/components/app-sidebar";
 import { ProfileModal } from "./profile-modal";
@@ -91,7 +91,7 @@ function GlobalSearch() {
           const q = query.toLowerCase();
           const routeResults: any[] = [];
 
-          const nav = Boolean(user?.is_superuser)
+          const nav = isSuperAdminUser(user)
             ? SUPER_ADMIN_NAV
             : NAV;
           nav.forEach((group) => {
@@ -125,7 +125,7 @@ function GlobalSearch() {
     <div className="relative hidden lg:block w-64" ref={containerRef}>
       <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
       <Input
-        placeholder={user?.is_superuser ? "Search pages, sites, organizations…" : "Search employees, sites…"}
+        placeholder={isSuperAdminUser(user) ? "Search organizations, sites, billings…" : "Search employees, sites…"}
         className="pl-8 h-9 bg-muted/50 border-muted focus-visible:bg-background"
         value={query}
         onChange={(e) => {
@@ -464,7 +464,7 @@ export function AppHeader() {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
           <DropdownMenuItem onClick={() => setIsProfileOpen(true)}>Profile</DropdownMenuItem>
-          {!user?.is_superuser && (
+          {!isSuperAdminUser(user) && (
             <DropdownMenuItem asChild>
               <Link to="/payroll/slips" search={{ period: undefined }} className="w-full cursor-pointer">
                 My Payslips

@@ -42,7 +42,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const initAuth = async () => {
       try {
         const raw = typeof localStorage !== "undefined" ? localStorage.getItem(KEY) : null;
-        if (raw && mounted) setUser(JSON.parse(raw));
+        if (raw && mounted) {
+          const parsed = JSON.parse(raw);
+          if (parsed && (parsed.role === "super_admin" || parsed.role_name === "Super Admin")) {
+            parsed.is_superuser = true;
+          }
+          setUser(parsed);
+        }
 
         // Background refresh of user data to ensure latest permissions
         const access =
@@ -51,24 +57,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             const me = await authApi.getMe();
             if (mounted) {
-                const updatedUser = {
-                  id: me.id,
-                  name:
-                    `${me.firstName || me.first_name || ""} ${me.lastName || me.last_name || ""}`.trim() ||
-                    me.email?.split("@")[0] ||
-                    "User",
-                  username: me.username || "",
-                  email: me.email,
-                  role: (me.role as Role) || "employee",
-                  permissions: me.permissions || {},
-                  role_name: me.roleName || me.role_name || "",
-                  employee_id: me.employeeId || me.employee_id,
-                  avatar: me.photoUrl || me.photo_url,
+              const isSuper = Boolean(me.is_superuser || me.isSuperuser || me.role === "super_admin" || me.role_name === "Super Admin");
+              const updatedUser = {
+                id: me.id,
+                name:
+                  `${me.firstName || me.first_name || ""} ${me.lastName || me.last_name || ""}`.trim() ||
+                  me.email?.split("@")[0] ||
+                  "User",
+                username: me.username || "",
+                email: me.email,
+                role: (me.role as Role) || (isSuper ? "super_admin" : "employee"),
+                permissions: me.permissions || {},
+                role_name: me.roleName || me.role_name || (isSuper ? "Super Admin" : ""),
+                employee_id: me.employeeId || me.employee_id,
+                avatar: me.photoUrl || me.photo_url,
                 site_name: me.siteName || me.site_name,
                 org_name: me.orgName || me.org_name,
                 branding_text: me.brandingText || me.branding_text,
                 logo_url: me.logoUrl || me.logo_url,
-                is_superuser: me.is_superuser,
+                is_superuser: isSuper,
               };
               setUser(updatedUser);
               if (typeof localStorage !== "undefined") {
@@ -120,22 +127,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem("refresh_token", res.refresh);
       }
       const me = await authApi.getMe();
+      const isSuper = Boolean(me.is_superuser || me.isSuperuser || me.role === "super_admin" || me.role_name === "Super Admin");
       persist(
         {
           id: me.id,
           name: `${me.firstName || me.first_name || ""} ${me.lastName || me.last_name || ""}`.trim() || email.split("@")[0],
           username: me.username || email.split("@")[0],
           email: email,
-          role: (me.role as Role) || "employee",
+          role: (me.role as Role) || (isSuper ? "super_admin" : "employee"),
           permissions: me.permissions || {},
-          role_name: me.role_name || "",
+          role_name: me.role_name || (isSuper ? "Super Admin" : ""),
           employee_id: me.employee_id || me.employeeId,
           avatar: me.photoUrl || me.photo_url,
           site_name: me.siteName || me.site_name,
           org_name: me.orgName || me.org_name,
           branding_text: me.brandingText || me.branding_text,
           logo_url: me.logoUrl || me.logo_url,
-          is_superuser: me.is_superuser,
+          is_superuser: isSuper,
         },
         res.access,
         res.refresh,
@@ -161,6 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const me = await authApi.getMe();
       if (me) {
+        const isSuper = Boolean(me.is_superuser ?? user?.is_superuser ?? (me.role === "super_admin" || user?.role === "super_admin" || me.role_name === "Super Admin" || user?.role_name === "Super Admin"));
         const updatedUser: User = {
           id: me.id ?? user?.id,
           name:
@@ -170,16 +179,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             "User",
           username: me.username || user?.username || "",
           email: me.email || user?.email || "",
-          role: (me.role as Role) || user?.role || "employee",
+          role: (me.role as Role) || user?.role || (isSuper ? "super_admin" : "employee"),
           permissions: me.permissions || {},
-          role_name: me.roleName || me.role_name || "",
+          role_name: me.roleName || me.role_name || (isSuper ? "Super Admin" : ""),
           employee_id: me.employeeId || me.employee_id || user?.employee_id,
           avatar: me.photoUrl || me.photo_url || user?.avatar,
           site_name: me.siteName || me.site_name || user?.site_name,
           org_name: me.orgName || me.org_name || user?.org_name,
           branding_text: me.brandingText || me.branding_text || user?.branding_text,
           logo_url: me.logoUrl || me.logo_url || user?.logo_url,
-          is_superuser: me.is_superuser ?? user?.is_superuser,
+          is_superuser: isSuper,
         };
         persist(
           updatedUser,
