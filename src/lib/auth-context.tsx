@@ -18,6 +18,7 @@ interface User {
   org_name?: string;
   branding_text?: string;
   logo_url?: string;
+  site_modules?: string[];
 }
 interface AuthCtx {
   user: User | null;
@@ -75,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 org_name: me.orgName || me.org_name,
                 branding_text: me.brandingText || me.branding_text,
                 logo_url: me.logoUrl || me.logo_url,
+                site_modules: me.siteModules || me.site_modules,
                 is_superuser: isSuper,
               };
               setUser(updatedUser);
@@ -143,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           org_name: me.orgName || me.org_name,
           branding_text: me.brandingText || me.branding_text,
           logo_url: me.logoUrl || me.logo_url,
+          site_modules: me.siteModules || me.site_modules,
           is_superuser: isSuper,
         },
         res.access,

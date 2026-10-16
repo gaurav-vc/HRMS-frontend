@@ -151,7 +151,23 @@ export const SUPER_ADMIN_NAV: Group[] = [
 ];
 
 export const canAccessRoute = (it: Item, user: any) => {
-  // If user has explicit permissions (e.g. from a custom role)
+  if (!user) return false;
+
+  // 1. Strict Site Module Boundary: If user's site has assigned modules, item MUST be in site_modules
+  if (user?.site_modules && Array.isArray(user.site_modules)) {
+    const siteMods = user.site_modules;
+    const itemTitle = it.title;
+    const isAllowedBySite =
+      siteMods.includes(itemTitle) ||
+      ((itemTitle === "Sub Sites" || itemTitle === "Subsites" || itemTitle === "Sites") &&
+        (siteMods.includes("Sub Sites") || siteMods.includes("Subsites") || siteMods.includes("Sites")));
+
+    if (!isAllowedBySite) {
+      return false; // Strictly blocked by site module boundary
+    }
+  }
+
+  // 2. If user has explicit permissions (e.g. from role)
   if (user?.permissions) {
     let perm = user.permissions[it.title];
     if (!perm && (it.title === "Sub Sites" || it.title === "Subsites")) {
@@ -163,8 +179,8 @@ export const canAccessRoute = (it: Item, user: any) => {
     }
   }
   
-  // Default fallback for normal employees
-  if (user?.role === "employee") {
+  // 3. Default fallback for normal employees only if permissions dictionary is not set
+  if (user?.role === "employee" && (!user?.permissions || Object.keys(user.permissions).length === 0)) {
     const defaultEmployeeModules = [
       "Dashboard",
       "My Calendar",

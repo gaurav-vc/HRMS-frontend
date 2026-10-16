@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, MoreHorizontal, ChevronDown, Check, Info, Send } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { isSuperAdminUser } from "@/lib/mock-data";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Pagination,
@@ -1582,7 +1583,7 @@ function TriStateCheckbox({
 }
 
 function RolePermissionsTab() {
-  const { refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [roles, setRoles] = useState<any[]>([]);
   const [entities, setEntities] = useState<any[]>([]);
   const [selectedRole, setSelectedRole] = useState<string>("");
@@ -1614,13 +1615,34 @@ function RolePermissionsTab() {
     }
   }, [selectedRole, roles]);
 
-  const allModuleNames = useMemo(() => MODULES.flatMap((g) => g.items), []);
+  // Dynamically restrict available modules to the site's assigned modules
+  const availableModules = useMemo(() => {
+    if (!user?.site_modules || !Array.isArray(user.site_modules) || isSuperAdminUser(user)) {
+      return MODULES;
+    }
+    const siteMods = user.site_modules;
+    return MODULES.map((group) => {
+      const allowedItems = group.items.filter((item) => {
+        if (siteMods.includes(item)) return true;
+        if ((item === "Sub Sites" || item === "Sites") && (siteMods.includes("Sub Sites") || siteMods.includes("Sites"))) {
+          return true;
+        }
+        return false;
+      });
+      return {
+        group: group.group,
+        items: allowedItems,
+      };
+    }).filter((g) => g.items.length > 0);
+  }, [user]);
+
+  const allModuleNames = useMemo(() => availableModules.flatMap((g) => g.items), [availableModules]);
 
   // Filter modules based on search query
   const filteredModules = useMemo(() => {
-    if (!searchQuery.trim()) return MODULES;
+    if (!searchQuery.trim()) return availableModules;
     const q = searchQuery.toLowerCase().trim();
-    return MODULES.map((group) => {
+    return availableModules.map((group) => {
       const groupMatches = group.group.toLowerCase().includes(q);
       const matchingItems = group.items.filter((item) => item.toLowerCase().includes(q));
       return {
@@ -1628,7 +1650,7 @@ function RolePermissionsTab() {
         items: groupMatches ? group.items : matchingItems,
       };
     }).filter((group) => group.items.length > 0);
-  }, [searchQuery]);
+  }, [searchQuery, availableModules]);
 
   // Master Select All calculations
   const totalMasterCount = useMemo(() => {

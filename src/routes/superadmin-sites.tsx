@@ -159,6 +159,7 @@ function SitesPage() {
       // Map camelCase fields to snake_case for DRF
       const payload = { 
         ...s,
+        modules: (s.modules || []).map((m: any) => (typeof m === "string" ? m : m?.name)).filter(Boolean),
         is_sub_site: false,
         site_code: s.siteCode,
         product_type: s.productType,
@@ -737,7 +738,7 @@ function SiteDialog({ open, onOpenChange, site, onSave, organizations, mode, loc
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-6">
                   {group.items.map((mod) => {
-                    const isSelected = (form.modules || []).includes(mod);
+                    const isSelected = (form.modules || []).some((m: any) => (typeof m === "string" ? m === mod : m?.name === mod));
 
                     return (
                       <div
