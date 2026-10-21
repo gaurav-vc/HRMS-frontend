@@ -16,8 +16,11 @@ import {
   ChevronsUpDown,
   X,
   Camera,
+  KeyRound,
 } from "lucide-react";
 import { EmployeePhotoModal } from "@/components/employee-photo-modal";
+import { EmployeeExportModal } from "@/components/employee-export-modal";
+import { ResetPasswordDialog } from "@/components/reset-password-dialog";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -128,6 +131,10 @@ function EmployeesPage() {
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [selectedEmployeeForPhoto, setSelectedEmployeeForPhoto] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("directory");
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportRows, setExportRows] = useState<any[]>([]);
+  const [resetPassEmp, setResetPassEmp] = useState<any | null>(null);
+  const [resetPassOpen, setResetPassOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const matchRoute = useMatchRoute();
 
@@ -372,7 +379,29 @@ function EmployeesPage() {
               })),
               predicate: (r: any, v: any) => r.status === v,
             },
+            {
+              label: "Group Category",
+              key: "group_category",
+              options: Array.from(new Set(rows.map((r: any) => r.groupCategory || r.group_category || "General"))).map((g) => ({
+                value: g,
+                label: g,
+              })),
+              predicate: (r: any, v: any) => (r.groupCategory || r.group_category || "General") === v,
+            },
+            {
+              label: "Grade Category",
+              key: "grade_category",
+              options: Array.from(new Set(rows.map((r: any) => r.gradeCategory || r.grade_category || "Unassigned"))).map((g) => ({
+                value: g,
+                label: g,
+              })),
+              predicate: (r: any, v: any) => (r.gradeCategory || r.grade_category || "Unassigned") === v,
+            },
           ]}
+          onCustomExport={(filteredRows) => {
+            setExportRows(filteredRows);
+            setExportModalOpen(true);
+          }}
           onCreate={() => {
             setEditing(null);
             setOpen(true);
@@ -507,6 +536,26 @@ function EmployeesPage() {
                 designations.find((d: any) => String(d.id) === String(r.designation))?.title ?? "—",
             },
             {
+              key: "group_category",
+              header: "Group Category",
+              accessor: (r: any) => r.groupCategory || r.group_category || "General",
+              render: (r: any) => (
+                <Badge variant="outline" className="font-normal text-xs bg-slate-50 border-slate-300">
+                  {r.groupCategory || r.group_category || "General"}
+                </Badge>
+              ),
+            },
+            {
+              key: "grade_category",
+              header: "Grade Category",
+              accessor: (r: any) => r.gradeCategory || r.grade_category || "Unassigned",
+              render: (r: any) => (
+                <Badge variant="secondary" className="font-normal text-xs">
+                  {r.gradeCategory || r.grade_category || "Unassigned"}
+                </Badge>
+              ),
+            },
+            {
               key: "manager",
               header: "Reporting Manager",
               accessor: (r: any) => {
@@ -611,6 +660,19 @@ function EmployeesPage() {
                   <Pencil className="h-4 w-4" />
                 </Button>
               )}
+              {canUpdate && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  title="Reset Password & Send Email"
+                  onClick={() => {
+                    setResetPassEmp(r);
+                    setResetPassOpen(true);
+                  }}
+                >
+                  <KeyRound className="h-4 w-4 text-amber-600" />
+                </Button>
+              )}
               {canDelete && (
                 <Button size="icon" variant="ghost" onClick={() => handleDelete(r.id)}>
                   <Trash2 className="h-4 w-4 text-destructive" />
@@ -637,6 +699,17 @@ function EmployeesPage() {
         open={photoModalOpen}
         onOpenChange={setPhotoModalOpen}
         employee={selectedEmployeeForPhoto}
+        onSuccess={() => router.invalidate()}
+      />
+      <EmployeeExportModal
+        open={exportModalOpen}
+        onOpenChange={setExportModalOpen}
+        employees={exportRows.length > 0 ? exportRows : rows}
+      />
+      <ResetPasswordDialog
+        open={resetPassOpen}
+        onOpenChange={setResetPassOpen}
+        employee={resetPassEmp}
         onSuccess={() => router.invalidate()}
       />
     </div>
@@ -683,6 +756,8 @@ function EmployeeDialog({
     dob: "",
     doj: "",
     gender: "Male",
+    groupCategory: "General",
+    gradeCategory: "Unassigned",
     taxRegime: "New",
     taxSavingDeductions: 0,
   };
@@ -1128,6 +1203,20 @@ function EmployeeDialog({
                         ? "On Leave: Active account on scheduled leave."
                         : "Draft: Unsaved onboarding draft."}
                     </p>
+                  </Field>
+                  <Field label="Group Category">
+                    <Input
+                      placeholder="e.g. Staff, Worker, Retainer, Executive, Management"
+                      value={form.groupCategory || form.group_category || ""}
+                      onChange={(e) => setForm({ ...form, groupCategory: e.target.value })}
+                    />
+                  </Field>
+                  <Field label="Grade Category">
+                    <Input
+                      placeholder="e.g. Grade A, Grade B, Grade C, L1, L2, L3"
+                      value={form.gradeCategory || form.grade_category || ""}
+                      onChange={(e) => setForm({ ...form, gradeCategory: e.target.value })}
+                    />
                   </Field>
                 </div>
               </div>

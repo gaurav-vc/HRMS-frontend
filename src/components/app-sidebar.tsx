@@ -34,6 +34,7 @@ import {
   CreditCard,
   Inbox,
   UserMinus,
+  Megaphone,
 } from "lucide-react";
 import {
   Sidebar,
@@ -76,6 +77,7 @@ export const NAV: Group[] = [
     label: "People",
     items: [
       { title: "Employees", url: "/employees", icon: UserSquare2 },
+      { title: "Announcements", url: "/announcements", icon: Megaphone },
       { title: "My Calendar", url: "/my-calendar", icon: CalendarDays },
       { title: "Offer Letters", url: "/offer-letters", icon: FileText },
       { title: "Offer Templates", url: "/offer-templates", icon: LayoutTemplate },
@@ -196,6 +198,7 @@ export const canAccessRoute = (it: Item, user: any) => {
   if (user?.role === "employee" && (!user?.permissions || Object.keys(user.permissions).length === 0)) {
     const defaultEmployeeModules = [
       "Dashboard",
+      "Announcements",
       "My Calendar",
       "Attendance",
       "QR Check-in",

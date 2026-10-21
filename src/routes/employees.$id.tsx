@@ -1,5 +1,6 @@
 import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -14,7 +15,9 @@ import {
   User,
   Loader2,
   Trash2,
+  KeyRound,
 } from "lucide-react";
+import { ResetPasswordDialog } from "@/components/reset-password-dialog";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -206,6 +209,7 @@ function EmployeeDetail() {
   const [isSaving, setIsSaving] = useState(false);
   const [newManagerId, setNewManagerId] = useState("");
   const [isSavingManager, setIsSavingManager] = useState(false);
+  const [resetPassOpen, setResetPassOpen] = useState(false);
 
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
@@ -268,6 +272,17 @@ function EmployeeDetail() {
     ? desgsArray.find((d: any) => String(d.id) === String(manager.designation))?.title
     : null;
   const managerDisplay = manager ? `${managerName}${managerDesg ? ` (${managerDesg})` : ""}` : "—";
+
+  const { user } = useAuth();
+  const canResetCredentials = useMemo(() => {
+    if (!user) return false;
+    if (user.is_superuser) return true;
+    const dynamicRole = user.dynamic_role;
+    if (["Corporate", "Region"].includes(dynamicRole?.access_scope)) return true;
+    if (dynamicRole?.can_manage_users) return true;
+    const perms = user.permissions || dynamicRole?.permissions || {};
+    return Boolean(perms["Employees"]?.update || perms["Employees"]?.manage);
+  }, [user]);
 
   const handleSaveManager = async () => {
     if (!newManagerId) {
@@ -338,10 +353,19 @@ function EmployeeDetail() {
               </span>
             </div>
           </div>
-          <div className="text-right shrink-0">
-            <div className="text-xs uppercase text-muted-foreground">Annual CTC</div>
-            <div className="text-2xl font-semibold text-primary">{fmtINR(e.ctc || 0)}</div>
+          <div className="text-right">
             <div className="text-xs text-muted-foreground">Code: {e.code}</div>
+            {canResetCredentials && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-2 text-xs gap-1.5"
+                onClick={() => setResetPassOpen(true)}
+              >
+                <KeyRound className="h-3.5 w-3.5 text-amber-600" />
+                Reset Password
+              </Button>
+            )}
           </div>
         </div>
       </Card>
@@ -471,29 +495,39 @@ function EmployeeDetail() {
                       </span>
                     </div>
                     <div className="space-y-2">
-                      {Object.entries(log.changes || {}).map(([field, vals]: [string, any]) => (
-                        <div
-                          key={field}
-                          className="text-sm grid grid-cols-[120px_1fr] gap-2 items-center"
-                        >
-                          <span className="font-medium text-slate-700 capitalize">
-                            {field.replace(/_/g, " ")}:
-                          </span>
-                          {vals.old !== undefined || vals.new !== undefined ? (
-                            <span className="text-slate-600">
-                              <span className="line-through text-red-400 mr-2">
-                                {vals.old || "None"}
-                              </span>
-                              <ArrowLeft className="inline w-3 h-3 mx-1 text-slate-400 rotate-180" />
-                              <span className="text-green-600 font-medium ml-2">
-                                {vals.new || "None"}
-                              </span>
+                      {Object.entries(log.changes || {}).map(([field, vals]: [string, any]) => {
+                        const isPromotion = field === "designation" || field === "role";
+                        return (
+                          <div
+                            key={field}
+                            className={`text-sm grid grid-cols-[140px_1fr] gap-2 items-center p-1.5 rounded ${
+                              isPromotion ? "bg-emerald-500/10 border border-emerald-500/20" : ""
+                            }`}
+                          >
+                            <span className="font-medium text-slate-700 capitalize flex items-center gap-1.5">
+                              {field.replace(/_/g, " ")}:
+                              {isPromotion && (
+                                <Badge className="text-[10px] h-4 px-1.5 bg-emerald-600 text-white font-normal">
+                                  Promotion / Role Change
+                                </Badge>
+                              )}
                             </span>
-                          ) : (
-                            <span className="text-slate-600">{vals}</span>
-                          )}
-                        </div>
-                      ))}
+                            {vals.old !== undefined || vals.new !== undefined ? (
+                              <span className="text-slate-600">
+                                <span className="line-through text-red-500 mr-2 font-medium">
+                                  {vals.old || "None"}
+                                </span>
+                                <ArrowLeft className="inline w-3 h-3 mx-1 text-slate-400 rotate-180" />
+                                <span className="text-emerald-700 dark:text-emerald-400 font-semibold ml-2">
+                                  {vals.new || "None"}
+                                </span>
+                              </span>
+                            ) : (
+                              <span className="text-slate-600">{vals}</span>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
@@ -510,6 +544,8 @@ function EmployeeDetail() {
             <FieldRO label="Department" value={dept?.name ?? "—"} />
             <FieldRO label="Designation" value={desg?.title ?? "—"} />
             <FieldRO label="Grade" value={desg?.grade ?? "—"} />
+            <FieldRO label="Group Category" value={e.groupCategory || e.group_category || "General"} />
+            <FieldRO label="Grade Category" value={e.gradeCategory || e.grade_category || "Unassigned"} />
             <FieldRO label="Reporting Manager" value={managerName} />
           </Card>
         )}
@@ -686,6 +722,12 @@ function EmployeeDetail() {
           </Card>
         )}
       </div>
+      <ResetPasswordDialog
+        open={resetPassOpen}
+        onOpenChange={setResetPassOpen}
+        employee={rawE}
+        onSuccess={() => router.invalidate()}
+      />
     </div>
   );
 }

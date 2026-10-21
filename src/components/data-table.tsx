@@ -61,6 +61,7 @@ interface Props<T> {
   rowKey: (row: T) => string;
   tableId?: string;
   onRowClick?: (row: T) => void;
+  onCustomExport?: (filteredRows: T[]) => void;
 }
 
 interface SavedView {
@@ -85,6 +86,7 @@ export function DataTable<T>({
   rowKey,
   tableId,
   onRowClick,
+  onCustomExport,
 }: Props<T>) {
   const storageKey = tableId ? `dt:${tableId}` : null;
   const [q, setQ] = useState("");
@@ -322,7 +324,7 @@ export function DataTable<T>({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Button variant="outline" size="sm" onClick={exportCsv}>
+        <Button variant="outline" size="sm" onClick={onCustomExport ? () => onCustomExport(filtered) : exportCsv}>
           <Download className="h-4 w-4 mr-1" />
           Export CSV
         </Button>

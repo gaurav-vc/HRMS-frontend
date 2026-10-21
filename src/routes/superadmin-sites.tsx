@@ -65,6 +65,7 @@ const MODULES = [
     group: "People",
     items: [
       "Employees",
+      "Announcements",
       "My Calendar",
       "Offer Letters",
       "Offer Templates",

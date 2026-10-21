@@ -135,6 +135,10 @@ export interface Employee {
   pfApplicable?: boolean;
   taxRegime?: string;
   taxSavingDeductions?: number | string;
+  groupCategory?: string;
+  group_category?: string;
+  gradeCategory?: string;
+  grade_category?: string;
 }
 export interface Attendance {
   id: string;

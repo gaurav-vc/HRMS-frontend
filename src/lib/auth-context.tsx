@@ -20,6 +20,10 @@ interface User {
   branding_text?: string;
   logo_url?: string;
   site_modules?: string[];
+  dynamic_role?: any;
+  access_scope?: string;
+  has_all_entity_access?: boolean;
+  can_manage_users?: boolean;
 }
 interface AuthCtx {
   user: User | null;
@@ -78,6 +82,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 branding_text: me.brandingText || me.branding_text,
                 logo_url: me.logoUrl || me.logo_url,
                 site_modules: me.siteModules || me.site_modules,
+                access_scope: me.accessScope || me.access_scope || me.permissions?.access_scope,
+                has_all_entity_access: Boolean(me.hasAllEntityAccess || me.has_all_entity_access || me.permissions?.has_all_entity_access),
+                can_manage_users: Boolean(me.canManageUsers || me.can_manage_users || me.permissions?.can_manage_users),
                 is_superuser: isSuper,
               };
               setUser(updatedUser);

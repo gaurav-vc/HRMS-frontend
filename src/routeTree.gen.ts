@@ -34,6 +34,7 @@ import { Route as BillingPaymentsRouteImport } from './routes/billing-payments'
 import { Route as BillingHelpRouteImport } from './routes/billing-help'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AttendanceRouteImport } from './routes/attendance'
+import { Route as AnnouncementsRouteImport } from './routes/announcements'
 import { Route as AllOffersRouteImport } from './routes/all-offers'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PayrollIndexRouteImport } from './routes/payroll.index'
@@ -186,6 +187,11 @@ const AttendanceRoute = AttendanceRouteImport.update({
   path: '/attendance',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnnouncementsRoute = AnnouncementsRouteImport.update({
+  id: '/announcements',
+  path: '/announcements',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AllOffersRoute = AllOffersRouteImport.update({
   id: '/all-offers',
   path: '/all-offers',
@@ -320,6 +326,7 @@ const AttendanceFaceRoute = AttendanceFaceRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/all-offers': typeof AllOffersRoute
+  '/announcements': typeof AnnouncementsRoute
   '/attendance': typeof AttendanceRouteWithChildren
   '/auth': typeof AuthRoute
   '/billing-help': typeof BillingHelpRoute
@@ -373,6 +380,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/all-offers': typeof AllOffersRoute
+  '/announcements': typeof AnnouncementsRoute
   '/auth': typeof AuthRoute
   '/billing-help': typeof BillingHelpRoute
   '/billing-payments': typeof BillingPaymentsRouteWithChildren
@@ -425,6 +433,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/all-offers': typeof AllOffersRoute
+  '/announcements': typeof AnnouncementsRoute
   '/attendance': typeof AttendanceRouteWithChildren
   '/auth': typeof AuthRoute
   '/billing-help': typeof BillingHelpRoute
@@ -480,6 +489,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/all-offers'
+    | '/announcements'
     | '/attendance'
     | '/auth'
     | '/billing-help'
@@ -533,6 +543,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/all-offers'
+    | '/announcements'
     | '/auth'
     | '/billing-help'
     | '/billing-payments'
@@ -584,6 +595,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/all-offers'
+    | '/announcements'
     | '/attendance'
     | '/auth'
     | '/billing-help'
@@ -638,6 +650,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AllOffersRoute: typeof AllOffersRoute
+  AnnouncementsRoute: typeof AnnouncementsRoute
   AttendanceRoute: typeof AttendanceRouteWithChildren
   AuthRoute: typeof AuthRoute
   BillingHelpRoute: typeof BillingHelpRoute
@@ -846,6 +859,13 @@ declare module '@tanstack/react-router' {
       path: '/attendance'
       fullPath: '/attendance'
       preLoaderRoute: typeof AttendanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/announcements': {
+      id: '/announcements'
+      path: '/announcements'
+      fullPath: '/announcements'
+      preLoaderRoute: typeof AnnouncementsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/all-offers': {
@@ -1121,6 +1141,7 @@ const PayrollRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AllOffersRoute: AllOffersRoute,
+  AnnouncementsRoute: AnnouncementsRoute,
   AttendanceRoute: AttendanceRouteWithChildren,
   AuthRoute: AuthRoute,
   BillingHelpRoute: BillingHelpRoute,

@@ -192,7 +192,7 @@ function NotificationBell() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user || user.is_superuser) return;
+    if (!user) return;
     
     const fetchNotifs = () => {
       notificationsApi
@@ -215,8 +215,6 @@ function NotificationBell() {
       .then(() => setNotifs((n) => n.filter((x) => x.id !== id)))
       .catch(() => {});
   };
-
-  if (user?.is_superuser) return null;
 
   return (
     <DropdownMenu>
@@ -248,7 +246,12 @@ function NotificationBell() {
                   <DropdownMenuItem
                     key={n.id}
                     className="p-3 border-b last:border-0 hover:bg-muted/50 cursor-pointer flex-col items-start"
-                    onSelect={() => markRead(n.id)}
+                    onSelect={() => {
+                      markRead(n.id);
+                      if (n.title?.startsWith("Announcement")) {
+                        navigate({ to: "/announcements" });
+                      }
+                    }}
                   >
                     <div className="flex justify-between items-start w-full">
                       <div className="font-medium text-sm">{n.title}</div>

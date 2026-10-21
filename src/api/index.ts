@@ -82,6 +82,7 @@ const apiCall = async (url: string, method: string = "GET", body?: any, isBlob: 
   if (url.startsWith("/organizations")) base = "/api/admin_org";
   if (url.startsWith("/invoices")) base = "/api/admin_org";
   if (url.startsWith("/reports")) base = "/api";
+  if (url.startsWith("/announcements")) base = "/api";
   if (url.startsWith("/api")) base = ""; // direct path
 
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
@@ -225,6 +226,8 @@ export const employeesApi = {
     apiCall(`/employees/${id}/`, "PATCH", data),
   delete: async (id: string | number) => apiCall(`/employees/${id}/`, "DELETE"),
   getAuditLogs: async (id: string | number) => apiCall(`/employees/${id}/audit_logs/`),
+  resetCredentials: async (id: string | number, data: any) =>
+    apiCall(`/employees/${id}/reset_credentials/`, "POST", data),
 
   bulkImport: async (file: File): Promise<any> => {
     const formData = new FormData();
@@ -614,4 +617,11 @@ export const ctcImportApi = {
     return apiCall("/payroll/import-ctc/upload/", "POST", formData);
   },
   downloadTemplate: `${API_BASE_URL}/api/payroll/import-ctc/template/`,
+};
+
+export const announcementsApi = {
+  getAll: async (): Promise<any> => apiCall("/announcements/"),
+  create: async (data: FormData | any): Promise<any> => apiCall("/announcements/", "POST", data),
+  delete: async (id: string | number): Promise<any> => apiCall(`/announcements/${id}/`, "DELETE"),
+  markRead: async (id: string | number): Promise<any> => apiCall(`/announcements/${id}/mark_read/`, "POST"),
 };

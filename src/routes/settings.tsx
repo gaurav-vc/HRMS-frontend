@@ -1509,6 +1509,7 @@ const MODULES = [
     group: "People",
     items: [
       "Employees",
+      "Announcements",
       "My Calendar",
       "Offer Letters",
       "Offer Templates",
@@ -2324,37 +2325,25 @@ function AttendanceSettingsTab() {
       }
 
       const res = await attendancePoliciesApi.getAll(params);
+      const list = Array.isArray(res) ? res : (res as any)?.results || [];
 
-      // If we got results, use the first one
-      if (Array.isArray(res) && res.length > 0) {
-        const p = res[0];
+      // If we got results, use the first matching one
+      if (list.length > 0) {
+        const p = list[0];
         setPolicyId(p.id);
         setFormData({
-          maxLateMinutes: p.maxLateMinutes ?? p.max_late_minutes,
-          halfDayHours: parseFloat(p.halfDayHours ?? p.half_day_hours),
-          fullDayHours: parseFloat(p.fullDayHours ?? p.full_day_hours),
+          maxLateMinutes: p.maxLateMinutes ?? p.max_late_minutes ?? 15,
+          halfDayHours: parseFloat(p.halfDayHours ?? p.half_day_hours ?? 4.0),
+          fullDayHours: parseFloat(p.fullDayHours ?? p.full_day_hours ?? 8.0),
           otApplicableAfterHours: parseFloat(
             (p.otApplicableAfterHours ?? p.ot_applicable_after_hours) || 2.0,
           ),
-          requireFace: p.requireFace ?? p.require_face,
-          requireQr: p.requireQr ?? p.require_qr,
-          requireGps: p.requireGps ?? p.require_gps,
-          wfhEmployees: (p.wfhEmployees ?? p.wfh_employees ?? []).map(String),
-        });
-      } else if (res && res.results && res.results.length > 0) {
-        const p = res.results[0];
-        setPolicyId(p.id);
-        setFormData({
-          maxLateMinutes: p.maxLateMinutes ?? p.max_late_minutes,
-          halfDayHours: parseFloat(p.halfDayHours ?? p.half_day_hours),
-          fullDayHours: parseFloat(p.fullDayHours ?? p.full_day_hours),
-          otApplicableAfterHours: parseFloat(
-            (p.otApplicableAfterHours ?? p.ot_applicable_after_hours) || 2.0,
+          requireFace: p.requireFace ?? p.require_face ?? true,
+          requireQr: p.requireQr ?? p.require_qr ?? true,
+          requireGps: p.requireGps ?? p.require_gps ?? true,
+          wfhEmployees: (p.wfhEmployees ?? p.wfh_employees ?? []).map((x: any) =>
+            String(typeof x === "object" && x !== null ? x.id : x),
           ),
-          requireFace: p.requireFace ?? p.require_face,
-          requireQr: p.requireQr ?? p.require_qr,
-          requireGps: p.requireGps ?? p.require_gps,
-          wfhEmployees: (p.wfhEmployees ?? p.wfh_employees ?? []).map(String),
         });
       } else {
         // No policy found for this scope, reset to defaults
@@ -2388,7 +2377,8 @@ function AttendanceSettingsTab() {
         require_face: formData.requireFace,
         require_qr: formData.requireQr,
         require_gps: formData.requireGps,
-        wfh_employees: formData.wfhEmployees,
+        wfh_employees: formData.wfhEmployees.map(Number),
+        wfhEmployees: formData.wfhEmployees.map(Number),
       };
       if (selectedEmployeeId) {
         payload.employee = selectedEmployeeId;
@@ -2398,16 +2388,27 @@ function AttendanceSettingsTab() {
       }
 
       if (policyId) {
-        await attendancePoliciesApi.update(policyId, payload);
+        const res = await attendancePoliciesApi.update(policyId, payload);
+        if (res && res.id) setPolicyId(res.id);
         toast.success("Attendance Policy updated!");
+        await fetchPolicy();
       } else {
         const res = await attendancePoliciesApi.create(payload);
-        setPolicyId(res.id);
-        toast.success("Attendance Policy created!");
+        if (res && res.id) setPolicyId(res.id);
+        toast.success("Attendance Policy saved!");
+        await fetchPolicy();
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      toast.error("Failed to save policy");
+      let errMsg = "Failed to save policy";
+      if (e?.message) errMsg = e.message;
+      else if (typeof e === "object") {
+        const firstKey = Object.keys(e)[0];
+        if (firstKey && Array.isArray(e[firstKey])) {
+          errMsg = `${firstKey}: ${e[firstKey][0]}`;
+        }
+      }
+      toast.error(errMsg);
     } finally {
       setSaving(false);
     }
@@ -2639,9 +2640,10 @@ function AttendanceSettingsTab() {
               {formData.wfhEmployees.length > 0 && (
                 <div className="flex flex-wrap gap-2 pt-2">
                   {formData.wfhEmployees.map((empId) => {
-                    const emp = employees.find((e) => String(e.id) === empId);
-                    if (!emp) return null;
-                    const fullName = `${emp.first_name || emp.firstName || ""} ${emp.last_name || emp.lastName || ""}`.trim();
+                    const emp = employees.find((e) => String(e.id) === String(empId));
+                    const fullName = emp
+                      ? `${emp.first_name || emp.firstName || ""} ${emp.last_name || emp.lastName || ""}`.trim() || emp.code || `Employee #${empId}`
+                      : `Employee #${empId}`;
                     return (
                       <Badge key={empId} variant="secondary" className="px-3 py-1 flex items-center space-x-1 text-sm bg-background border shadow-sm">
                         <span>{fullName}</span>
@@ -2650,7 +2652,7 @@ function AttendanceSettingsTab() {
                           onClick={() => {
                             setFormData({
                               ...formData,
-                              wfhEmployees: formData.wfhEmployees.filter((id) => id !== empId),
+                              wfhEmployees: formData.wfhEmployees.filter((id) => String(id) !== String(empId)),
                             });
                           }}
                         />

@@ -161,6 +161,16 @@ function ShiftsPage() {
                 <span className="text-muted-foreground">OT multiplier</span>
                 <span className="font-medium">{shift.otMultiplier || 1}×</span>
               </div>
+              <div className="flex justify-between items-center text-xs pt-1 border-t border-dashed">
+                <span className="text-muted-foreground">OT Rule</span>
+                <span className="font-medium text-primary">
+                  {shift.isOtEnabled === false || shift.is_ot_enabled === false
+                    ? "Disabled"
+                    : parseFloat(String(shift.minHoursForOt || shift.min_hours_for_ot || 0)) > 0
+                    ? `Min ${shift.minHoursForOt || shift.min_hours_for_ot}h (Base ${shift.otCalculationBaseHours || shift.ot_calculation_base_hours || 8}h)`
+                    : "Standard (> 8h)"}
+                </span>
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-4 border-t border-border">
@@ -215,6 +225,9 @@ function ShiftDialog({
     otMultiplier: 1.5,
     colorHex: "#6366f1",
     isActive: true,
+    isOtEnabled: true,
+    minHoursForOt: 0,
+    otCalculationBaseHours: 8,
   };
   const [form, setForm] = useState<any>(shift ?? defaultForm);
 
@@ -310,6 +323,61 @@ function ShiftDialog({
                 }
               />
             </Field>
+          </div>
+
+          <div className="p-3 bg-muted/40 rounded-lg border space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-xs font-semibold text-foreground">Overtime (OT) Configuration</span>
+                <p className="text-[11px] text-muted-foreground">Threshold & base deduction rules</p>
+              </div>
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={form.isOtEnabled !== false && form.is_ot_enabled !== false}
+                  onChange={(e) =>
+                    setForm({ ...form, isOtEnabled: e.target.checked, is_ot_enabled: e.target.checked })
+                  }
+                  className="rounded border-input text-primary focus:ring-primary h-4 w-4"
+                />
+                <span className="text-xs font-medium">Enable OT</span>
+              </label>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Min Work Hours for OT">
+                <Input
+                  type="number"
+                  step="0.5"
+                  value={form.minHoursForOt ?? form.min_hours_for_ot ?? 0}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      minHoursForOt: parseFloat(e.target.value) || 0,
+                      min_hours_for_ot: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                  placeholder="e.g. 10.0"
+                />
+                <span className="text-[10px] text-muted-foreground">Worked &lt; this = 0 OT</span>
+              </Field>
+              <Field label="Base Shift Deduction">
+                <Input
+                  type="number"
+                  step="0.5"
+                  value={form.otCalculationBaseHours ?? form.ot_calculation_base_hours ?? 8}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      otCalculationBaseHours: parseFloat(e.target.value) || 8,
+                      ot_calculation_base_hours: parseFloat(e.target.value) || 8,
+                    })
+                  }
+                  placeholder="e.g. 8.0"
+                />
+                <span className="text-[10px] text-muted-foreground">Hours deducted for OT (e.g. 10h - 8h = 2h OT)</span>
+              </Field>
+            </div>
           </div>
         </div>
         <DialogFooter>
