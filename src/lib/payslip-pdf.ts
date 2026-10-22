@@ -255,27 +255,27 @@ export function openPayslipPdf(emp: Employee | any, period: string) {
 <style>
   *{box-sizing:border-box;}
   body{margin:0;padding:24px;color:#000;background:#fff;font-family:Arial,Helvetica,sans-serif;font-size:11px;}
-  .payslip-box{max-width:850px;margin:auto;border:1px solid #000;}
-  .header-container{text-align:center;padding:12px 10px 8px 10px;}
-  .entity-title{font-size:18px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;margin:0;}
-  .period-subtitle{font-size:12px;font-weight:normal;margin-top:4px;}
+  .payslip-box{max-width:900px;margin:auto;border:1px solid #000;}
+  .header-container{text-align:center;padding:14px 10px 10px 10px;}
+  .entity-title{font-size:19px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;margin:0;}
+  .period-subtitle{font-size:12px;font-weight:600;margin-top:4px;color:#334155;}
   
   .meta-table{width:100%;border-collapse:collapse;border-top:1px solid #000;border-bottom:1px solid #000;}
-  .meta-col{width:50%;vertical-align:top;padding:10px 12px;}
-  .meta-row{display:flex;margin-bottom:4px;line-height:1.5;}
-  .meta-label{width:145px;color:#000;}
-  .meta-val{font-weight:bold;color:#000;}
+  .meta-col{width:50%;vertical-align:top;padding:12px 14px;}
+  .meta-row{display:flex;margin-bottom:5px;line-height:1.5;}
+  .meta-label{width:160px;color:#475569;}
+  .meta-val{font-weight:bold;color:#0f172a;}
   
   .table-container{display:flex;width:100%;border-bottom:1px solid #000;}
   .earn-side{width:50%;border-right:1px solid #000;}
   .ded-side{width:50%;}
   .inner-table{width:100%;border-collapse:collapse;}
-  .inner-table th{border-bottom:1px solid #000;padding:6px 10px;font-size:11px;font-weight:bold;}
-  .total-row{border-top:1px solid #000;font-weight:bold;}
+  .inner-table th{border-bottom:1px solid #000;padding:8px 12px;font-size:12px;font-weight:bold;background:#f8fafc;}
+  .total-row{border-top:1px solid #000;font-weight:bold;background:#f8fafc;}
   
-  .net-box{padding:10px 12px;border-bottom:1px solid #000;}
-  .net-flex{display:flex;justify-content:space-between;align-items:center;}
-  .remarks-box{padding:10px 12px;min-height:44px;border-bottom:1px solid #000;}
+  .net-box{padding:12px 14px;border-bottom:1px solid #000;background:#f8fafc;}
+  .net-flex{display:flex;justify-content:space-between;align-items:center;font-weight:bold;font-size:13px;}
+  .remarks-box{padding:12px 14px;min-height:44px;border-bottom:1px solid #000;}
   .footer-text{text-align:center;padding:10px;font-size:10px;color:#333;}
   
   @media print{ body{padding:0;} .noprint{display:none;} }
@@ -317,17 +317,17 @@ export function openPayslipPdf(emp: Employee | any, period: string) {
         <div class="meta-row"><span class="meta-label">DOJ :</span><span>${formatDate(emp.doj)}</span></div>
         <div class="meta-row"><span class="meta-label">Department :</span><span>${emp.department || 'Department'}</span></div>
         <div class="meta-row"><span class="meta-label">Designation :</span><span>${emp.designation || 'Designation'}</span></div>
-        <div class="meta-row"><span class="meta-label">No. of. Workingdays :</span><span>${emp.totalDays || 30}</span></div>
-        <div class="meta-row"><span class="meta-label">Holidays :</span><span>${fmt(emp.holidays || emp.daysOff || 0)}</span></div>
-        <div class="meta-row"><span class="meta-label">No. of. Days Paid :</span><span>${fmt(emp.daysPaid ?? 30)}</span></div>
+        <div class="meta-row"><span class="meta-label">No. of. Workingdays :</span><span style="font-weight:600;">${emp.totalDays || 30}</span></div>
+        <div class="meta-row"><span class="meta-label">Holidays :</span><span style="font-weight:600;">${fmt(emp.holidays || emp.daysOff || 0)}</span></div>
+        <div class="meta-row"><span class="meta-label">No. of. Days Paid :</span><span style="font-weight:600;">${fmt(emp.daysPaid ?? 30)}</span></div>
       </td>
       <td class="meta-col">
         <div class="meta-row"><span class="meta-label">Location :</span><span>${emp.location || emp.entityName || 'Bangalore'}</span></div>
         <div class="meta-row"><span class="meta-label">Bank Name :</span><span>${emp.bankName || 'N/A'}</span></div>
-        <div class="meta-row"><span class="meta-label">Bank Account No. :</span><span>${emp.bankAccount || 'N/A'}</span></div>
-        <div class="meta-row"><span class="meta-label">LOP Days :</span><span>${fmt(emp.lopDays || 0)}</span></div>
-        <div class="meta-row"><span class="meta-label">PAN NO :</span><span>${emp.pan || 'N/A'}</span></div>
-        <div class="meta-row"><span class="meta-label">Extra days (OT Days) :</span><span>${fmt(emp.extraDays ?? (Number(emp.overtimeHours || emp.ot || 0) / 8))}</span></div>
+        <div class="meta-row"><span class="meta-label">Bank Account No. :</span><span style="font-family:monospace;">${emp.bankAccount || 'N/A'}</span></div>
+        <div class="meta-row"><span class="meta-label">LOP Days :</span><span style="font-weight:600;">${fmt(emp.lopDays || 0)}</span></div>
+        <div class="meta-row"><span class="meta-label">PAN NO :</span><span style="font-family:monospace;">${emp.pan || 'N/A'}</span></div>
+        <div class="meta-row"><span class="meta-label">Extra days (OT Days) :</span><span style="font-weight:600;">${fmt(emp.extraDays ?? (Number(emp.overtimeHours || emp.ot || 0) / 8))}</span></div>
       </td>
     </tr>
   </table>
@@ -338,16 +338,16 @@ export function openPayslipPdf(emp: Employee | any, period: string) {
         <thead>
           <tr>
             <th style="text-align:left;">Earnings</th>
-            <th style="text-align:right;width:85px;">Actual</th>
-            <th style="text-align:right;width:85px;">Earned</th>
+            <th style="text-align:right;width:110px;padding-right:12px;">Actual</th>
+            <th style="text-align:right;width:110px;padding-right:12px;">Earned</th>
           </tr>
         </thead>
         <tbody>
           ${earningsRowsHtml}
           <tr class="total-row">
-            <td style="padding:6px 10px;">Total Earnings:</td>
-            <td style="padding:6px 10px;text-align:right;font-family:monospace;">${fmt(totalActual)}</td>
-            <td style="padding:6px 10px;text-align:right;font-family:monospace;">${fmt(totalEarned)}</td>
+            <td style="padding:8px 12px;">Total Earnings:</td>
+            <td style="padding:8px 12px;text-align:right;font-family:monospace;font-weight:bold;">${fmt(totalActual)}</td>
+            <td style="padding:8px 12px;text-align:right;font-family:monospace;font-weight:bold;">${fmt(totalEarned)}</td>
           </tr>
         </tbody>
       </table>
@@ -357,14 +357,14 @@ export function openPayslipPdf(emp: Employee | any, period: string) {
         <thead>
           <tr>
             <th style="text-align:left;">Deductions</th>
-            <th style="text-align:right;width:95px;">Amount</th>
+            <th style="text-align:right;width:120px;padding-right:12px;">Amount</th>
           </tr>
         </thead>
         <tbody>
           ${deductionsRowsHtml}
           <tr class="total-row">
-            <td style="padding:6px 10px;">Total Deductions:</td>
-            <td style="padding:6px 10px;text-align:right;font-family:monospace;">${fmt(totalDeductions)}</td>
+            <td style="padding:8px 12px;">Total Deductions:</td>
+            <td style="padding:8px 12px;text-align:right;font-family:monospace;font-weight:bold;">${fmt(totalDeductions)}</td>
           </tr>
         </tbody>
       </table>

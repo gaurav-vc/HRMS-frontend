@@ -626,98 +626,98 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
   return (
     <div
       id="payslip-capture"
-      className="w-full max-w-[850px] mx-auto bg-white text-black p-5 font-sans text-xs border border-black shadow-none print:m-0 print:border-black print:max-w-none select-text"
+      className="w-full max-w-[900px] mx-auto bg-white text-black p-6 font-sans text-xs border border-black shadow-none print:m-0 print:border-black print:max-w-none select-text"
       style={{ color: "#000", backgroundColor: "#fff", fontFamily: 'Arial, Helvetica, sans-serif' }}
     >
       {/* Entity Header & Title */}
-      <div className="text-center pb-3 pt-0.5">
-        <h1 className="text-base sm:text-lg font-bold uppercase tracking-wider text-black m-0 leading-tight">
+      <div className="text-center pb-4 pt-1">
+        <h1 className="text-lg sm:text-xl font-bold uppercase tracking-wider text-black m-0 leading-tight">
           {entityTitle}
         </h1>
-        <div className="text-xs sm:text-sm font-normal text-black mt-1">
+        <div className="text-xs sm:text-sm font-medium text-slate-700 mt-1">
           Payslip for the month of {formatPeriodMonth(period)}
         </div>
       </div>
 
       {/* Top Information Box */}
-      <div className="border border-black grid grid-cols-2 text-[11px] leading-relaxed">
+      <div className="border border-black grid grid-cols-2 text-xs leading-relaxed">
         {/* Left Column */}
-        <div className="border-r border-black p-2.5 space-y-1">
-          <div className="grid grid-cols-[140px_1fr]">
-            <span>Name :</span>
-            <span className="font-semibold">{emp.firstName} {emp.lastName}</span>
+        <div className="border-r border-black p-3 space-y-1.5">
+          <div className="grid grid-cols-[160px_1fr]">
+            <span className="text-slate-700">Name :</span>
+            <span className="font-bold text-slate-950">{emp.firstName} {emp.lastName}</span>
           </div>
-          <div className="grid grid-cols-[140px_1fr]">
-            <span>EmpCode :</span>
-            <span className="font-semibold">{emp.code || "N/A"}</span>
+          <div className="grid grid-cols-[160px_1fr]">
+            <span className="text-slate-700">EmpCode :</span>
+            <span className="font-bold text-slate-950">{emp.code || "N/A"}</span>
           </div>
-          <div className="grid grid-cols-[140px_1fr]">
-            <span>DOJ :</span>
-            <span>{formatDate(emp.doj)}</span>
+          <div className="grid grid-cols-[160px_1fr]">
+            <span className="text-slate-700">DOJ :</span>
+            <span className="font-medium">{formatDate(emp.doj)}</span>
           </div>
-          <div className="grid grid-cols-[140px_1fr]">
-            <span>Department :</span>
-            <span>{emp.department || "Department"}</span>
+          <div className="grid grid-cols-[160px_1fr]">
+            <span className="text-slate-700">Department :</span>
+            <span className="font-medium">{emp.department || "Department"}</span>
           </div>
-          <div className="grid grid-cols-[140px_1fr]">
-            <span>Designation :</span>
-            <span>{emp.designation || "Designation"}</span>
+          <div className="grid grid-cols-[160px_1fr]">
+            <span className="text-slate-700">Designation :</span>
+            <span className="font-medium">{emp.designation || "Designation"}</span>
           </div>
-          <div className="grid grid-cols-[140px_1fr]">
-            <span>No. of. Workingdays :</span>
-            <span>{emp.totalDays || 30}</span>
+          <div className="grid grid-cols-[160px_1fr]">
+            <span className="text-slate-700">No. of. Workingdays :</span>
+            <span className="font-semibold">{emp.totalDays || 30}</span>
           </div>
-          <div className="grid grid-cols-[140px_1fr]">
-            <span>Holidays :</span>
-            <span>{fmt(emp.holidays || emp.daysOff || 0)}</span>
+          <div className="grid grid-cols-[160px_1fr]">
+            <span className="text-slate-700">Holidays :</span>
+            <span className="font-semibold">{fmt(emp.holidays || emp.daysOff || 0)}</span>
           </div>
-          <div className="grid grid-cols-[140px_1fr]">
-            <span>No. of. Days Paid :</span>
-            <span>{fmt(emp.daysPaid ?? 30)}</span>
+          <div className="grid grid-cols-[160px_1fr]">
+            <span className="text-slate-700">No. of. Days Paid :</span>
+            <span className="font-semibold">{fmt(emp.daysPaid ?? 30)}</span>
           </div>
         </div>
 
         {/* Right Column */}
-        <div className="p-2.5 space-y-1">
-          <div className="grid grid-cols-[140px_1fr]">
-            <span>Location :</span>
-            <span>{emp.location || emp.entityName || "Bangalore"}</span>
+        <div className="p-3 space-y-1.5">
+          <div className="grid grid-cols-[160px_1fr]">
+            <span className="text-slate-700">Location :</span>
+            <span className="font-medium">{emp.location || emp.entityName || "Bangalore"}</span>
           </div>
-          <div className="grid grid-cols-[140px_1fr]">
-            <span>Bank Name :</span>
-            <span>{emp.bankName || "N/A"}</span>
+          <div className="grid grid-cols-[160px_1fr]">
+            <span className="text-slate-700">Bank Name :</span>
+            <span className="font-medium">{emp.bankName || "N/A"}</span>
           </div>
-          <div className="grid grid-cols-[140px_1fr]">
-            <span>Bank Account No. :</span>
-            <span>{emp.bankAccount || "N/A"}</span>
+          <div className="grid grid-cols-[160px_1fr]">
+            <span className="text-slate-700">Bank Account No. :</span>
+            <span className="font-medium font-mono">{emp.bankAccount || "N/A"}</span>
           </div>
-          <div className="grid grid-cols-[140px_1fr]">
-            <span>LOP Days :</span>
-            <span>{fmt(emp.lopDays || 0)}</span>
+          <div className="grid grid-cols-[160px_1fr]">
+            <span className="text-slate-700">LOP Days :</span>
+            <span className="font-semibold">{fmt(emp.lopDays || 0)}</span>
           </div>
-          <div className="grid grid-cols-[140px_1fr]">
-            <span>PAN NO :</span>
-            <span>{emp.pan || "N/A"}</span>
+          <div className="grid grid-cols-[160px_1fr]">
+            <span className="text-slate-700">PAN NO :</span>
+            <span className="font-medium font-mono">{emp.pan || "N/A"}</span>
           </div>
-          <div className="grid grid-cols-[140px_1fr]">
-            <span>Extra days (OT Days) :</span>
-            <span>{fmt(emp.extraDays ?? (Number(emp.overtimeHours || emp.ot || 0) / 8))}</span>
+          <div className="grid grid-cols-[160px_1fr]">
+            <span className="text-slate-700">Extra days (OT Days) :</span>
+            <span className="font-semibold">{fmt(emp.extraDays ?? (Number(emp.overtimeHours || emp.ot || 0) / 8))}</span>
           </div>
         </div>
       </div>
 
       {/* Earnings & Deductions Table */}
-      <div className="border-x border-b border-black text-[11px]">
+      <div className="border-x border-b border-black text-xs">
         {/* Table Header */}
-        <div className="grid grid-cols-2 border-b border-black font-bold">
-          <div className="grid grid-cols-[1fr_85px_85px] px-2.5 py-1.5 border-r border-black">
+        <div className="grid grid-cols-2 border-b border-black font-bold bg-slate-50">
+          <div className="grid grid-cols-[1fr_110px_110px] px-3 py-2 border-r border-black">
             <span>Earnings</span>
-            <span className="text-right">Actual</span>
-            <span className="text-right">Earned</span>
+            <span className="text-right pr-1">Actual</span>
+            <span className="text-right pr-1">Earned</span>
           </div>
-          <div className="grid grid-cols-[1fr_95px] px-2.5 py-1.5">
+          <div className="grid grid-cols-[1fr_120px] px-3 py-2">
             <span>Deductions</span>
-            <span className="text-right">Amount</span>
+            <span className="text-right pr-1">Amount</span>
           </div>
         </div>
 
@@ -726,10 +726,10 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
           {/* Earnings Column */}
           <div className="border-r border-black">
             {earningsList.map((row, idx) => (
-              <div key={idx} className="grid grid-cols-[1fr_85px_85px] px-2.5 py-1 min-h-[22px]">
-                <span className="truncate pr-1">{row.name}</span>
-                <span className="text-right font-mono tabular-nums">{row.name ? fmt(row.actual) : ""}</span>
-                <span className="text-right font-mono tabular-nums">{row.name ? fmt(row.earned) : ""}</span>
+              <div key={idx} className="grid grid-cols-[1fr_110px_110px] px-3 py-1.5 min-h-[26px] items-center border-b border-slate-100 last:border-b-0">
+                <span className="truncate pr-2 font-normal text-slate-800">{row.name}</span>
+                <span className="text-right font-mono font-medium tabular-nums text-slate-900 pr-1">{row.name ? fmt(row.actual) : ""}</span>
+                <span className="text-right font-mono font-semibold tabular-nums text-slate-950 pr-1">{row.name ? fmt(row.earned) : ""}</span>
               </div>
             ))}
           </div>
@@ -737,43 +737,43 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
           {/* Deductions Column */}
           <div>
             {deductionsList.map((row, idx) => (
-              <div key={idx} className="grid grid-cols-[1fr_95px] px-2.5 py-1 min-h-[22px]">
-                <span className="truncate pr-1">{row.name}</span>
-                <span className="text-right font-mono tabular-nums">{row.name && row.amount !== null ? fmt(row.amount) : ""}</span>
+              <div key={idx} className="grid grid-cols-[1fr_120px] px-3 py-1.5 min-h-[26px] items-center border-b border-slate-100 last:border-b-0">
+                <span className="truncate pr-2 font-normal text-slate-800">{row.name}</span>
+                <span className="text-right font-mono font-semibold tabular-nums text-slate-950 pr-1">{row.name && row.amount !== null ? fmt(row.amount) : ""}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Total Row */}
-        <div className="grid grid-cols-2 border-t border-black font-bold">
-          <div className="grid grid-cols-[1fr_85px_85px] px-2.5 py-1.5 border-r border-black">
+        <div className="grid grid-cols-2 border-t border-black font-bold bg-slate-50">
+          <div className="grid grid-cols-[1fr_110px_110px] px-3 py-2 border-r border-black">
             <span>Total Earnings:</span>
-            <span className="text-right font-mono tabular-nums">{fmt(totalActual)}</span>
-            <span className="text-right font-mono tabular-nums">{fmt(totalEarned)}</span>
+            <span className="text-right font-mono tabular-nums pr-1">{fmt(totalActual)}</span>
+            <span className="text-right font-mono tabular-nums pr-1">{fmt(totalEarned)}</span>
           </div>
-          <div className="grid grid-cols-[1fr_95px] px-2.5 py-1.5">
+          <div className="grid grid-cols-[1fr_120px] px-3 py-2">
             <span>Total Deductions:</span>
-            <span className="text-right font-mono tabular-nums">{fmt(totalDeductions)}</span>
+            <span className="text-right font-mono tabular-nums pr-1">{fmt(totalDeductions)}</span>
           </div>
         </div>
       </div>
 
       {/* Net Pay Box */}
-      <div className="border-x border-b border-black p-2.5 text-[11px]">
-        <div className="flex justify-between items-center font-normal">
-          <span>Net Pay for the month ( Total Earnings - Total Deductions) :</span>
-          <span className="font-semibold text-xs font-mono tabular-nums">{fmt(netPay)}</span>
+      <div className="border-x border-b border-black p-3 text-xs bg-slate-50/50">
+        <div className="flex justify-between items-center">
+          <span className="font-semibold text-slate-800">Net Pay for the month (Total Earnings - Total Deductions) :</span>
+          <span className="font-bold text-sm font-mono tabular-nums text-slate-950">{fmt(netPay)}</span>
         </div>
-        <div className="font-medium mt-1">
+        <div className="font-semibold text-xs mt-1.5 text-slate-700 uppercase tracking-wide">
           {numberToWords(netPay)}
         </div>
       </div>
 
       {/* Remarks Box */}
-      <div className="border-x border-b border-black p-2.5 min-h-[44px] text-[11px]">
+      <div className="border-x border-b border-black p-3 min-h-[44px] text-xs">
         <span className="font-bold">Remarks :</span>
-        <span className="ml-2">{emp.remarks || ""}</span>
+        <span className="ml-2 font-medium text-slate-800">{emp.remarks || ""}</span>
       </div>
 
       {/* Footer */}

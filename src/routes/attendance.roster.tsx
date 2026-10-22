@@ -72,9 +72,14 @@ function RosterPage() {
 
   const days = Array.from({ length: 7 }).map((_, i) => addDays(currentWeekStart, i));
 
-  const handleCellClick = async (employeeId: number, dateStr: string) => {
+  const handleCellClick = async (employeeId: number, dateStr: string, dateObj: Date) => {
     if (!selectedShiftId) {
       toast.error("Please select a shift to assign first");
+      return;
+    }
+
+    if (dateObj.getDay() === 0) {
+      toast.error("Sunday is a weekly off. Shifts cannot be assigned on Sundays.");
       return;
     }
 
@@ -99,7 +104,7 @@ function RosterPage() {
 
     try {
       await attendanceApi.assignShift({
-        employee_id: employeeId, // Our DRF backend is camelCase for responses, but let's check what assignShift expects
+        employee_id: employeeId,
         date: dateStr,
         shift_id: parseInt(selectedShiftId),
       });
@@ -198,18 +203,19 @@ function RosterPage() {
               </th>
               {days.map((d) => {
                 const isCurrentDay = isToday(d);
+                const isSunday = d.getDay() === 0;
                 return (
                   <th
                     key={d.toISOString()}
-                    className={`px-4 py-3 font-medium border-r min-w-[140px] align-top relative ${isCurrentDay ? "bg-primary/5" : ""}`}
+                    className={`px-4 py-3 font-medium border-r min-w-[140px] align-top relative ${isCurrentDay ? "bg-primary/5" : isSunday ? "bg-muted/30" : ""}`}
                   >
                     {isCurrentDay && (
                       <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
                     )}
                     <div
-                      className={`text-xs uppercase ${isCurrentDay ? "text-primary font-bold" : "text-muted-foreground"}`}
+                      className={`text-xs uppercase ${isCurrentDay ? "text-primary font-bold" : isSunday ? "text-amber-600 dark:text-amber-400 font-bold" : "text-muted-foreground"}`}
                     >
-                      {format(d, "EEE")}
+                      {format(d, "EEE")} {isSunday ? "• OFF" : ""}
                     </div>
                     <div
                       className={`font-semibold ${isCurrentDay ? "text-primary" : "text-foreground"}`}
@@ -235,12 +241,13 @@ function RosterPage() {
                   const dateStr = format(d, "yyyy-MM-dd");
                   const assignment = (row.shifts || {})[dateStr];
                   const isCurrentDay = isToday(d);
+                  const isSunday = d.getDay() === 0;
 
                   return (
                     <td
                       key={dateStr}
-                      className={`p-1.5 border-r border-dashed cursor-pointer hover:bg-muted/80 transition-colors ${isCurrentDay ? "bg-primary/[0.03]" : ""}`}
-                      onClick={() => handleCellClick(row.employee?.id, dateStr)}
+                      className={`p-1.5 border-r border-dashed cursor-pointer hover:bg-muted/80 transition-colors ${isCurrentDay ? "bg-primary/[0.03]" : isSunday ? "bg-muted/15" : ""}`}
+                      onClick={() => handleCellClick(row.employee?.id, dateStr, d)}
                     >
                       {assignment && assignment.shiftDetails ? (
                         <div
@@ -260,6 +267,10 @@ function RosterPage() {
                           >
                             <X className="h-3 w-3" />
                           </button>
+                        </div>
+                      ) : isSunday ? (
+                        <div className="w-full h-full min-h-[44px] flex items-center justify-center text-[11px] text-muted-foreground/50 italic select-none">
+                          Weekly Off
                         </div>
                       ) : (
                         <div className="w-full h-full min-h-[44px] flex items-center justify-center opacity-0 hover:opacity-100">
