@@ -91,6 +91,7 @@ function AttendancePage() {
 
   // Compute some stats based on punch history
   const isVerified = (status: string) => status === "VERIFIED" || status === "PENDING_ML_INSTALL";
+  const totalPunchRecords = attendance.length;
   const qrVerified = attendance.filter((a) =>
     a.punches?.some(
       (p: any) =>
@@ -294,8 +295,8 @@ function AttendancePage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
         <StatCard
-          label="Today's Punches"
-          value={String(dashboard?.presentToday || 0)}
+          label="Total Punch Records"
+          value={String(totalPunchRecords)}
           icon={CalendarCheck2}
           tone="success"
         />

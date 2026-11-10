@@ -201,8 +201,8 @@ function ReimbPage() {
           const isManager = emp && (
             String(emp.manager) === String(user?.id) ||
             String(emp.manager) === String(user?.employee_id) ||
-            String(emp.manager_id) === String(user?.id) ||
-            String(emp.manager_id) === String(user?.employee_id)
+            String((emp as any).manager_id) === String(user?.id) ||
+            String((emp as any).manager_id) === String(user?.employee_id)
           );
           const hasApprovalPerm = Boolean(user?.permissions?.can_approve) || Boolean(user?.permissions?.["Reimbursements"]?.update);
           const canApprove = (isManager || hasApprovalPerm) && String(user?.employee_id) !== String(empId);

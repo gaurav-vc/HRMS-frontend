@@ -53,12 +53,24 @@ function ScanPunchPage() {
     : (loaderData.sites as any).results || [];
   const loaderError = (loaderData as any).error;
 
+  const canBypassGeofence = Boolean(
+    (user as any)?.is_wfh ||
+    user?.is_superuser ||
+    (user as any)?.can_bypass_geofence ||
+    user?.permissions?.can_bypass_geofence ||
+    user?.permissions?.bypass_geofence ||
+    user?.permissions?.attendance?.bypass_geofence ||
+    user?.permissions?.remote_punch ||
+    user?.permissions?.attendance?.remote_punch ||
+    ['corporate', 'region'].includes(String(user?.access_scope || '').toLowerCase())
+  );
+
   const [site, setSite] = useState<any>(sitesList.length === 1 ? sitesList[0] : null);
   const [step, setStep] = useState<ScanStep>(
     sitesList.length === 0 || loaderError
       ? "ERROR"
       : sitesList.length === 1
-        ? sitesList[0].qrEnabled === false
+        ? (sitesList[0].qrEnabled === false || canBypassGeofence)
           ? "FACE_LIVENESS"
           : "QR"
         : "SELECT_SITE",
@@ -92,7 +104,7 @@ function ScanPunchPage() {
       setSite(sitesList.length === 1 ? sitesList[0] : null);
       setStep(
         sitesList.length === 1
-          ? sitesList[0].qrEnabled === false
+          ? (sitesList[0].qrEnabled === false || canBypassGeofence)
             ? "FACE_LIVENESS"
             : "QR"
           : "SELECT_SITE",
@@ -213,7 +225,7 @@ function ScanPunchPage() {
       isSubmitting.current = false;
       return;
     }
-    if ((site && site.qrEnabled !== false && !qrToken) || !faceImageBlob || !location) return;
+    if ((site && site.qrEnabled !== false && !qrToken && !canBypassGeofence) || !faceImageBlob || !location) return;
     if (isSubmitting.current) return;
     isSubmitting.current = true;
 
@@ -224,6 +236,7 @@ function ScanPunchPage() {
           source: "ALL",
           latitude: location.lat.toString(),
           longitude: location.lng.toString(),
+          is_wfh: canBypassGeofence,
         };
         if (qrToken) payload.qr_token = qrToken;
         if (challengeId) payload.challenge_id = challengeId;

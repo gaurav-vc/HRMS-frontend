@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Navigation as NavigationIcon, MapPin, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { sitesApi, attendanceApi } from "@/api";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/attendance/gps")({
   loader: async () => {
@@ -17,18 +18,53 @@ export const Route = createFileRoute("/attendance/gps")({
 });
 
 function GpsPage() {
+  const { user } = useAuth();
   const { sites } = Route.useLoaderData();
   const site = sites[0]; // Assume first site for demo
 
-  const [pos, setPos] = useState({ lat: site?.latitude + 0.0005, lng: site?.longitude - 0.0003 });
+  const canBypassGeofence = Boolean(
+    (user as any)?.is_wfh ||
+    user?.is_superuser ||
+    (user as any)?.can_bypass_geofence ||
+    user?.permissions?.can_bypass_geofence ||
+    user?.permissions?.bypass_geofence ||
+    user?.permissions?.attendance?.bypass_geofence ||
+    user?.permissions?.remote_punch ||
+    user?.permissions?.attendance?.remote_punch ||
+    ['corporate', 'region'].includes(String(user?.access_scope || '').toLowerCase())
+  );
+
+  const [pos, setPos] = useState({
+    lat: (site?.latitude ?? 19.1368) + 0.0005,
+    lng: (site?.longitude ?? 72.8474) - 0.0003,
+  });
   const [loading, setLoading] = useState(false);
+
+  // Automatically acquire current location on mount
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setPos({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        (err) => {
+          console.warn("Could not auto-fetch GPS:", err);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+  }, []);
 
   if (!site) return <div className="p-8">No sites configured.</div>;
 
   const distance = Math.round(
-    Math.sqrt((pos.lat - site.latitude) ** 2 + (pos.lng - site.longitude) ** 2) * 111000,
+    Math.sqrt((pos.lat - (site.latitude ?? 0)) ** 2 + (pos.lng - (site.longitude ?? 0)) ** 2) * 111000,
   );
-  const inside = distance <= site.radius;
+  const inside = distance <= (site.radius ?? 150);
+  const canPunch = inside || canBypassGeofence;
 
   const handlePunch = async (punchType: "IN" | "OUT") => {
     setLoading(true);
@@ -38,10 +74,11 @@ function GpsPage() {
         source: "GPS",
         latitude: pos.lat,
         longitude: pos.lng,
+        is_wfh: canBypassGeofence,
       });
       toast.success(`Successfully punched ${punchType} via GPS!`);
-    } catch (err) {
-      toast.error("Failed to record punch.");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to record punch.");
     } finally {
       setLoading(false);
     }
@@ -100,7 +137,7 @@ function GpsPage() {
           <div className="grid sm:grid-cols-3 gap-4 mt-4">
             <Stat label="Latitude" value={pos.lat.toFixed(6)} />
             <Stat label="Longitude" value={pos.lng.toFixed(6)} />
-            <Stat label="Distance from site" value={`${distance} m`} highlight={!inside} />
+            <Stat label="Distance from site" value={`${distance} m`} highlight={!inside && !canBypassGeofence} />
           </div>
           <div className="flex gap-2 mt-4">
             <Button
@@ -135,12 +172,12 @@ function GpsPage() {
               <RefreshCw className={`h-4 w-4 mr-1 ${loading ? "animate-spin" : ""}`} />
               Fetch Real GPS
             </Button>
-            <Button disabled={!inside || loading} onClick={() => handlePunch("IN")}>
+            <Button disabled={!canPunch || loading} onClick={() => handlePunch("IN")}>
               <NavigationIcon className="h-4 w-4 mr-1" />
               Punch In
             </Button>
             <Button
-              disabled={!inside || loading}
+              disabled={!canPunch || loading}
               onClick={() => handlePunch("OUT")}
               variant="secondary"
             >
@@ -190,10 +227,12 @@ function GpsPage() {
                 className={
                   inside
                     ? "bg-success text-success-foreground"
-                    : "bg-destructive text-destructive-foreground"
+                    : canBypassGeofence
+                      ? "bg-emerald-500 text-white"
+                      : "bg-destructive text-destructive-foreground"
                 }
               >
-                {inside ? "Inside geofence" : "Outside"}
+                {inside ? "Inside geofence" : canBypassGeofence ? "Geofence Bypassed (Remote)" : "Outside geofence"}
               </Badge>
             </div>
           </div>
