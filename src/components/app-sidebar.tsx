@@ -158,7 +158,7 @@ export const canAccessRoute = (it: Item, user: any) => {
   if (!user) return false;
 
   // 1. Strict Site Module Boundary: If user's site has assigned modules, item MUST be in site_modules
-  if (user?.site_modules && Array.isArray(user.site_modules)) {
+  if (user?.site_modules && Array.isArray(user.site_modules) && user.site_modules.length > 0) {
     const siteMods = user.site_modules;
     const itemTitle = it.title;
     const isAllowedBySite =
