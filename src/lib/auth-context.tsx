@@ -139,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem("refresh_token", res.refresh);
       }
       const me = await authApi.getMe();
-      const isSuper = Boolean(me.is_superuser || me.isSuperuser || me.role === "super_admin" || me.role_name === "Super Admin");
+      const isSuper = Boolean(me.is_superuser || me.isSuperuser || me.role === "super_admin" || me.role_name === "Super Admin" || me.roleName === "Super Admin");
       persist(
         {
           id: me.id,
@@ -148,14 +148,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: email,
           role: (me.role as Role) || (isSuper ? "super_admin" : "employee"),
           permissions: me.permissions || {},
-          role_name: me.role_name || (isSuper ? "Super Admin" : ""),
-          employee_id: me.employee_id || me.employeeId,
+          role_name: me.roleName || me.role_name || (isSuper ? "Super Admin" : ""),
+          dashboard_type: me.dashboardType || me.dashboard_type || me.permissions?.dashboard_type,
+          employee_id: me.employeeId || me.employee_id,
           avatar: me.photoUrl || me.photo_url,
           site_name: me.siteName || me.site_name,
           org_name: me.orgName || me.org_name,
           branding_text: me.brandingText || me.branding_text,
           logo_url: me.logoUrl || me.logo_url,
           site_modules: me.siteModules || me.site_modules,
+          access_scope: me.accessScope || me.access_scope || me.permissions?.access_scope,
+          has_all_entity_access: Boolean(me.hasAllEntityAccess || me.has_all_entity_access || me.permissions?.has_all_entity_access),
+          can_manage_users: Boolean(me.canManageUsers || me.can_manage_users || me.permissions?.can_manage_users),
+          dynamic_role: me.dynamicRole || me.dynamic_role,
           is_superuser: isSuper,
         },
         res.access,
@@ -201,6 +206,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           org_name: me.orgName || me.org_name || user?.org_name,
           branding_text: me.brandingText || me.branding_text || user?.branding_text,
           logo_url: me.logoUrl || me.logo_url || user?.logo_url,
+          site_modules: me.siteModules || me.site_modules || user?.site_modules,
+          access_scope: me.accessScope || me.access_scope || me.permissions?.access_scope || user?.access_scope,
+          has_all_entity_access: Boolean(me.hasAllEntityAccess || me.has_all_entity_access || me.permissions?.has_all_entity_access || user?.has_all_entity_access),
+          can_manage_users: Boolean(me.canManageUsers || me.can_manage_users || me.permissions?.can_manage_users || user?.can_manage_users),
+          dashboard_type: me.dashboardType || me.dashboard_type || me.permissions?.dashboard_type || user?.dashboard_type,
+          dynamic_role: me.dynamicRole || me.dynamic_role || user?.dynamic_role,
           is_superuser: isSuper,
         };
         persist(
