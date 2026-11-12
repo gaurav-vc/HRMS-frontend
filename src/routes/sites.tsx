@@ -14,10 +14,9 @@ export const Route = createFileRoute("/sites")({
   component: SitesPage,
   loader: async () => {
     try {
-      const sites = await sitesApi.getAll({ is_sub_site: true });
+      const sites = await sitesApi.getAll();
       const sitesList = (sites as any)?.results || sites || [];
-      const filtered = sitesList.filter((s: any) => s.is_sub_site || s.isSubSite);
-      return { sites: filtered };
+      return { sites: sitesList };
     } catch {
       return { sites: [] };
     }
@@ -56,6 +55,8 @@ function SitesPage() {
       
       // The backend overrides parsers and uses raw JSONParser, so it expects snake_case for writes
       // even though it emits camelCase for reads.
+      const isExistingMain = editing && s.id && (!editing.is_sub_site && !editing.isSubSite);
+
       const data: any = {
         ...rest,
         qr_enabled: qrEnabled,
@@ -67,16 +68,20 @@ function SitesPage() {
         kiosk_pin: kioskPin || "1234",
         kiosk_token: kioskToken || undefined,
         site_code: rest.site_code || rest.siteCode,
-        is_sub_site: true,
       };
 
-      if (user?.site_id) {
-        data.parent_site = user.site_id;
+      if (isExistingMain) {
+        data.is_sub_site = false;
+      } else {
+        data.is_sub_site = true;
+        if (user?.site_id) {
+          data.parent_site = user.site_id;
+        }
       }
       
       if (editing && s.id) {
         await sitesApi.update(s.id, data);
-        toast.success("Sub Site updated successfully");
+        toast.success(isExistingMain ? "Site updated successfully" : "Sub Site updated successfully");
       } else {
         const { id, ...createData } = data;
         await sitesApi.create(createData);
@@ -86,7 +91,7 @@ function SitesPage() {
       setEditing(null);
       router.invalidate();
     } catch (err) {
-      toast.error("Failed to save sub site");
+      toast.error("Failed to save site");
     }
   };
 
@@ -114,27 +119,32 @@ function SitesPage() {
     );
   }
 
-  const subSites = rows.filter((r) => r.is_sub_site || r.isSubSite);
+  const sortedRows = [...rows].sort((a: any, b: any) => {
+    const aIsMain = !a.is_sub_site && !a.isSubSite;
+    const bIsMain = !b.is_sub_site && !b.isSubSite;
+    if (aIsMain && !bIsMain) return -1;
+    if (!aIsMain && bIsMain) return 1;
+    return (
+      new Date(b.createdAt || b.created_at || 0).getTime() -
+      new Date(a.createdAt || a.created_at || 0).getTime()
+    );
+  });
 
   const branches = Array.from(
-    new Set(subSites.map((r) => r.branch_name || r.branch || "Headquarters")),
+    new Set(rows.map((r) => r.branch_name || r.branch || "Headquarters")),
   ).filter(Boolean);
 
   return (
     <div className="p-6 space-y-6 bg-[#f9fafb] min-h-screen">
       <div>
-        <h1 className="text-[28px] font-bold tracking-tight text-slate-900">Sub Sites</h1>
+        <h1 className="text-[28px] font-bold tracking-tight text-slate-900">Sites & Sub Sites</h1>
         <p className="text-[15px] text-slate-500 mt-1">
-          Geofenced work locations and subsites with QR & face attendance settings
+          Main site and geofenced sub-sites with QR & face attendance settings
         </p>
       </div>
 
       <DataTable
-        rows={[...subSites].sort(
-          (a: any, b: any) =>
-            new Date(b.createdAt || b.created_at || 0).getTime() -
-            new Date(a.createdAt || a.created_at || 0).getTime(),
-        )}
+        rows={sortedRows}
         rowKey={(r: any) => r.id}
         searchKeys={["name", "address", "city"]}
         onCreate={() => {
@@ -155,14 +165,28 @@ function SitesPage() {
         columns={[
           {
             key: "name",
-            header: "Sub Site",
+            header: "Site / Location",
             accessor: (r: any) => `${r.name} - ${r.address || r.city || ""}`,
-            render: (r: any) => (
-              <div className="flex flex-col py-1">
-                <span className="font-semibold text-slate-900 text-sm">{r.name}</span>
-                <span className="text-xs text-slate-500 mt-0.5">{r.address || r.city || "—"}</span>
-              </div>
-            ),
+            render: (r: any) => {
+              const isMain = !r.is_sub_site && !r.isSubSite;
+              return (
+                <div className="flex flex-col py-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-900 text-sm">{r.name}</span>
+                    {isMain ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                        Main Site
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                        Sub Site
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-slate-500 mt-0.5">{r.address || r.city || "—"}</span>
+                </div>
+              );
+            },
           },
           {
             key: "branch",
@@ -252,50 +276,55 @@ function SitesPage() {
                 : "—",
           },
         ]}
-        actions={(r: any) => (
-          <div className="flex gap-3 justify-end items-center pr-2">
-            {(r.kioskToken || r.kiosk_token) && (
+        actions={(r: any) => {
+          const isMain = !r.is_sub_site && !r.isSubSite;
+          return (
+            <div className="flex gap-3 justify-end items-center pr-2">
+              {(r.kioskToken || r.kiosk_token) && (
+                <button
+                  className="text-indigo-600 hover:text-indigo-900 transition-colors p-1 hover:bg-indigo-50 rounded"
+                  title="Launch Tablet Kiosk Terminal"
+                  onClick={() => {
+                    window.open(`/attendance/kiosk?token=${r.kioskToken || r.kiosk_token}`, "_blank");
+                  }}
+                >
+                  <Tablet className="h-[18px] w-[18px]" />
+                </button>
+              )}
               <button
-                className="text-indigo-600 hover:text-indigo-900 transition-colors p-1 hover:bg-indigo-50 rounded"
-                title="Launch Tablet Kiosk Terminal"
+                className="text-slate-500 hover:text-slate-900 transition-colors"
+                title="View"
                 onClick={() => {
-                  window.open(`/attendance/kiosk?token=${r.kioskToken || r.kiosk_token}`, "_blank");
+                  setEditing(r);
+                  setViewing(true);
+                  setOpen(true);
                 }}
               >
-                <Tablet className="h-[18px] w-[18px]" />
+                <Eye className="h-[18px] w-[18px]" />
               </button>
-            )}
-            <button
-              className="text-slate-500 hover:text-slate-900 transition-colors"
-              title="View"
-              onClick={() => {
-                setEditing(r);
-                setViewing(true);
-                setOpen(true);
-              }}
-            >
-              <Eye className="h-[18px] w-[18px]" />
-            </button>
-            <button
-              className="text-slate-500 hover:text-slate-900 transition-colors"
-              title="Edit"
-              onClick={() => {
-                setEditing(r);
-                setViewing(false);
-                setOpen(true);
-              }}
-            >
-              <Pencil className="h-[18px] w-[18px]" />
-            </button>
-            <button
-              className="text-[#ef4444] hover:text-[#dc2626] transition-colors"
-              title="Delete"
-              onClick={() => handleDelete(r.id)}
-            >
-              <Trash2 className="h-[18px] w-[18px]" />
-            </button>
-          </div>
-        )}
+              <button
+                className="text-slate-500 hover:text-slate-900 transition-colors"
+                title="Edit"
+                onClick={() => {
+                  setEditing(r);
+                  setViewing(false);
+                  setOpen(true);
+                }}
+              >
+                <Pencil className="h-[18px] w-[18px]" />
+              </button>
+              {!isMain && (
+                <button
+                  className="text-[#ef4444] hover:text-[#dc2626] transition-colors"
+                  title="Delete"
+                  onClick={() => handleDelete(r.id)}
+                >
+                  <Trash2 className="h-[18px] w-[18px]" />
+                </button>
+              )}
+            </div>
+          );
+        }}
       />
     </div>
   );

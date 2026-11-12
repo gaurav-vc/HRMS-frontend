@@ -69,7 +69,7 @@ export const NAV: Group[] = [
     items: [
       { title: "Entities", url: "/entities", icon: Building2 },
       { title: "Branches", url: "/branches", icon: GitBranch },
-      { title: "Sub Sites", url: "/sites", icon: MapPin },
+      { title: "Sites", url: "/sites", icon: MapPin },
       { title: "Departments", url: "/departments", icon: Users2 },
       { title: "Designations", url: "/designations", icon: Briefcase },
     ],
@@ -187,7 +187,7 @@ export const canAccessRoute = (it: Item, user: any) => {
   // 3. If user has explicit permissions (e.g. from role)
   if (user?.permissions) {
     let perm = user.permissions[it.title];
-    if (!perm && (it.title === "Sub Sites" || it.title === "Subsites")) {
+    if (!perm && (it.title === "Sub Sites" || it.title === "Subsites" || it.title === "Sites")) {
       perm = user.permissions["Sub Sites"] || user.permissions["Subsites"] || user.permissions["Sites"];
     }
     if (perm) {
