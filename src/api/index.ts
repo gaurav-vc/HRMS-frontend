@@ -310,7 +310,18 @@ export const entitiesApi = {
 };
 
 export const sitesApi = {
-  getAll: async (): Promise<Site[]> => apiCall("/sites/"),
+  getAll: async (params?: { is_sub_site?: boolean; parent_site?: string | number; all?: boolean }): Promise<Site[]> => {
+    let query = "";
+    if (params) {
+      const q = new URLSearchParams();
+      if (params.is_sub_site !== undefined) q.append("is_sub_site", String(params.is_sub_site));
+      if (params.parent_site !== undefined) q.append("parent_site", String(params.parent_site));
+      if (params.all !== undefined) q.append("all", String(params.all));
+      const s = q.toString();
+      if (s) query = `?${s}`;
+    }
+    return apiCall(`/sites/${query}`);
+  },
   getById: async (id: string | number): Promise<Site> => apiCall(`/sites/${id}/`),
   create: async (data: Partial<Site>): Promise<Site> => apiCall("/sites/", "POST", data),
   update: async (id: string | number, data: Partial<Site>): Promise<Site> =>

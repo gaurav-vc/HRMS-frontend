@@ -8,13 +8,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { sitesApi } from "@/api";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/sites")({
   component: SitesPage,
   loader: async () => {
     try {
-      const sites = await sitesApi.getAll();
-      return { sites };
+      const sites = await sitesApi.getAll({ is_sub_site: true });
+      const sitesList = (sites as any)?.results || sites || [];
+      const filtered = sitesList.filter((s: any) => s.is_sub_site || s.isSubSite);
+      return { sites: filtered };
     } catch {
       return { sites: [] };
     }
@@ -22,6 +25,7 @@ export const Route = createFileRoute("/sites")({
 });
 
 function SitesPage() {
+  const { user } = useAuth();
   const router = useRouter();
   const { sites: initial } = Route.useLoaderData();
   const [rows, setRows] = useState<any[]>(initial || []);
@@ -52,7 +56,7 @@ function SitesPage() {
       
       // The backend overrides parsers and uses raw JSONParser, so it expects snake_case for writes
       // even though it emits camelCase for reads.
-      const data = {
+      const data: any = {
         ...rest,
         qr_enabled: qrEnabled,
         face_enabled: faceEnabled,
@@ -65,6 +69,10 @@ function SitesPage() {
         site_code: rest.site_code || rest.siteCode,
         is_sub_site: true,
       };
+
+      if (user?.site_id) {
+        data.parent_site = user.site_id;
+      }
       
       if (editing && s.id) {
         await sitesApi.update(s.id, data);
@@ -106,8 +114,10 @@ function SitesPage() {
     );
   }
 
+  const subSites = rows.filter((r) => r.is_sub_site || r.isSubSite);
+
   const branches = Array.from(
-    new Set(rows.map((r) => r.branch_name || r.branch || "Headquarters")),
+    new Set(subSites.map((r) => r.branch_name || r.branch || "Headquarters")),
   ).filter(Boolean);
 
   return (
@@ -120,7 +130,7 @@ function SitesPage() {
       </div>
 
       <DataTable
-        rows={[...rows].sort(
+        rows={[...subSites].sort(
           (a: any, b: any) =>
             new Date(b.createdAt || b.created_at || 0).getTime() -
             new Date(a.createdAt || a.created_at || 0).getTime(),

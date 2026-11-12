@@ -37,9 +37,10 @@ export const Route = createFileRoute("/superadmin-sites")({
   component: SitesPage,
   loader: async () => {
     try {
-      const [sites, orgs] = await Promise.all([sitesApi.getAll(), organizationsApi.getAll()]);
+      const [sites, orgs] = await Promise.all([sitesApi.getAll({ is_sub_site: false }), organizationsApi.getAll()]);
       const sitesList = (sites as any)?.results || sites || [];
-      const sortedSites = sitesList.sort(
+      const filtered = sitesList.filter((s: any) => !s.is_sub_site && !s.isSubSite && !s.parent_site);
+      const sortedSites = filtered.sort(
         (a: any, b: any) =>
           new Date(b.created_at || b.createdAt || 0).getTime() -
           new Date(a.created_at || a.createdAt || 0).getTime(),
@@ -126,8 +127,10 @@ function SitesPage() {
 
   const loadSites = async () => {
     try {
-      const data = await sitesApi.getAll();
-      const sorted = data.sort(
+      const data = await sitesApi.getAll({ is_sub_site: false });
+      const sitesList = (data as any)?.results || data || [];
+      const filtered = sitesList.filter((s: any) => !s.is_sub_site && !s.isSubSite && !s.parent_site);
+      const sorted = filtered.sort(
         (a: any, b: any) =>
           new Date(b.created_at || b.createdAt || 0).getTime() -
           new Date(a.created_at || a.createdAt || 0).getTime(),
@@ -148,6 +151,8 @@ function SitesPage() {
   }, [search.action, search.orgId]);
 
   const filteredRows = rows.filter((r) => {
+    // Strictly main sites only: never show sub-sites in Super Admin Sites
+    if (r.is_sub_site || r.isSubSite || r.parent_site) return false;
     // Remove the specific lingering sites as requested
     if (["Bengaluru HQ", "Mumbai HQ", "HQ"].includes(r.name)) return false;
 

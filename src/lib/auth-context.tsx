@@ -16,6 +16,7 @@ interface User {
   employee_id?: string | number;
   is_superuser?: boolean;
   site_name?: string;
+  site_id?: number | string;
   org_name?: string;
   branding_text?: string;
   logo_url?: string;
@@ -80,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 employee_id: me.employeeId || me.employee_id,
                 avatar: me.photoUrl || me.photo_url,
                 site_name: me.siteName || me.site_name,
+                site_id: me.siteId || me.site_id,
                 org_name: me.orgName || me.org_name,
                 branding_text: me.brandingText || me.branding_text,
                 logo_url: me.logoUrl || me.logo_url,
@@ -153,6 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           employee_id: me.employeeId || me.employee_id,
           avatar: me.photoUrl || me.photo_url,
           site_name: me.siteName || me.site_name,
+          site_id: me.siteId || me.site_id,
           org_name: me.orgName || me.org_name,
           branding_text: me.brandingText || me.branding_text,
           logo_url: me.logoUrl || me.logo_url,
@@ -203,6 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           employee_id: me.employeeId || me.employee_id || user?.employee_id,
           avatar: me.photoUrl || me.photo_url || user?.avatar,
           site_name: me.siteName || me.site_name || user?.site_name,
+          site_id: me.siteId || me.site_id || user?.site_id,
           org_name: me.orgName || me.org_name || user?.org_name,
           branding_text: me.brandingText || me.branding_text || user?.branding_text,
           logo_url: me.logoUrl || me.logo_url || user?.logo_url,
