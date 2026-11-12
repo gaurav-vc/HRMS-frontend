@@ -35,6 +35,7 @@ import {
   Inbox,
   UserMinus,
   Megaphone,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Sidebar,
@@ -122,6 +123,7 @@ export const NAV: Group[] = [
       { title: "Compliance", url: "/payroll/compliance", icon: FileSpreadsheet },
       { title: "Loans & Advances", url: "/loans", icon: HandCoins },
       { title: "Reimbursements", url: "/reimbursements", icon: BadgeDollarSign },
+      { title: "Disciplinary Memos", url: "/payroll/memos", icon: AlertTriangle },
     ],
   },
   {

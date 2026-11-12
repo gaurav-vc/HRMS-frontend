@@ -99,9 +99,10 @@ const MODULES = [
       "Compliance",
       "Loans & Advances",
       "Reimbursements",
+      "Disciplinary Memos",
     ],
   },
-  { group: "FORM 16", items: ["Form 16 Management", "My Form 16"] },
+  { group: "FORM 16", items: ["Form 16 Management", "My Form 16", "Bulk Form 16"] },
   { group: "Insights", items: ["Organization Tree", "Reports", "Settings"] },
 ];
 

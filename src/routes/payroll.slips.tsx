@@ -481,7 +481,7 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
   };
 
   const isDeduction = (k: string) =>
-    ["pf", "pt", "tds", "provident", "professional", "tax", "deduction", "esi", "loan", "advance"].some((d) =>
+    ["pf", "pt", "tds", "provident", "professional", "tax", "deduction", "esi", "loan", "advance", "memo", "disciplinary", "penalty"].some((d) =>
       k.toLowerCase().includes(d),
     );
 

@@ -29,17 +29,23 @@ import { payrollApi } from "@/api";
 
 export const Route = createFileRoute("/payroll/structure")({
   loader: async () => {
-    const structures = await payrollApi.getStructures();
-    return { initialStructures: structures };
+    try {
+      const res: any = await payrollApi.getStructures();
+      const list = Array.isArray(res) ? res : res?.results || [];
+      return { initialStructures: list };
+    } catch {
+      return { initialStructures: [] };
+    }
   },
   component: StructurePage,
 });
 
 function StructurePage() {
   const { initialStructures } = Route.useLoaderData();
-  const [structures, setStructures] = useState<any[]>(initialStructures);
+  const rawInitial = Array.isArray(initialStructures) ? initialStructures : (initialStructures as any)?.results || [];
+  const [structures, setStructures] = useState<any[]>(rawInitial);
   const [activeId, setActiveId] = useState<number | null>(
-    structures.length > 0 ? structures[0].id : null,
+    rawInitial.length > 0 ? rawInitial[0].id : null,
   );
   const [comps, setComps] = useState<any[]>([]);
   const [isLoadingComps, setIsLoadingComps] = useState(false);
@@ -51,8 +57,10 @@ function StructurePage() {
   useEffect(() => {
     payrollApi
       .getStructures()
-      .then((data) => {
-        setStructures(data);
+      .then((data: any) => {
+        const list = Array.isArray(data) ? data : data?.results || [];
+        setStructures(list);
+        setActiveId((curr) => (curr ? curr : (list.length > 0 ? list[0].id : null)));
       })
       .catch(console.error);
   }, []);
@@ -84,7 +92,10 @@ function StructurePage() {
       setIsLoadingComps(true);
       payrollApi
         .getComponents(activeId)
-        .then((data) => setComps(data))
+        .then((data: any) => {
+          const list = Array.isArray(data) ? data : data?.results || [];
+          setComps(list);
+        })
         .catch((e) => toast.error("Failed to load components"))
         .finally(() => setIsLoadingComps(false));
     } else {

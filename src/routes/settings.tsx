@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, MoreHorizontal, ChevronDown, Check, Info, Send } from "lucide-react";
+import { Search, Plus, MoreHorizontal, ChevronDown, Check, Info, Send, Wallet, Coins, Trash2, Edit, AlertCircle, Clock } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { isSuperAdminUser } from "@/lib/mock-data";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -33,6 +33,10 @@ import {
   getMediaUrl,
   attendancePoliciesApi,
   leavesConfigApi,
+  punctualitySlabsApi,
+  walletPoliciesApi,
+  employeeWalletsApi,
+  designationsApi,
 } from "@/api";
 import {
   Dialog,
@@ -76,26 +80,11 @@ function SettingsPage() {
           */}
           <TabsTrigger value="att">Attendance</TabsTrigger>
           <TabsTrigger value="leaves">Leaves</TabsTrigger>
-          {/* Dummy Notifications tab commented out
-          <TabsTrigger value="notif">Notifications</TabsTrigger>
-          */}
+          <TabsTrigger value="wallets">Employee Wallets</TabsTrigger>
           <TabsTrigger value="roles">Roles & Users</TabsTrigger>
           <TabsTrigger value="permissions">Role Permissions</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>
         </TabsList>
-
-        {/* Dummy Payroll tab commented out
-        <TabsContent value="pay">
-          <Card className="p-6 space-y-4">
-            <Toggle label="Auto-process payroll on cutoff date" />
-            <Toggle label="Round net pay to nearest ₹1" defaultChecked />
-            <Toggle label="Block payroll if attendance < 95%" defaultChecked />
-            <Field label="Pay Day" defaultValue="28" />
-            <Field label="Bank File Format" defaultValue="HDFC NEFT" />
-            <Button onClick={() => toast.success("Saved")}>Save</Button>
-          </Card>
-        </TabsContent>
-        */}
 
         <TabsContent value="att">
           <Card className="p-6 mt-4 border shadow-sm rounded-lg">
@@ -106,6 +95,12 @@ function SettingsPage() {
         <TabsContent value="leaves">
           <Card className="p-6 mt-4 border shadow-sm rounded-lg">
             <LeaveSettingsTab />
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="wallets">
+          <Card className="p-6 mt-4 border shadow-sm rounded-lg">
+            <WalletSettingsTab />
           </Card>
         </TabsContent>
 
@@ -743,17 +738,17 @@ function UsersAndRolesTab() {
                     <Pagination>
                       <PaginationContent>
                         <PaginationItem>
-                          <PaginationPrevious 
-                            href="#" 
-                            onClick={(e) => { e.preventDefault(); if (userPage > 1) setUserPage(userPage - 1); }} 
+                          <PaginationPrevious
+                            href="#"
+                            onClick={(e) => { e.preventDefault(); if (userPage > 1) setUserPage(userPage - 1); }}
                             className={userPage <= 1 ? "pointer-events-none opacity-50" : ""}
                           />
                         </PaginationItem>
-                        
+
                         {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                           <PaginationItem key={page}>
-                            <PaginationLink 
-                              href="#" 
+                            <PaginationLink
+                              href="#"
                               isActive={page === userPage}
                               onClick={(e) => { e.preventDefault(); setUserPage(page); }}
                             >
@@ -763,8 +758,8 @@ function UsersAndRolesTab() {
                         ))}
 
                         <PaginationItem>
-                          <PaginationNext 
-                            href="#" 
+                          <PaginationNext
+                            href="#"
                             onClick={(e) => { e.preventDefault(); if (userPage < totalPages) setUserPage(userPage + 1); }}
                             className={userPage >= totalPages ? "pointer-events-none opacity-50" : ""}
                           />
@@ -800,37 +795,37 @@ function RoleForm({
   const [form, setForm] = useState(
     initialData
       ? {
-          name: initialData.name || "",
-          code: initialData.code || "",
-          department: initialData.department ? String(initialData.department) : "",
-          reportingTo: initialData?.reporting_to?.id || initialData?.reporting_to || initialData?.reportingTo || "",
-          hierarchyLevel: initialData?.hierarchy_level || initialData?.hierarchyLevel || "",
-          permissions: initialData?.permissions || {},
-          accessScope: initialData?.access_scope || (initialData?.permissions?.allowed_entities ? "Custom" : "Corporate"),
-          allowedEntities: initialData?.permissions?.allowed_entities || [],
-          dashboardType: initialData?.dashboard_type
-            ? (String(initialData.dashboard_type).charAt(0).toUpperCase() + String(initialData.dashboard_type).slice(1).toLowerCase())
-            : (initialData?.permissions?.dashboard_type
-               ? (String(initialData.permissions.dashboard_type).charAt(0).toUpperCase() + String(initialData.permissions.dashboard_type).slice(1).toLowerCase())
-               : "Employee"),
-          canManageUsers: initialData?.can_manage_users ?? initialData?.canManageUsers ?? false,
-          canApprove: initialData?.can_approve ?? initialData?.canApprove ?? false,
-          crossDepartmentAccess: initialData?.cross_department_access ?? initialData?.crossDepartmentAccess ?? false,
-        }
+        name: initialData.name || "",
+        code: initialData.code || "",
+        department: initialData.department ? String(initialData.department) : "",
+        reportingTo: initialData?.reporting_to?.id || initialData?.reporting_to || initialData?.reportingTo || "",
+        hierarchyLevel: initialData?.hierarchy_level || initialData?.hierarchyLevel || "",
+        permissions: initialData?.permissions || {},
+        accessScope: initialData?.access_scope || (initialData?.permissions?.allowed_entities ? "Custom" : "Corporate"),
+        allowedEntities: initialData?.permissions?.allowed_entities || [],
+        dashboardType: initialData?.dashboard_type
+          ? (String(initialData.dashboard_type).charAt(0).toUpperCase() + String(initialData.dashboard_type).slice(1).toLowerCase())
+          : (initialData?.permissions?.dashboard_type
+            ? (String(initialData.permissions.dashboard_type).charAt(0).toUpperCase() + String(initialData.permissions.dashboard_type).slice(1).toLowerCase())
+            : "Employee"),
+        canManageUsers: initialData?.can_manage_users ?? initialData?.canManageUsers ?? false,
+        canApprove: initialData?.can_approve ?? initialData?.canApprove ?? false,
+        crossDepartmentAccess: initialData?.cross_department_access ?? initialData?.crossDepartmentAccess ?? false,
+      }
       : {
-          name: "",
-          code: "",
-          department: "",
-          accessScope: "Self",
-          dashboardType: "Employee",
-          hierarchyLevel: "",
-          reportingTo: "",
-          canManageUsers: false,
-          canApprove: false,
-          crossDepartmentAccess: false,
-          permissions: {},
-          allowedEntities: [],
-        },
+        name: "",
+        code: "",
+        department: "",
+        accessScope: "Self",
+        dashboardType: "Employee",
+        hierarchyLevel: "",
+        reportingTo: "",
+        canManageUsers: false,
+        canApprove: false,
+        crossDepartmentAccess: false,
+        permissions: {},
+        allowedEntities: [],
+      },
   );
 
   const standardLevels = Array.from({ length: 15 }, (_, i) => `L${i + 1}`);
@@ -843,7 +838,7 @@ function RoleForm({
   const [isCustomLevel, setIsCustomLevel] = useState(
     initialData?.hierarchyLevel
       ? !standardLevels.includes(initialData.hierarchyLevel) &&
-          !customDbLevels.includes(initialData.hierarchyLevel)
+      !customDbLevels.includes(initialData.hierarchyLevel)
       : false,
   );
 
@@ -852,7 +847,7 @@ function RoleForm({
     entitiesApi
       .getAll()
       .then(setEntities)
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const submit = async () => {
@@ -1202,38 +1197,38 @@ function UserForm({
   const [form, setForm] = useState(
     initialData
       ? {
-          firstName: initialData.firstName || "",
-          lastName: initialData.lastName || "",
-          code: initialData.code || "",
-          email: initialData.email || "",
-          phone: initialData.phone || "",
-          department: initialData.department ? String(initialData.department) : "",
-          designation: initialData.designation ? String(initialData.designation) : "",
-          dynamicRole: initialData.dynamicRole ? String(initialData.dynamicRole) : "",
-          entity: initialData.entity ? String(initialData.entity) : "",
-          branch: initialData.branch ? String(initialData.branch) : "",
-          site: initialData.site ? String(initialData.site) : "",
-          mfaEnabled: initialData.mfaEnabled || false,
-          status: initialData.status || "Active",
-          password: "Password123!", // Ignored on edit typically, or leave as default
-        }
+        firstName: initialData.firstName || "",
+        lastName: initialData.lastName || "",
+        code: initialData.code || "",
+        email: initialData.email || "",
+        phone: initialData.phone || "",
+        department: initialData.department ? String(initialData.department) : "",
+        designation: initialData.designation ? String(initialData.designation) : "",
+        dynamicRole: initialData.dynamicRole ? String(initialData.dynamicRole) : "",
+        entity: initialData.entity ? String(initialData.entity) : "",
+        branch: initialData.branch ? String(initialData.branch) : "",
+        site: initialData.site ? String(initialData.site) : "",
+        mfaEnabled: initialData.mfaEnabled || false,
+        status: initialData.status || "Active",
+        password: "Password123!", // Ignored on edit typically, or leave as default
+      }
       : {
-          firstName: "",
-          lastName: "",
-          code: "",
-          email: "",
-          phone: "",
-          department: "",
-          designation: "",
-          dynamicRole: "",
-          entity: "",
-          branch: "",
-          site: "",
-          manager: "",
-          mfaEnabled: false,
-          status: "Active" as "Active" | "Inactive",
-          password: "Password123!",
-        },
+        firstName: "",
+        lastName: "",
+        code: "",
+        email: "",
+        phone: "",
+        department: "",
+        designation: "",
+        dynamicRole: "",
+        entity: "",
+        branch: "",
+        site: "",
+        manager: "",
+        mfaEnabled: false,
+        status: "Active" as "Active" | "Inactive",
+        password: "Password123!",
+      },
   );
 
   const submit = async () => {
@@ -1283,7 +1278,7 @@ function UserForm({
         if (refreshUser) {
           try {
             await refreshUser();
-          } catch {}
+          } catch { }
         }
       } else {
         await employeesApi.create(payload);
@@ -1543,9 +1538,10 @@ const MODULES = [
       "Compliance",
       "Loans & Advances",
       "Reimbursements",
+      "Disciplinary Memos",
     ],
   },
-  { group: "FORM 16", items: ["Form 16 Management", "My Form 16"] },
+  { group: "FORM 16", items: ["Form 16 Management", "My Form 16", "Bulk Form 16"] },
   { group: "Insights", items: ["Organization Tree", "Reports", "Settings"] },
 ];
 
@@ -1604,8 +1600,8 @@ function RolePermissionsTab() {
         setRoles(res);
         if (res.length > 0) setSelectedRole(String(res[0].id));
       })
-      .catch(() => {});
-    entitiesApi.getAll().then((res) => setEntities(res)).catch(() => {});
+      .catch(() => { });
+    entitiesApi.getAll().then((res) => setEntities(res)).catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -2540,8 +2536,8 @@ function AttendanceSettingsTab() {
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="w-full justify-between font-normal" role="combobox">
-                    {wfhEntityFilter === "all" || !wfhEntityFilter 
-                      ? "All Entities" 
+                    {wfhEntityFilter === "all" || !wfhEntityFilter
+                      ? "All Entities"
                       : entities.find(e => String(e.id) === wfhEntityFilter)?.name || "All Entities"}
                     <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
@@ -2647,8 +2643,8 @@ function AttendanceSettingsTab() {
                     return (
                       <Badge key={empId} variant="secondary" className="px-3 py-1 flex items-center space-x-1 text-sm bg-background border shadow-sm">
                         <span>{fullName}</span>
-                        <X 
-                          className="h-3.5 w-3.5 ml-1 cursor-pointer hover:text-destructive transition-colors" 
+                        <X
+                          className="h-3.5 w-3.5 ml-1 cursor-pointer hover:text-destructive transition-colors"
                           onClick={() => {
                             setFormData({
                               ...formData,
@@ -2664,12 +2660,12 @@ function AttendanceSettingsTab() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">
-                Time Rules
-              </h4>
+          <div className="space-y-4">
+            <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">
+              Time Rules
+            </h4>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label>Max Late Minutes Allowed</Label>
                 <Input
@@ -2723,51 +2719,15 @@ function AttendanceSettingsTab() {
                 />
               </div>
             </div>
+          </div>
 
-            <div className="space-y-4">
-              <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">
-                Verification Requirements
-              </h4>
-
-              <div className="flex items-center justify-between p-3 border rounded-md">
-                <div className="space-y-0.5">
-                  <Label>Require GPS</Label>
-                  <div className="text-xs text-muted-foreground">
-                    Ensure employee is within geofence radius.
-                  </div>
-                </div>
-                <Switch
-                  checked={formData.requireGps}
-                  onCheckedChange={(v) => setFormData({ ...formData, requireGps: v })}
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-3 border rounded-md">
-                <div className="space-y-0.5">
-                  <Label>Require QR Scan</Label>
-                  <div className="text-xs text-muted-foreground">
-                    Employee must scan the site's cryptographic QR.
-                  </div>
-                </div>
-                <Switch
-                  checked={formData.requireQr}
-                  onCheckedChange={(v) => setFormData({ ...formData, requireQr: v })}
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-3 border rounded-md">
-                <div className="space-y-0.5">
-                  <Label>Require Face Verification</Label>
-                  <div className="text-xs text-muted-foreground">
-                    Mandate liveness & biometric match on check-in.
-                  </div>
-                </div>
-                <Switch
-                  checked={formData.requireFace}
-                  onCheckedChange={(v) => setFormData({ ...formData, requireFace: v })}
-                />
-              </div>
-            </div>
+          {/* Site-Isolated Punctuality & Late Deduction Slabs */}
+          <div className="pt-6 border-t">
+            <PunctualitySlabsSection
+              policyId={policyId}
+              scope={scope}
+              selectedId={selectedId}
+            />
           </div>
 
           <div className="flex justify-end pt-4 border-t">
@@ -2777,6 +2737,1091 @@ function AttendanceSettingsTab() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------------
+// PUNCTUALITY SLABS COMPONENT
+// ---------------------------------------------------------------------------------
+
+function PunctualitySlabsSection({
+  policyId,
+  scope,
+  selectedId,
+}: {
+  policyId: number | null;
+  scope: string;
+  selectedId: string;
+}) {
+  const [slabs, setSlabs] = useState<any[]>([]);
+  const [availableRoles, setAvailableRoles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadingRoles, setLoadingRoles] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingSlab, setEditingSlab] = useState<any>(null);
+
+  const [name, setName] = useState("");
+  const [comparisonType, setComparisonType] = useState("AFTER_MANDATORY_PRIOR");
+  const [minutesThreshold, setMinutesThreshold] = useState<number>(15);
+  const [deductionType, setDeductionType] = useState("FIXED_AMOUNT");
+  const [deductionValue, setDeductionValue] = useState<string>("100.00");
+  const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([]);
+  const [selectedDesignationIds, setSelectedDesignationIds] = useState<number[]>([]);
+  const [order, setOrder] = useState<number>(1);
+  const [savingSlab, setSavingSlab] = useState(false);
+
+  // Dynamically fetch roles & designations for this specific site
+  const fetchAvailableRoles = async () => {
+    setLoadingRoles(true);
+    try {
+      const siteParam =
+        scope === "site" && selectedId
+          ? `?site=${selectedId}`
+          : policyId
+          ? `?policy=${policyId}`
+          : "";
+      const res = await punctualitySlabsApi.getAvailableRoles(siteParam);
+      setAvailableRoles(Array.isArray(res) ? res : res?.results || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingRoles(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAvailableRoles();
+  }, [selectedId, scope, policyId]);
+
+  const fetchSlabs = async () => {
+    if (!policyId) {
+      setSlabs([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await punctualitySlabsApi.getAll(`?policy=${policyId}`);
+      setSlabs(Array.isArray(res) ? res : res?.results || []);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load punctuality slabs");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSlabs();
+  }, [policyId]);
+
+  const handleOpenModal = (slab?: any) => {
+    fetchAvailableRoles();
+    if (slab) {
+      setEditingSlab(slab);
+      setName(slab.name || "");
+      setComparisonType(slab.comparison_type || "AFTER_MANDATORY_PRIOR");
+      setMinutesThreshold(slab.minutes_threshold || 0);
+      setDeductionType(slab.deduction_type || "FIXED_AMOUNT");
+      setDeductionValue(slab.deduction_value ? String(slab.deduction_value) : "0.00");
+      setSelectedRoleIds(slab.applicable_role_ids || slab.applicableRoleIds || []);
+      setSelectedDesignationIds(slab.applicable_designation_ids || slab.applicableDesignationIds || []);
+      setOrder(slab.order || 1);
+    } else {
+      setEditingSlab(null);
+      setName("");
+      setComparisonType("AFTER_MANDATORY_PRIOR");
+      setMinutesThreshold(15);
+      setDeductionType("FIXED_AMOUNT");
+      setDeductionValue("100.00");
+      setSelectedRoleIds([]);
+      setSelectedDesignationIds([]);
+      setOrder(slabs.length + 1);
+    }
+    setModalOpen(true);
+  };
+
+  const handleSaveSlab = async () => {
+    if (!policyId) {
+      toast.error("Please save the policy first before configuring slabs");
+      return;
+    }
+    if (!name.trim()) {
+      toast.error("Please enter a slab name");
+      return;
+    }
+    setSavingSlab(true);
+    try {
+      const payload = {
+        policy: policyId,
+        name: name.trim(),
+        comparison_type: comparisonType,
+        minutes_threshold: Number(minutesThreshold) || 0,
+        deduction_type: deductionType,
+        deduction_value: parseFloat(deductionValue) || 0,
+        applicable_role_ids: selectedRoleIds,
+        applicable_designation_ids: selectedDesignationIds,
+        order: Number(order) || 1,
+      };
+
+      if (editingSlab) {
+        await punctualitySlabsApi.update(editingSlab.id, payload);
+        toast.success("Punctuality slab updated successfully");
+      } else {
+        await punctualitySlabsApi.create(payload);
+        toast.success("Punctuality slab created successfully");
+      }
+      setModalOpen(false);
+      fetchSlabs();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to save punctuality slab");
+    } finally {
+      setSavingSlab(false);
+    }
+  };
+
+  const handleDeleteSlab = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this punctuality slab?")) return;
+    try {
+      await punctualitySlabsApi.delete(id);
+      toast.success("Slab deleted");
+      fetchSlabs();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete slab");
+    }
+  };
+
+  const getConditionLabel = (slab: any) => {
+    if (slab.comparison_type === "AFTER_MANDATORY_PRIOR") {
+      return `> ${slab.minutes_threshold}m Prior to Shift Start`;
+    } else if (slab.comparison_type === "AFTER_SHIFT_START") {
+      return `> Exact Shift Start Time`;
+    } else if (slab.comparison_type === "AFTER_GRACE_MINUTES") {
+      return `> ${slab.minutes_threshold}m After Shift Start`;
+    }
+    return slab.comparison_type;
+  };
+
+  const getDeductionLabel = (slab: any) => {
+    if (slab.deduction_type === "HALF_DAY") {
+      return "Half Day Salary Cut";
+    } else if (slab.deduction_type === "FIXED_AMOUNT") {
+      return `₹ ${parseFloat(String(slab.deduction_value || "0")).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
+    } else if (slab.deduction_type === "PERCENTAGE") {
+      return `${slab.deduction_value}% Daily Wage`;
+    }
+    return slab.deduction_value;
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h4 className="font-semibold text-base flex items-center gap-2">
+            <Clock className="w-4 h-4 text-primary" />
+            Punctuality Rules & Late Deductions
+          </h4>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Configure site-isolated tiered reporting windows (e.g. 15m prior arrival), penalty amounts, and half-day thresholds.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => handleOpenModal()}
+          disabled={!policyId}
+          className="gap-1.5"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Add Slab
+        </Button>
+      </div>
+
+      {!policyId ? (
+        <div className="p-4 bg-muted/40 rounded-lg text-sm text-muted-foreground flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+          <span>Please create or update the attendance policy above first to enable punctuality slab configuration.</span>
+        </div>
+      ) : loading ? (
+        <div className="py-6 text-center text-sm text-muted-foreground">Loading slabs...</div>
+      ) : slabs.length === 0 ? (
+        <div className="p-6 border border-dashed rounded-lg text-center text-sm text-muted-foreground">
+          No punctuality slabs configured for this policy. Standard grace periods apply.
+        </div>
+      ) : (
+        <div className="border rounded-lg overflow-hidden">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b">
+              <tr>
+                <th className="px-4 py-3">Order</th>
+                <th className="px-4 py-3">Slab Name</th>
+                <th className="px-4 py-3">Applicable Roles</th>
+                <th className="px-4 py-3">Trigger Condition</th>
+                <th className="px-4 py-3">Deduction</th>
+                <th className="px-4 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {slabs.map((slab) => {
+                const rolesList = slab.applicable_roles_details || slab.applicableRolesDetails || [];
+                const desigsList = slab.applicable_designations_details || slab.applicableDesignationsDetails || [];
+                const hasSpecific = rolesList.length > 0 || desigsList.length > 0;
+
+                return (
+                  <tr key={slab.id} className="hover:bg-muted/30">
+                    <td className="px-4 py-3 font-mono text-xs">#{slab.order}</td>
+                    <td className="px-4 py-3 font-medium">{slab.name}</td>
+                    <td className="px-4 py-3">
+                      {hasSpecific ? (
+                        <div className="flex flex-wrap gap-1">
+                          {rolesList.map((r: any) => (
+                            <Badge key={`role-${r.id}`} variant="secondary" className="text-[11px] font-normal">
+                              {r.name || r.title}
+                            </Badge>
+                          ))}
+                          {desigsList.map((d: any) => (
+                            <Badge key={`desig-${d.id}`} variant="outline" className="text-[11px] font-normal">
+                              {d.title || d.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <Badge variant="outline" className="text-[11px] font-normal">
+                          All Site Roles
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{getConditionLabel(slab)}</td>
+                    <td className="px-4 py-3 font-medium text-amber-600 dark:text-amber-400">
+                      {getDeductionLabel(slab)}
+                    </td>
+                    <td className="px-4 py-3 text-right space-x-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0"
+                        onClick={() => handleOpenModal(slab)}
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                        onClick={() => handleDeleteSlab(slab.id)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Add / Edit Slab Modal */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>{editingSlab ? "Edit Punctuality Slab" : "Add Punctuality Slab"}</DialogTitle>
+            <DialogDescription>
+              Configure the reporting window, trigger rule, and deduction amount for this site.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Slab Name</Label>
+              <Input
+                placeholder="e.g. 15m Prior Reporting (Trainers)"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Trigger Condition</Label>
+                <Select value={comparisonType} onValueChange={setComparisonType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AFTER_MANDATORY_PRIOR">After Prior Mark (Before Shift)</SelectItem>
+                    <SelectItem value="AFTER_SHIFT_START">After Exact Shift Start</SelectItem>
+                    <SelectItem value="AFTER_GRACE_MINUTES">After Grace Period (Post Shift)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Minutes Threshold</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={minutesThreshold}
+                  onChange={(e) => setMinutesThreshold(parseInt(e.target.value) || 0)}
+                  placeholder="e.g. 15"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Deduction Type</Label>
+                <Select value={deductionType} onValueChange={setDeductionType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="FIXED_AMOUNT">Fixed Amount (₹)</SelectItem>
+                    <SelectItem value="HALF_DAY">Half Day Salary Cut</SelectItem>
+                    <SelectItem value="PERCENTAGE">% of Daily Wage</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>{deductionType === "HALF_DAY" ? "Factor" : deductionType === "PERCENTAGE" ? "Percentage (%)" : "Amount (₹)"}</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={deductionValue}
+                  onChange={(e) => setDeductionValue(e.target.value)}
+                  placeholder={deductionType === "HALF_DAY" ? "0.5" : "100.00"}
+                  disabled={deductionType === "HALF_DAY"}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Priority Order</Label>
+              <Input
+                type="number"
+                min="1"
+                value={order}
+                onChange={(e) => setOrder(parseInt(e.target.value) || 1)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="flex items-center justify-between">
+                <span>Applicable Roles for this Site</span>
+                <span className="text-xs text-muted-foreground font-normal">
+                  {selectedRoleIds.length === 0 && selectedDesignationIds.length === 0
+                    ? "Applies to all roles in this site"
+                    : `${selectedRoleIds.length + selectedDesignationIds.length} selected`}
+                </span>
+              </Label>
+              <p className="text-[11px] text-muted-foreground -mt-1">
+                {scope === "site"
+                  ? "Showing active roles and designations dynamically available for this site"
+                  : "Select roles or designations subject to this punctuality rule"}
+              </p>
+              <div className="max-h-48 overflow-y-auto border rounded-md p-2 space-y-1 bg-muted/20">
+                {loadingRoles ? (
+                  <div className="text-xs text-muted-foreground p-2">Loading site roles...</div>
+                ) : availableRoles.length === 0 ? (
+                  <div className="text-xs text-muted-foreground p-2">No roles found for this site. Rule will apply to all employees.</div>
+                ) : (
+                  availableRoles.map((item: any) => {
+                    const isRole = item.type === "ROLE";
+                    const isChecked = isRole
+                      ? selectedRoleIds.includes(item.id)
+                      : selectedDesignationIds.includes(item.id);
+
+                    return (
+                      <label
+                        key={`${item.type}-${item.id}`}
+                        className="flex items-center justify-between gap-2 text-xs cursor-pointer hover:bg-muted p-1.5 rounded"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={isChecked}
+                            onCheckedChange={(checked) => {
+                              if (isRole) {
+                                setSelectedRoleIds((prev) =>
+                                  checked ? [...prev, item.id] : prev.filter((id) => id !== item.id)
+                                );
+                              } else {
+                                setSelectedDesignationIds((prev) =>
+                                  checked ? [...prev, item.id] : prev.filter((id) => id !== item.id)
+                                );
+                              }
+                            }}
+                          />
+                          <span className="font-medium">{item.title}</span>
+                        </div>
+                        <Badge variant="outline" className="text-[10px] font-normal py-0 h-4">
+                          {item.category || item.type}
+                        </Badge>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t">
+            <Button variant="outline" onClick={() => setModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveSlab} disabled={savingSlab}>
+              {savingSlab ? "Saving..." : editingSlab ? "Update Slab" : "Create Slab"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------------
+// EMPLOYEE WALLETS COMPONENT
+// ---------------------------------------------------------------------------------
+
+function WalletSettingsTab() {
+  const [sites, setSites] = useState<any[]>([]);
+  const [selectedSiteId, setSelectedSiteId] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [policy, setPolicy] = useState<any>(null);
+  const [wallets, setWallets] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [savingPolicy, setSavingPolicy] = useState(false);
+  const [walletPage, setWalletPage] = useState(1);
+  const WALLETS_PER_PAGE = 10;
+
+  // Policy Form State
+  const [isEnabled, setIsEnabled] = useState(true);
+  const [deductionBasis, setDeductionBasis] = useState("GROSS");
+  const [deductionRate, setDeductionRate] = useState("10.00");
+  const [targetCeiling, setTargetCeiling] = useState("30000.00");
+
+  // Adjustment Modal State
+  const [adjustModalOpen, setAdjustModalOpen] = useState(false);
+  const [selectedWallet, setSelectedWallet] = useState<any>(null);
+  const [adjustAmount, setAdjustAmount] = useState("");
+  const [adjustType, setAdjustType] = useState("MANUAL_ADJUSTMENT");
+  const [adjustNotes, setAdjustNotes] = useState("");
+  const [customCeilingInput, setCustomCeilingInput] = useState("");
+  const [adjusting, setAdjusting] = useState(false);
+
+  useEffect(() => {
+    sitesApi.getAll().then((sts: any) => {
+      const list = Array.isArray(sts) ? sts : sts?.results || [];
+      setSites(list);
+      if (list.length > 0) {
+        setSelectedSiteId(String(list[0].id));
+      }
+    }).catch(console.error);
+  }, []);
+
+  const loadData = async () => {
+    if (!selectedSiteId) return;
+    setLoading(true);
+    try {
+      const [policyRes, walletsRes] = await Promise.all([
+        walletPoliciesApi.getAll(`?site=${selectedSiteId}`),
+        employeeWalletsApi.getAll(`?site=${selectedSiteId}`),
+      ]);
+
+      const policyList = Array.isArray(policyRes) ? policyRes : policyRes?.results || [];
+      if (policyList.length > 0) {
+        const p = policyList[0];
+        setPolicy(p);
+        setIsEnabled(p.is_enabled ?? p.isEnabled ?? true);
+        setDeductionBasis(p.deduction_basis || p.deductionBasis || "GROSS");
+        setDeductionRate(String(p.deduction_rate ?? p.deductionRate ?? "10.00"));
+        setTargetCeiling(String(p.target_ceiling ?? p.targetCeiling ?? "30000.00"));
+      } else {
+        setPolicy(null);
+        setIsEnabled(false);
+        setDeductionBasis("GROSS");
+        setDeductionRate("10.00");
+        setTargetCeiling("30000.00");
+      }
+
+      const walletList = Array.isArray(walletsRes) ? walletsRes : walletsRes?.results || [];
+      setWallets(walletList);
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to load wallet configuration");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+    setWalletPage(1);
+  }, [selectedSiteId]);
+
+  const handleSavePolicy = async () => {
+    if (!selectedSiteId) return;
+    setSavingPolicy(true);
+    try {
+      const payload = {
+        site: parseInt(selectedSiteId),
+        is_enabled: isEnabled,
+        deduction_basis: deductionBasis,
+        deduction_rate: parseFloat(deductionRate) || 0,
+        target_ceiling: parseFloat(targetCeiling) || 0,
+      };
+
+      if (policy && policy.id) {
+        await walletPoliciesApi.update(policy.id, payload);
+        toast.success("Wallet policy updated successfully");
+      } else {
+        const created = await walletPoliciesApi.create(payload);
+        setPolicy(created);
+        toast.success("Wallet policy created successfully");
+      }
+      loadData();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to save wallet policy");
+    } finally {
+      setSavingPolicy(false);
+    }
+  };
+
+  const handleToggleEmployee = async (wallet: any) => {
+    const currentActive = Boolean(wallet.isActive ?? wallet.is_active);
+    try {
+      const updated = await employeeWalletsApi.update(wallet.id, {
+        is_active: !currentActive,
+      });
+      const newActive = updated.isActive ?? updated.is_active ?? !currentActive;
+      setWallets((prev) =>
+        prev.map((w) => (w.id === wallet.id ? { ...w, is_active: newActive, isActive: newActive } : w))
+      );
+      const empName = wallet.employeeName || wallet.employee_name || "Employee";
+      toast.success(`Deduction ${newActive ? "enabled" : "paused"} for ${empName}`);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update employee wallet status");
+    }
+  };
+
+  const handleOpenAdjustModal = (wallet: any) => {
+    setSelectedWallet(wallet);
+    setAdjustAmount("");
+    setAdjustType("MANUAL_ADJUSTMENT");
+    setAdjustNotes("");
+    setCustomCeilingInput(
+      wallet.customTargetCeiling || wallet.custom_target_ceiling
+        ? String(wallet.customTargetCeiling || wallet.custom_target_ceiling)
+        : ""
+    );
+    setAdjustModalOpen(true);
+  };
+
+  const handleSaveAdjustment = async () => {
+    if (!selectedWallet) return;
+    setAdjusting(true);
+    try {
+      // 1. Update Custom Ceiling if changed
+      const rawCeiling = customCeilingInput.trim();
+      const parsedCeiling = rawCeiling !== "" ? parseFloat(rawCeiling) : null;
+      if (rawCeiling !== "" && (isNaN(parsedCeiling!) || parsedCeiling! < 0)) {
+        toast.error("Please enter a valid positive ceiling limit");
+        setAdjusting(false);
+        return;
+      }
+      const currentCustomCeiling = selectedWallet.customTargetCeiling ?? selectedWallet.custom_target_ceiling ?? null;
+      if (parsedCeiling !== currentCustomCeiling) {
+        await employeeWalletsApi.update(selectedWallet.id, {
+          custom_target_ceiling: parsedCeiling,
+        });
+      }
+
+      // 2. Process Balance Adjustment if amount entered or RESET selected
+      const curBal = parseFloat(String(selectedWallet.currentBalance ?? selectedWallet.current_balance ?? "0"));
+      if (adjustType === "RESET") {
+        if (curBal > 0) {
+          await employeeWalletsApi.adjustBalance(selectedWallet.id, {
+            amount: -curBal,
+            transaction_type: "MANUAL_ADJUSTMENT",
+            notes: adjustNotes || "Reset balance to ₹0.00",
+          });
+        }
+      } else if (adjustAmount.trim() !== "") {
+        const amt = parseFloat(adjustAmount);
+        if (isNaN(amt) || amt === 0) {
+          toast.error("Please enter a valid non-zero adjustment amount");
+          setAdjusting(false);
+          return;
+        }
+        await employeeWalletsApi.adjustBalance(selectedWallet.id, {
+          amount: amt,
+          transaction_type: adjustType,
+          notes: adjustNotes || "Manual adjustment from settings",
+        });
+      }
+
+      toast.success("Employee wallet updated successfully");
+      setAdjustModalOpen(false);
+      loadData();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update wallet");
+    } finally {
+      setAdjusting(false);
+    }
+  };
+
+  const filteredWallets = wallets.filter((w) => {
+    const q = searchQuery.toLowerCase();
+    const name = (w.employeeName || w.employee_name || "").toLowerCase();
+    const code = (w.employeeCode || w.employee_code || "").toLowerCase();
+    const role = (w.roleName || w.role_name || w.designationTitle || w.designation_title || "").toLowerCase();
+    const dept = (w.departmentName || w.department_name || "").toLowerCase();
+    return name.includes(q) || code.includes(q) || role.includes(q) || dept.includes(q);
+  });
+
+  const totalRecords = filteredWallets.length;
+  const totalPages = Math.ceil(totalRecords / WALLETS_PER_PAGE) || 1;
+  const currentPage = Math.min(walletPage, totalPages);
+  const paginatedWallets = filteredWallets.slice(
+    (currentPage - 1) * WALLETS_PER_PAGE,
+    currentPage * WALLETS_PER_PAGE
+  );
+
+  const getPageNumbers = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    const pages: (number | string)[] = [1];
+    if (currentPage > 3) {
+      pages.push("ellipsis-1");
+    }
+    const start = Math.max(2, currentPage - 1);
+    const end = Math.min(totalPages - 1, currentPage + 1);
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    if (currentPage < totalPages - 2) {
+      pages.push("ellipsis-2");
+    }
+    pages.push(totalPages);
+    return pages;
+  };
+
+  const selectedSite = sites.find((s) => String(s.id) === String(selectedSiteId));
+
+  return (
+    <div className="space-y-6">
+      {/* Header and Scope Selector */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b">
+        <div>
+          <h3 className="text-lg font-medium flex items-center gap-2">
+            <Wallet className="w-5 h-5 text-primary" />
+            Employee Wallet & Security Deposit Settings
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Configure automated security deposit deductions, monthly ceiling caps, and employee-level toggles.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Label className="text-xs font-semibold whitespace-nowrap">Site Scope:</Label>
+          <Select value={selectedSiteId} onValueChange={setSelectedSiteId}>
+            <SelectTrigger className="w-[220px]">
+              <SelectValue placeholder="Select Site" />
+            </SelectTrigger>
+            <SelectContent>
+              {sites.map((s) => (
+                <SelectItem key={s.id} value={String(s.id)}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Policy Card */}
+      <div className="p-5 border rounded-lg bg-card space-y-5">
+        <div className="flex items-center justify-between border-b pb-4">
+          <div className="space-y-0.5">
+            <h4 className="font-semibold text-sm flex items-center gap-2">
+              <Coins className="w-4 h-4 text-primary" />
+              Site Policy: {selectedSite ? selectedSite.name : "Selected Site"}
+            </h4>
+            <p className="text-xs text-muted-foreground">
+              When enabled, a percentage or fixed amount will be deducted monthly and held in employee security deposit wallets.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Label htmlFor="master-wallet-toggle" className="text-xs font-medium cursor-pointer">
+              {isEnabled ? "Deposit Policy Active" : "Deposit Policy Disabled"}
+            </Label>
+            <Switch
+              id="master-wallet-toggle"
+              checked={isEnabled}
+              onCheckedChange={setIsEnabled}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Deduction Method / Phasing</Label>
+            <Select value={deductionBasis} onValueChange={setDeductionBasis}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="FIXED">Fixed Monthly Amount (₹) — Phased Monthly</SelectItem>
+                <SelectItem value="GROSS">Percentage of Gross Salary (%) — Phased Monthly</SelectItem>
+                <SelectItem value="BASIC">Percentage of Basic Salary (%) — Phased Monthly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">
+              {deductionBasis === "FIXED" ? "Phase Deduction: Monthly Amount (₹)" : "Phase Deduction: Monthly Rate (%)"}
+            </Label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={deductionRate}
+              onChange={(e) => setDeductionRate(e.target.value)}
+              placeholder={deductionBasis === "FIXED" ? "e.g. 3000.00" : "e.g. 10.00"}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              {deductionBasis === "FIXED"
+                ? "Deducted each month during payroll until ceiling is reached."
+                : "Percentage of salary deducted each month until ceiling is reached."}
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Maximum Target Ceiling Limit (₹)</Label>
+            <Input
+              type="number"
+              step="1000"
+              min="0"
+              value={targetCeiling}
+              onChange={(e) => setTargetCeiling(e.target.value)}
+              placeholder="e.g. 30000.00"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Total accumulation limit. Once reached, deductions stop completely (₹0.00).
+            </p>
+          </div>
+        </div>
+
+        <div className="p-3 bg-muted/40 rounded-md text-xs text-muted-foreground flex items-center gap-2">
+          <Info className="w-4 h-4 text-primary shrink-0" />
+          <span>
+            <strong>Phased Accumulation & Automatic Cessation:</strong> Each month when payroll runs, {deductionBasis === "FIXED" ? `₹${parseFloat(deductionRate || "0").toLocaleString("en-IN")}` : `${deductionRate}%`} will be deducted in phases and stored in the employee's wallet. Once the total balance reaches ₹{parseFloat(targetCeiling || "0").toLocaleString("en-IN")}, deductions completely stop and payslips will show ₹0.00 security deposit.
+          </span>
+        </div>
+
+        <div className="flex justify-end pt-2">
+          <Button onClick={handleSavePolicy} disabled={savingPolicy} size="sm">
+            {savingPolicy ? "Saving Policy..." : "Save Policy Configuration"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Employee Wallets List */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h4 className="font-semibold text-sm">Employee Wallets & Balances</h4>
+            <p className="text-xs text-muted-foreground">
+              Live balances and individual deposit deduction toggles for this site.
+            </p>
+          </div>
+
+          <div className="relative w-full sm:w-64">
+            <Search className="w-4 h-4 absolute left-2.5 top-2.5 text-muted-foreground" />
+            <Input
+              placeholder="Search employee or code..."
+              className="pl-8 text-xs h-9"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setWalletPage(1);
+              }}
+            />
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">Loading employee wallets...</div>
+        ) : filteredWallets.length === 0 ? (
+          <div className="p-8 border border-dashed rounded-lg text-center text-sm text-muted-foreground">
+            No employees found for this site.
+          </div>
+        ) : (
+          <div className="border rounded-lg overflow-hidden bg-card">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b">
+                <tr>
+                  <th className="px-4 py-3">Employee</th>
+                  <th className="px-4 py-3">Role / Dept</th>
+                  <th className="px-4 py-3">Current Balance</th>
+                  <th className="px-4 py-3">Ceiling Limit</th>
+                  <th className="px-4 py-3">Accumulation Progress</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-center">Deduction Toggle</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {paginatedWallets.map((wallet) => {
+                  const empName = wallet.employeeName || wallet.employee_name || "—";
+                  const empCode = wallet.employeeCode || wallet.employee_code || "—";
+                  const empRole = wallet.roleName || wallet.role_name || wallet.designationTitle || wallet.designation_title || "—";
+                  const empDept = wallet.departmentName || wallet.department_name || "—";
+                  const bal = parseFloat(String(wallet.currentBalance ?? wallet.current_balance ?? "0"));
+                  const ceiling = parseFloat(String(wallet.effectiveCeiling ?? wallet.effective_ceiling ?? targetCeiling ?? "30000"));
+                  const progress = Math.min(100, Math.round((bal / (ceiling || 1)) * 100));
+                  const isCapMet = bal >= ceiling;
+                  const isActive = Boolean(wallet.isActive ?? wallet.is_active);
+
+                  return (
+                    <tr key={wallet.id} className="hover:bg-muted/30">
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-xs sm:text-sm">{empName}</div>
+                        <div className="text-[11px] text-muted-foreground font-mono">{empCode}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-xs font-medium text-foreground">{empRole}</div>
+                        <div className="text-[11px] text-muted-foreground">{empDept}</div>
+                      </td>
+                      <td className="px-4 py-3 font-semibold text-emerald-600 dark:text-emerald-400">
+                        ₹ {bal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        <div className="font-medium text-foreground">₹ {ceiling.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
+                        {wallet.customTargetCeiling || wallet.custom_target_ceiling ? (
+                          <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">(Custom Cap)</span>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground">(Site Default)</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 w-48">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-all",
+                                isCapMet ? "bg-emerald-500" : "bg-primary"
+                              )}
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                          <span className="text-[11px] font-mono text-muted-foreground w-9 text-right">
+                            {progress}%
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {!isEnabled ? (
+                          <Badge variant="outline" className="bg-muted text-muted-foreground border-muted-foreground/30 text-[11px]">
+                            Site Policy Disabled
+                          </Badge>
+                        ) : isCapMet ? (
+                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 text-[11px]">
+                            Wallet Full (Deduction Stopped)
+                          </Badge>
+                        ) : !isActive ? (
+                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 text-[11px]">
+                            Employee Toggle Off
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 text-[11px]">
+                            Active (Accumulating)
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Switch
+                          checked={isActive}
+                          onCheckedChange={() => handleToggleEmployee(wallet)}
+                        />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs gap-1"
+                          onClick={() => handleOpenAdjustModal(wallet)}
+                        >
+                          <Coins className="w-3.5 h-3.5" />
+                          Adjust
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {/* Pagination Bar */}
+            <div className="p-3 border-t flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground bg-muted/20">
+              <div>
+                Showing {totalRecords === 0 ? 0 : (currentPage - 1) * WALLETS_PER_PAGE + 1} - {Math.min(currentPage * WALLETS_PER_PAGE, totalRecords)} of {totalRecords} records
+              </div>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (currentPage > 1) setWalletPage(currentPage - 1);
+                          }}
+                          className={currentPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+
+                      {getPageNumbers().map((p, idx) => {
+                        if (typeof p === "string") {
+                          return (
+                            <PaginationItem key={`ellipsis-${idx}`}>
+                              <PaginationEllipsis />
+                            </PaginationItem>
+                          );
+                        }
+                        return (
+                          <PaginationItem key={p}>
+                            <PaginationLink
+                              href="#"
+                              isActive={p === currentPage}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setWalletPage(p);
+                              }}
+                              className="cursor-pointer"
+                            >
+                              {p}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      })}
+
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (currentPage < totalPages) setWalletPage(currentPage + 1);
+                          }}
+                          className={currentPage >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Adjust Balance Modal */}
+      <Dialog open={adjustModalOpen} onOpenChange={setAdjustModalOpen}>
+        <DialogContent className="sm:max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle>Adjust Employee Wallet & Ceiling</DialogTitle>
+            <DialogDescription>
+              Configure custom ceiling limits, record credits, refund debits, or reset balance for{" "}
+              <strong>{selectedWallet?.employeeName || selectedWallet?.employee_name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="p-3 bg-muted/40 rounded-md text-xs space-y-1">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Current Balance:</span>
+                <span className="font-semibold text-emerald-600">
+                  ₹ {parseFloat(String(selectedWallet?.currentBalance ?? selectedWallet?.current_balance ?? "0")).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Effective Ceiling:</span>
+                <span>₹ {parseFloat(String(selectedWallet?.effectiveCeiling ?? selectedWallet?.effective_ceiling ?? targetCeiling ?? "0")).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+
+            {/* Custom Ceiling Override Field */}
+            <div className="space-y-1.5 pt-2 border-t">
+              <Label className="text-xs font-semibold">Custom Ceiling Limit for this Employee (₹)</Label>
+              <Input
+                type="number"
+                step="500"
+                min="0"
+                placeholder={`Leave blank to inherit site limit (₹${parseFloat(targetCeiling || "0").toLocaleString("en-IN")})`}
+                value={customCeilingInput}
+                onChange={(e) => setCustomCeilingInput(e.target.value)}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Set a custom accumulation limit for this employee. Leave empty to use the site default limit.
+              </p>
+            </div>
+
+            <div className="space-y-1.5 pt-2 border-t">
+              <Label className="text-xs font-semibold">Balance Adjustment</Label>
+              <Select value={adjustType} onValueChange={setAdjustType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MANUAL_ADJUSTMENT">Manual Credit (+)</SelectItem>
+                  <SelectItem value="REFUND">Security Deposit Refund Debit (-)</SelectItem>
+                  <SelectItem value="RESET">Reset Balance to ₹0.00</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {adjustType !== "RESET" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Amount (₹)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder={adjustType === "REFUND" ? "e.g. -5000.00" : "e.g. 5000.00"}
+                  value={adjustAmount}
+                  onChange={(e) => setAdjustAmount(e.target.value)}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  {adjustType === "REFUND"
+                    ? "Enter a negative number (e.g. -5000) or positive number to deduct."
+                    : "Enter amount to credit to the wallet."}
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Reason / Audit Notes</Label>
+              <Input
+                placeholder="e.g. Approved adjustment / reset"
+                value={adjustNotes}
+                onChange={(e) => setAdjustNotes(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t">
+            <Button variant="outline" onClick={() => setAdjustModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveAdjustment} disabled={adjusting}>
+              {adjusting ? "Processing..." : "Confirm Adjustment"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -3070,7 +4115,7 @@ function BrandingTab() {
       if (logoFile) {
         formData.append("logo", logoFile);
       }
-      
+
       const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
 
       const res = await fetch(`${API_BASE_URL}/api/organisation/sites/${site.id}/`, {
@@ -3085,7 +4130,7 @@ function BrandingTab() {
       if (data.logo) {
         setPreview(getMediaUrl(data.logo));
       }
-      
+
       // Reload to update sidebar logo
       setTimeout(() => window.location.reload(), 1000);
     } catch (err: any) {
@@ -3116,36 +4161,36 @@ function BrandingTab() {
       <div className="space-y-4 max-w-md">
         <div className="space-y-2">
           <Label>Site Title</Label>
-          <Input 
-            value={brandingText} 
-            onChange={(e) => setBrandingText(e.target.value)} 
-            placeholder="e.g. PeoplePulse HRMS" 
+          <Input
+            value={brandingText}
+            onChange={(e) => setBrandingText(e.target.value)}
+            placeholder="e.g. PeoplePulse HRMS"
           />
         </div>
         <div className="space-y-2">
           <Label>Logo</Label>
-          <Input 
-            type="file" 
-            accept="image/*" 
+          <Input
+            type="file"
+            accept="image/*"
             onChange={(e) => {
               if (e.target.files && e.target.files[0]) {
                 setLogoFile(e.target.files[0]);
                 setPreview(URL.createObjectURL(e.target.files[0]));
               }
-            }} 
+            }}
           />
           {preview && (
             <div className="mt-4 p-4 border rounded bg-slate-50 flex items-center justify-center min-h-[100px]">
-              <img 
-                src={preview} 
-                alt="Logo" 
-                className="max-h-24 object-contain" 
+              <img
+                src={preview}
+                alt="Logo"
+                className="max-h-24 object-contain"
               />
             </div>
           )}
         </div>
-        <Button 
-          onClick={handleSave} 
+        <Button
+          onClick={handleSave}
           disabled={saving}
           className="w-full bg-[#1a4cd2] hover:bg-[#1641b4] text-white"
         >

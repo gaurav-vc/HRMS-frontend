@@ -43,6 +43,7 @@ import { Route as AttendanceIndexRouteImport } from './routes/attendance.index'
 import { Route as PayrollStructureRouteImport } from './routes/payroll.structure'
 import { Route as PayrollSlipsRouteImport } from './routes/payroll.slips'
 import { Route as PayrollRunRouteImport } from './routes/payroll.run'
+import { Route as PayrollMemosRouteImport } from './routes/payroll.memos'
 import { Route as PayrollImportCtcRouteImport } from './routes/payroll.import-ctc'
 import { Route as PayrollComplianceRouteImport } from './routes/payroll.compliance'
 import { Route as OrganizationsOrgIdRouteImport } from './routes/organizations.$orgId'
@@ -232,6 +233,11 @@ const PayrollRunRoute = PayrollRunRouteImport.update({
   path: '/run',
   getParentRoute: () => PayrollRoute,
 } as any)
+const PayrollMemosRoute = PayrollMemosRouteImport.update({
+  id: '/memos',
+  path: '/memos',
+  getParentRoute: () => PayrollRoute,
+} as any)
 const PayrollImportCtcRoute = PayrollImportCtcRouteImport.update({
   id: '/import-ctc',
   path: '/import-ctc',
@@ -370,6 +376,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId': typeof OrganizationsOrgIdRoute
   '/payroll/compliance': typeof PayrollComplianceRoute
   '/payroll/import-ctc': typeof PayrollImportCtcRoute
+  '/payroll/memos': typeof PayrollMemosRoute
   '/payroll/run': typeof PayrollRunRoute
   '/payroll/slips': typeof PayrollSlipsRoute
   '/payroll/structure': typeof PayrollStructureRoute
@@ -422,6 +429,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId': typeof OrganizationsOrgIdRoute
   '/payroll/compliance': typeof PayrollComplianceRoute
   '/payroll/import-ctc': typeof PayrollImportCtcRoute
+  '/payroll/memos': typeof PayrollMemosRoute
   '/payroll/run': typeof PayrollRunRoute
   '/payroll/slips': typeof PayrollSlipsRoute
   '/payroll/structure': typeof PayrollStructureRoute
@@ -477,6 +485,7 @@ export interface FileRoutesById {
   '/organizations/$orgId': typeof OrganizationsOrgIdRoute
   '/payroll/compliance': typeof PayrollComplianceRoute
   '/payroll/import-ctc': typeof PayrollImportCtcRoute
+  '/payroll/memos': typeof PayrollMemosRoute
   '/payroll/run': typeof PayrollRunRoute
   '/payroll/slips': typeof PayrollSlipsRoute
   '/payroll/structure': typeof PayrollStructureRoute
@@ -533,6 +542,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId'
     | '/payroll/compliance'
     | '/payroll/import-ctc'
+    | '/payroll/memos'
     | '/payroll/run'
     | '/payroll/slips'
     | '/payroll/structure'
@@ -585,6 +595,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId'
     | '/payroll/compliance'
     | '/payroll/import-ctc'
+    | '/payroll/memos'
     | '/payroll/run'
     | '/payroll/slips'
     | '/payroll/structure'
@@ -639,6 +650,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId'
     | '/payroll/compliance'
     | '/payroll/import-ctc'
+    | '/payroll/memos'
     | '/payroll/run'
     | '/payroll/slips'
     | '/payroll/structure'
@@ -924,6 +936,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PayrollRunRouteImport
       parentRoute: typeof PayrollRoute
     }
+    '/payroll/memos': {
+      id: '/payroll/memos'
+      path: '/memos'
+      fullPath: '/payroll/memos'
+      preLoaderRoute: typeof PayrollMemosRouteImport
+      parentRoute: typeof PayrollRoute
+    }
     '/payroll/import-ctc': {
       id: '/payroll/import-ctc'
       path: '/import-ctc'
@@ -1120,6 +1139,7 @@ const OrganizationsRouteWithChildren = OrganizationsRoute._addFileChildren(
 interface PayrollRouteChildren {
   PayrollComplianceRoute: typeof PayrollComplianceRoute
   PayrollImportCtcRoute: typeof PayrollImportCtcRoute
+  PayrollMemosRoute: typeof PayrollMemosRoute
   PayrollRunRoute: typeof PayrollRunRoute
   PayrollSlipsRoute: typeof PayrollSlipsRoute
   PayrollStructureRoute: typeof PayrollStructureRoute
@@ -1129,6 +1149,7 @@ interface PayrollRouteChildren {
 const PayrollRouteChildren: PayrollRouteChildren = {
   PayrollComplianceRoute: PayrollComplianceRoute,
   PayrollImportCtcRoute: PayrollImportCtcRoute,
+  PayrollMemosRoute: PayrollMemosRoute,
   PayrollRunRoute: PayrollRunRoute,
   PayrollSlipsRoute: PayrollSlipsRoute,
   PayrollStructureRoute: PayrollStructureRoute,

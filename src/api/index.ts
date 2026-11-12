@@ -358,6 +358,71 @@ export const attendancePoliciesApi = {
     apiCall(`/api/organisation/attendance-policies/${id}/`, "PATCH", data),
 };
 
+export const punctualitySlabsApi = {
+  getAll: async (params?: string): Promise<any> =>
+    apiCall(`/api/organisation/punctuality-slabs/${params || ""}`),
+  getAvailableRoles: async (params?: string): Promise<any> =>
+    apiCall(`/api/organisation/punctuality-slabs/available-roles/${params || ""}`),
+  create: async (data: any): Promise<any> =>
+    apiCall("/api/organisation/punctuality-slabs/", "POST", data),
+  update: async (id: number, data: any): Promise<any> =>
+    apiCall(`/api/organisation/punctuality-slabs/${id}/`, "PATCH", data),
+  delete: async (id: number): Promise<any> =>
+    apiCall(`/api/organisation/punctuality-slabs/${id}/`, "DELETE"),
+};
+
+export const walletPoliciesApi = {
+  getAll: async (params?: string): Promise<any> =>
+    apiCall(`/api/payroll/wallet-policies/${params || ""}`),
+  create: async (data: any): Promise<any> =>
+    apiCall("/api/payroll/wallet-policies/", "POST", data),
+  update: async (id: number, data: any): Promise<any> =>
+    apiCall(`/api/payroll/wallet-policies/${id}/`, "PATCH", data),
+};
+
+export const employeeWalletsApi = {
+  getAll: async (params?: string): Promise<any> =>
+    apiCall(`/api/payroll/wallets/${params || ""}`),
+  update: async (id: number, data: any): Promise<any> =>
+    apiCall(`/api/payroll/wallets/${id}/`, "PATCH", data),
+  adjustBalance: async (id: number, data: { amount: number | string; notes?: string; transaction_type?: string }): Promise<any> =>
+    apiCall(`/api/payroll/wallets/${id}/adjust-balance/`, "POST", data),
+};
+
+export const disciplinaryCategoriesApi = {
+  getAll: async (params?: string): Promise<any> => {
+    const q = params ? (params.startsWith("?") ? params : `?${params}`) : "";
+    return apiCall(`/api/payroll/disciplinary-categories/${q}`);
+  },
+  create: async (data: any): Promise<any> =>
+    apiCall("/api/payroll/disciplinary-categories/", "POST", data),
+  update: async (id: number | string, data: any): Promise<any> =>
+    apiCall(`/api/payroll/disciplinary-categories/${id}/`, "PATCH", data),
+  delete: async (id: number | string): Promise<any> =>
+    apiCall(`/api/payroll/disciplinary-categories/${id}/`, "DELETE"),
+};
+
+export const disciplinaryMemosApi = {
+  getAll: async (params?: string): Promise<any> => {
+    const q = params ? (params.startsWith("?") ? params : `?${params}`) : "";
+    return apiCall(`/api/payroll/disciplinary-memos/${q}`);
+  },
+  getSummary: async (params?: string): Promise<any> => {
+    const q = params ? (params.startsWith("?") ? params : `?${params}`) : "";
+    return apiCall(`/api/payroll/disciplinary-memos/summary/${q}`);
+  },
+  create: async (data: any): Promise<any> =>
+    apiCall("/api/payroll/disciplinary-memos/", "POST", data),
+  update: async (id: number | string, data: any): Promise<any> =>
+    apiCall(`/api/payroll/disciplinary-memos/${id}/`, "PATCH", data),
+  waive: async (id: number | string): Promise<any> =>
+    apiCall(`/api/payroll/disciplinary-memos/${id}/waive/`, "POST"),
+  cancel: async (id: number | string): Promise<any> =>
+    apiCall(`/api/payroll/disciplinary-memos/${id}/cancel/`, "POST"),
+  delete: async (id: number | string): Promise<any> =>
+    apiCall(`/api/payroll/disciplinary-memos/${id}/`, "DELETE"),
+};
+
 export const attendanceApi = {
   punch: async (data: any): Promise<any> => apiCall("/attendance/punch/", "POST", data),
   getLivenessChallenge: async (): Promise<any> => apiCall("/attendance/get_liveness_challenge/"),
