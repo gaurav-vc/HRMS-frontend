@@ -42,8 +42,35 @@ const Ctx = createContext<AuthCtx | null>(null);
 const KEY = "hrms-auth";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [init, setInit] = useState(false);
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+        const raw = localStorage.getItem(KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && (parsed.role === "super_admin" || parsed.role_name === "Super Admin")) {
+            parsed.is_superuser = true;
+          }
+          return parsed;
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    return null;
+  });
+
+  const [init, setInit] = useState<boolean>(() => {
+    if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+      const hasAuth = Boolean(localStorage.getItem(KEY));
+      const hasToken = Boolean(localStorage.getItem("access_token"));
+      // If no token exists at all, user is definitely unauthenticated, so initialized immediately
+      if (!hasToken) return true;
+      // If auth data is already in localStorage, hydrate immediately
+      if (hasAuth) return true;
+    }
+    return false;
+  });
 
   useEffect(() => {
     let mounted = true;
@@ -51,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const initAuth = async () => {
       try {
         const raw = typeof localStorage !== "undefined" ? localStorage.getItem(KEY) : null;
-        if (raw && mounted) {
+        if (raw && mounted && !user) {
           const parsed = JSON.parse(raw);
           if (parsed && (parsed.role === "super_admin" || parsed.role_name === "Super Admin")) {
             parsed.is_superuser = true;

@@ -36,6 +36,7 @@ import {
   UserMinus,
   Megaphone,
   AlertTriangle,
+  Activity,
 } from "lucide-react";
 import {
   Sidebar,
@@ -150,12 +151,14 @@ export const SUPER_ADMIN_NAV: Group[] = [
       { title: "Organizations", url: "/organizations", icon: Network },
       { title: "Sites", url: "/superadmin-sites", icon: MapPin },
       { title: "Billing & Payments", url: "/billing-payments", icon: CreditCard },
+      { title: "Live Telemetry APM", url: "/superadmin-telemetry", icon: Activity },
     ],
   },
 ];
 
 export const canAccessRoute = (it: Item, user: any) => {
   if (!user) return false;
+  if (isSuperAdminUser(user)) return true;
 
   // 1. Strict Site Module Boundary: If user's site has assigned modules, item MUST be in site_modules
   if (user?.site_modules && Array.isArray(user.site_modules) && user.site_modules.length > 0) {
@@ -248,8 +251,8 @@ export function AppSidebar() {
   const isActive = (url: string) =>
     url === "/" ? pathname === "/" : pathname === url || pathname.startsWith(url + "/");
   
-  // Super admins ONLY see SUPER_ADMIN_NAV
-  const nav = isSuperAdmin ? SUPER_ADMIN_NAV : NAV;
+  // Super admins see both platform management (SUPER_ADMIN_NAV) and all standard HRMS modules (NAV)
+  const nav = isSuperAdmin ? [...SUPER_ADMIN_NAV, ...NAV] : NAV;
 
   return (
     <Sidebar collapsible="icon">

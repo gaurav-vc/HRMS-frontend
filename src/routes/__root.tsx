@@ -257,9 +257,8 @@ function Shell() {
         pathname.startsWith("/billing-payments") ||
         pathname.startsWith("/superadmin-");
 
-      if (isSuperAdmin && !isSuperAdminRoute && pathname !== "/auth") {
-        router.navigate({ to: "/organizations", replace: true });
-      } else if (!isSuperAdmin && isSuperAdminRoute && pathname !== "/auth") {
+      // Non-superadmins cannot access superadmin platform management routes
+      if (!isSuperAdmin && isSuperAdminRoute && pathname !== "/auth") {
         router.navigate({ to: "/", replace: true });
       }
     }
@@ -280,7 +279,7 @@ function Shell() {
     pathname.startsWith("/billing-payments") ||
     pathname.startsWith("/superadmin-");
 
-  if (isSuperAdmin && !isSuperAdminRoute) return null;
+  // Restrict platform administration routes to Super Admins only
   if (!isSuperAdmin && isSuperAdminRoute) return null;
 
   return (

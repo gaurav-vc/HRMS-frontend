@@ -156,6 +156,20 @@ function TabletKioskPage() {
     return () => clearInterval(timer);
   }, []);
 
+  // Cleanup active camera stream on unmount
+  useEffect(() => {
+    return () => {
+      try {
+        if (webcamRef.current?.video?.srcObject) {
+          const stream = webcamRef.current.video.srcObject as MediaStream;
+          stream.getTracks().forEach((track) => track.stop());
+        }
+      } catch (e) {
+        /* ignore */
+      }
+    };
+  }, []);
+
   // Read token from query parameters on mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -537,10 +551,48 @@ function TabletKioskPage() {
                     <span>Punch Recorded Recently</span>
                   </>
                 )}
+                {status === "CAMERA_ERROR" && (
+                  <>
+                    <XCircle className="w-4 h-4 text-red-400" />
+                    <span>Camera Permission Blocked or Device Offline</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
         </div>
+
+        {/* CAMERA ERROR RECOVERY PANEL */}
+        {status === "CAMERA_ERROR" && (
+          <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-6 z-40 animate-in fade-in duration-200 pointer-events-auto">
+            <div className="w-full max-w-md bg-slate-900 border-2 border-red-500/50 rounded-3xl p-8 shadow-[0_0_60px_rgba(239,68,68,0.25)] text-center space-y-6">
+              <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 mx-auto flex items-center justify-center">
+                <Camera className="w-8 h-8" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-xl font-bold text-white tracking-tight">Camera Feed Unavailable</h2>
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  The terminal was unable to access the camera hardware. Please ensure:
+                </p>
+                <ul className="text-xs text-slate-400 list-disc list-inside space-y-1 text-left bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+                  <li>Camera permission is allowed in your browser settings.</li>
+                  <li>No other application or browser tab is locking the webcam.</li>
+                  <li>The camera device is securely connected and operational.</li>
+                </ul>
+              </div>
+              <Button
+                onClick={() => {
+                  setStatus("INITIALIZING");
+                  setTimeout(() => setStatus("SCANNING"), 400);
+                }}
+                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold h-11 rounded-xl shadow-lg shadow-indigo-600/30 gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Retry Camera Initialization</span>
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* SUCCESS CELEBRATION MODAL OVERLAY */}
         {status === "SUCCESS" && successData && (

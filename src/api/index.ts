@@ -21,15 +21,15 @@ const delay = (ms: number = 300) => new Promise((resolve) => setTimeout(resolve,
 
 export const API_BASE_URL = import.meta.env.PROD
   ? (typeof window !== 'undefined'
-      ? window.location.hostname.includes('lotusdevelopers')
-        ? "https://hrms.lotusdevelopers.com"
-        : window.location.hostname.includes('vibesandbox')
-          ? "https://hrms.vibesandbox.live"
-          : "https://hrms.vibecopilot.ai"
-      : "https://hrms.vibecopilot.ai")
-  : (typeof window !== 'undefined' 
-      ? `http://${window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname}:8000` 
-      : "http://127.0.0.1:8000");
+    ? window.location.hostname.includes('lotusdevelopers')
+      ? "https://hrms.lotusdevelopers.com"
+      : window.location.hostname.includes('vibesandbox')
+        ? "https://hrms.vibesandbox.live"
+        : "https://hrms.vibecopilot.ai"
+    : "https://hrms.vibecopilot.ai")
+  : (typeof window !== 'undefined'
+    ? `http://${window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname}:8000`
+    : "http://127.0.0.1:8000");
 
 export const getMediaUrl = (url: string | null | undefined): string => {
   if (!url) return "";
@@ -83,13 +83,14 @@ const apiCall = async (url: string, method: string = "GET", body?: any, isBlob: 
   if (url.startsWith("/invoices")) base = "/api/admin_org";
   if (url.startsWith("/reports")) base = "/api";
   if (url.startsWith("/announcements")) base = "/api";
+  if (url.startsWith("/v1/superadmin")) base = "/api";
   if (url.startsWith("/api")) base = ""; // direct path
 
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
   const headers: Record<string, string> = {
     "Accept": "application/json",
   };
-  
+
   let fetchBody = body;
   if (body) {
     if (body instanceof FormData) {
@@ -177,10 +178,26 @@ const apiCall = async (url: string, method: string = "GET", body?: any, isBlob: 
     let errBody: any = null;
     try {
       errBody = await res.json();
-      if (errBody && errBody.message) errMsg = errBody.message;
-      else if (errBody && errBody.error) errMsg = errBody.error;
-      else if (errBody && errBody.detail) errMsg = errBody.detail;
-      else if (errBody) errMsg = JSON.stringify(errBody);
+      if (errBody && errBody.errors && typeof errBody.errors === "object") {
+        const fieldMsgs = Object.entries(errBody.errors).map(([field, errs]: [string, any]) => {
+          const fieldStr = field.replace(/_/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase());
+          const msg = Array.isArray(errs) ? errs.join(", ") : String(errs);
+          return `${fieldStr}: ${msg}`;
+        });
+        if (fieldMsgs.length > 0) {
+          errMsg = fieldMsgs.join(" | ");
+        } else if (errBody.detail) {
+          errMsg = typeof errBody.detail === "string" ? errBody.detail : JSON.stringify(errBody.detail);
+        }
+      } else if (errBody && errBody.detail) {
+        errMsg = typeof errBody.detail === "string" ? errBody.detail : JSON.stringify(errBody.detail);
+      } else if (errBody && errBody.message) {
+        errMsg = typeof errBody.message === "string" ? errBody.message : JSON.stringify(errBody.message);
+      } else if (errBody && errBody.error) {
+        errMsg = typeof errBody.error === "string" ? errBody.error : JSON.stringify(errBody.error);
+      } else if (errBody) {
+        errMsg = typeof errBody === "string" ? errBody : JSON.stringify(errBody);
+      }
     } catch (e) {
       /* ignore */
     }
@@ -700,4 +717,60 @@ export const announcementsApi = {
   create: async (data: FormData | any): Promise<any> => apiCall("/announcements/", "POST", data),
   delete: async (id: string | number): Promise<any> => apiCall(`/announcements/${id}/`, "DELETE"),
   markRead: async (id: string | number): Promise<any> => apiCall(`/announcements/${id}/mark_read/`, "POST"),
+};
+
+export const telemetryApi = {
+  getOverview: async (platform: string = "ALL", tenant: string = "all"): Promise<any> => {
+    const q = new URLSearchParams();
+    if (platform && platform !== "ALL") q.append("platform", platform);
+    if (tenant && tenant !== "all") q.append("tenant", tenant);
+    const qs = q.toString() ? `?${q.toString()}` : "";
+    const res = await apiCall(`/v1/superadmin/telemetry/overview/${qs}`);
+    return res?.data || res;
+  },
+  runSyntheticProbe: async (): Promise<any> => {
+    const res = await apiCall("/v1/superadmin/telemetry/synthetic-probe/", "POST");
+    return res?.canaryReport || res;
+  },
+  resolveAnomaly: async (anomalyId: string): Promise<any> => {
+    return apiCall("/v1/superadmin/telemetry/anomalies/resolve/", "POST", { anomalyId });
+  },
+  simulateAnomaly: async (type: string = "LATENCY_SPIKE", endpoint?: string, platform: string = "WEB"): Promise<any> => {
+    const res = await apiCall("/v1/superadmin/telemetry/anomalies/simulate/", "POST", {
+      type,
+      endpoint,
+      platform,
+    });
+    return res?.anomaly || res;
+  },
+  toggleProber: async (enable: boolean): Promise<any> => {
+    const res = await apiCall("/v1/superadmin/telemetry/prober/toggle/", "POST", { enable });
+    return res?.prober || res;
+  },
+  getLiveTraces: async (params?: { tenant?: string; level?: string; platform?: string; search?: string; hideHeartbeats?: boolean; page?: number; pageSize?: number }): Promise<any> => {
+    const q = new URLSearchParams();
+    if (params?.tenant && params.tenant !== "all") q.append("tenant", params.tenant);
+    if (params?.level && params.level !== "ALL") q.append("level", params.level);
+    if (params?.platform && params.platform !== "ALL") q.append("platform", params.platform);
+    if (params?.search) q.append("search", params.search);
+    if (params?.hideHeartbeats !== undefined) q.append("hide_heartbeats", String(params.hideHeartbeats));
+    if (params?.page) q.append("page", String(params.page));
+    if (params?.pageSize) q.append("pageSize", String(params.pageSize));
+    const qs = q.toString() ? `?${q.toString()}` : "";
+    const res = await apiCall(`/v1/superadmin/telemetry/logs/${qs}`);
+    return res?.data || res;
+  },
+  executeSandboxTest: async (method: string, endpoint: string, payload?: any, tenantId?: string): Promise<any> => {
+    const res = await apiCall("/v1/superadmin/telemetry/sandbox-test/", "POST", {
+      method,
+      endpoint,
+      payload,
+      tenantId,
+    });
+    return res?.result || res;
+  },
+  getEndpointsCatalog: async (): Promise<any> => {
+    const res = await apiCall("/v1/superadmin/telemetry/endpoints/");
+    return res?.endpoints || res;
+  },
 };

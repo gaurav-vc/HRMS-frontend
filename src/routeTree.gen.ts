@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SuperadminTelemetryRouteImport } from './routes/superadmin-telemetry'
 import { Route as SuperadminSitesRouteImport } from './routes/superadmin-sites'
 import { Route as SuperadminDashboardRouteImport } from './routes/superadmin-dashboard'
 import { Route as SitesRouteImport } from './routes/sites'
@@ -63,6 +64,11 @@ import { Route as AttendanceKioskRouteImport } from './routes/attendance.kiosk'
 import { Route as AttendanceGpsRouteImport } from './routes/attendance.gps'
 import { Route as AttendanceFaceRouteImport } from './routes/attendance.face'
 
+const SuperadminTelemetryRoute = SuperadminTelemetryRouteImport.update({
+  id: '/superadmin-telemetry',
+  path: '/superadmin-telemetry',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SuperadminSitesRoute = SuperadminSitesRouteImport.update({
   id: '/superadmin-sites',
   path: '/superadmin-sites',
@@ -358,6 +364,7 @@ export interface FileRoutesByFullPath {
   '/sites': typeof SitesRoute
   '/superadmin-dashboard': typeof SuperadminDashboardRoute
   '/superadmin-sites': typeof SuperadminSitesRoute
+  '/superadmin-telemetry': typeof SuperadminTelemetryRoute
   '/attendance/face': typeof AttendanceFaceRoute
   '/attendance/gps': typeof AttendanceGpsRoute
   '/attendance/kiosk': typeof AttendanceKioskRoute
@@ -411,6 +418,7 @@ export interface FileRoutesByTo {
   '/sites': typeof SitesRoute
   '/superadmin-dashboard': typeof SuperadminDashboardRoute
   '/superadmin-sites': typeof SuperadminSitesRoute
+  '/superadmin-telemetry': typeof SuperadminTelemetryRoute
   '/attendance/face': typeof AttendanceFaceRoute
   '/attendance/gps': typeof AttendanceGpsRoute
   '/attendance/kiosk': typeof AttendanceKioskRoute
@@ -467,6 +475,7 @@ export interface FileRoutesById {
   '/sites': typeof SitesRoute
   '/superadmin-dashboard': typeof SuperadminDashboardRoute
   '/superadmin-sites': typeof SuperadminSitesRoute
+  '/superadmin-telemetry': typeof SuperadminTelemetryRoute
   '/attendance/face': typeof AttendanceFaceRoute
   '/attendance/gps': typeof AttendanceGpsRoute
   '/attendance/kiosk': typeof AttendanceKioskRoute
@@ -524,6 +533,7 @@ export interface FileRouteTypes {
     | '/sites'
     | '/superadmin-dashboard'
     | '/superadmin-sites'
+    | '/superadmin-telemetry'
     | '/attendance/face'
     | '/attendance/gps'
     | '/attendance/kiosk'
@@ -577,6 +587,7 @@ export interface FileRouteTypes {
     | '/sites'
     | '/superadmin-dashboard'
     | '/superadmin-sites'
+    | '/superadmin-telemetry'
     | '/attendance/face'
     | '/attendance/gps'
     | '/attendance/kiosk'
@@ -632,6 +643,7 @@ export interface FileRouteTypes {
     | '/sites'
     | '/superadmin-dashboard'
     | '/superadmin-sites'
+    | '/superadmin-telemetry'
     | '/attendance/face'
     | '/attendance/gps'
     | '/attendance/kiosk'
@@ -688,6 +700,7 @@ export interface RootRouteChildren {
   SitesRoute: typeof SitesRoute
   SuperadminDashboardRoute: typeof SuperadminDashboardRoute
   SuperadminSitesRoute: typeof SuperadminSitesRoute
+  SuperadminTelemetryRoute: typeof SuperadminTelemetryRoute
   Form16BulkRoute: typeof Form16BulkRoute
   Form16ManagementRoute: typeof Form16ManagementRoute
   Form16MyRoute: typeof Form16MyRoute
@@ -698,6 +711,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/superadmin-telemetry': {
+      id: '/superadmin-telemetry'
+      path: '/superadmin-telemetry'
+      fullPath: '/superadmin-telemetry'
+      preLoaderRoute: typeof SuperadminTelemetryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/superadmin-sites': {
       id: '/superadmin-sites'
       path: '/superadmin-sites'
@@ -1188,6 +1208,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitesRoute: SitesRoute,
   SuperadminDashboardRoute: SuperadminDashboardRoute,
   SuperadminSitesRoute: SuperadminSitesRoute,
+  SuperadminTelemetryRoute: SuperadminTelemetryRoute,
   Form16BulkRoute: Form16BulkRoute,
   Form16ManagementRoute: Form16ManagementRoute,
   Form16MyRoute: Form16MyRoute,

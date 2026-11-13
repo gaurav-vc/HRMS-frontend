@@ -1,11 +1,15 @@
 // Mock data store for the HRMS prototype. All data is in-memory, seeded once.
 export type Role =
   | "super_admin"
+  | "org_admin"
   | "group_hr"
   | "entity_hr"
+  | "site_hr"
+  | "site_admin"
   | "payroll_admin"
   | "manager"
-  | "employee";
+  | "employee"
+  | (string & {});
 
 export const ROLES: { value: Role; label: string }[] = [
   { value: "super_admin", label: "Super Admin" },
