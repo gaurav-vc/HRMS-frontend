@@ -19,7 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/auth-context";
-import { fmtINR } from "@/lib/mock-data";
+import { isSuperAdminUser } from "@/types";
+import { fmtINR } from "@/lib/utils";
 import { StatCard } from "@/components/stat-card";
 import {
   Area,
@@ -170,7 +171,7 @@ function Index() {
 
   // Real-time dynamic updates: Poll every 20 seconds & auto-refresh on window focus
   useEffect(() => {
-    if (!user || user.is_superuser) return;
+    if (!user || isSuperAdminUser(user)) return;
     const interval = setInterval(() => {
       refreshStats(false);
     }, 20000);
@@ -195,14 +196,14 @@ function Index() {
     if (!init) return;
     if (!user) {
       navigate({ to: "/auth" });
-    } else if (user.is_superuser) {
-      navigate({ to: "/superadmin-dashboard" });
+    } else if (isSuperAdminUser(user)) {
+      navigate({ to: "/organizations" });
     }
   }, [user, init, navigate]);
 
   if (!init) return null;
   if (!user) return null;
-  if (user.is_superuser) return null;
+  if (isSuperAdminUser(user)) return null;
 
   // Dynamic dashboard type resolution: check user.dashboard_type, user.permissions?.dashboard_type, then user.role
   const rawDash = user.dashboard_type || user.permissions?.dashboard_type || user.role || "employee";

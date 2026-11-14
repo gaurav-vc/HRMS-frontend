@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { Entity } from "@/lib/mock-data";
+import type { Entity } from "@/types";
 import { entitiesApi } from "@/api";
 
 export const Route = createFileRoute("/entities")({

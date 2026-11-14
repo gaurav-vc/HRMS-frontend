@@ -60,7 +60,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { fmtINR } from "@/lib/mock-data";
+import { fmtINR } from "@/lib/utils";
 import { payrollApi, employeesApi, entitiesApi } from "@/api";
 import { useAuth } from "@/lib/auth-context";
 
@@ -103,20 +103,30 @@ function RunPage() {
     return () => clearInterval(timer);
   }, []);
 
+  const isSuperOrAdmin = Boolean(
+    user?.role === "admin" ||
+    user?.role === "org_admin" ||
+    user?.role === "super_admin" ||
+    user?.is_superuser === true
+  );
+
   const canViewConfidential = Boolean(
+    isSuperOrAdmin ||
     user?.permissions?.can_view_confidential_payroll === true ||
     user?.permissions?.can_view_confidential_payroll === "true" ||
     user?.permissions?.can_view_confidential_payroll === 1
   );
 
-  // Strict IAM boundary: Only visible when special permission toggle is explicitly enabled
+  // Strict IAM boundary: Visible when special permission toggle is explicitly enabled or user is admin
   const isMaker = Boolean(
+    isSuperOrAdmin ||
     user?.permissions?.can_run_payroll === true ||
     user?.permissions?.can_run_payroll === "true" ||
     user?.permissions?.can_run_payroll === 1
   );
 
   const canApprove = Boolean(
+    isSuperOrAdmin ||
     user?.permissions?.can_approve_payroll === true ||
     user?.permissions?.can_approve_payroll === "true" ||
     user?.permissions?.can_approve_payroll === 1

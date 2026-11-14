@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth-context";
-import { ROLES, type Role } from "@/lib/mock-data";
+import { ROLES, type Role } from "@/types";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,

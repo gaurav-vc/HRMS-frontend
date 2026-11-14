@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useMemo, type ReactNode } from "react";
-import type { Role } from "./mock-data";
-import { ROLES } from "./mock-data";
+import type { Role } from "@/types";
+import { ROLES, isSuperAdminUser } from "@/types";
 import { authApi } from "@/api";
 
 interface User {

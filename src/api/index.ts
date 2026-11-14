@@ -1,5 +1,4 @@
-import {
-  db,
+import type {
   Employee,
   Branch,
   Entity,
@@ -13,7 +12,7 @@ import {
   Loan,
   Reimbursement,
   Regularization,
-} from "@/lib/mock-data";
+} from "@/types";
 import { redirect } from "@tanstack/react-router";
 
 // Simulated network delay
@@ -48,47 +47,102 @@ export const getMediaUrl = (url: string | null | undefined): string => {
   }
 };
 
-let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
+// Deadlock-free Token Refresh Singleton
+let activeRefreshPromise: Promise<string | null> | null = null;
 
-const subscribeTokenRefresh = (cb: (token: string) => void) => {
-  refreshSubscribers.push(cb);
+const clearAuthStorage = () => {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("hrms-auth");
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+  }
 };
 
-const onRefreshed = (token: string) => {
-  refreshSubscribers.forEach((cb) => cb(token));
-  refreshSubscribers = [];
+const refreshAccessToken = async (): Promise<string | null> => {
+  if (activeRefreshPromise) {
+    return activeRefreshPromise;
+  }
+
+  activeRefreshPromise = (async () => {
+    try {
+      const refresh =
+        typeof localStorage !== "undefined" ? localStorage.getItem("refresh_token") : null;
+      if (!refresh) {
+        clearAuthStorage();
+        return null;
+      }
+
+      const refreshRes = await fetch(`${API_BASE_URL}/api/auth/token/refresh/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh }),
+      });
+
+      if (!refreshRes.ok) {
+        clearAuthStorage();
+        return null;
+      }
+
+      const data = await refreshRes.json();
+      if (typeof localStorage !== "undefined") {
+        if (data.access) localStorage.setItem("access_token", data.access);
+        if (data.refresh) localStorage.setItem("refresh_token", data.refresh);
+      }
+      return data.access || null;
+    } catch (err) {
+      clearAuthStorage();
+      return null;
+    } finally {
+      activeRefreshPromise = null;
+    }
+  })();
+
+  return activeRefreshPromise;
 };
 
-// Example API services that currently use the mock-data DB but return Promises.
-// You can replace the internal implementation with actual fetch/axios calls using apiClient.
+// URL Normalization: routes endpoints cleanly without fragile heuristics
+const resolveEndpointUrl = (url: string): string => {
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  const cleanPath = url.startsWith("/") ? url : `/${url}`;
+
+  // 1. Direct API paths already prefixed with /api
+  if (cleanPath.startsWith("/api/")) {
+    return `${API_BASE_URL}${cleanPath}`;
+  }
+
+  // 2. Organisation app resources
+  const orgEndpoints = [
+    "/entities",
+    "/branches",
+    "/sites",
+    "/departments",
+    "/designations",
+    "/roles",
+    "/attendance-policies",
+    "/punctuality-slabs",
+  ];
+  if (orgEndpoints.some((prefix) => cleanPath === prefix || cleanPath.startsWith(`${prefix}/`))) {
+    return `${API_BASE_URL}/api/organisation${cleanPath}`;
+  }
+
+  // 3. Admin Org app resources
+  const adminEndpoints = ["/organizations", "/invoices"];
+  if (adminEndpoints.some((prefix) => cleanPath === prefix || cleanPath.startsWith(`${prefix}/`))) {
+    return `${API_BASE_URL}/api/admin_org${cleanPath}`;
+  }
+
+  // 4. Default: all other backend routes are mounted directly under /api/
+  return `${API_BASE_URL}/api${cleanPath}`;
+};
+
 const apiCall = async (url: string, method: string = "GET", body?: any, isBlob: boolean = false) => {
-  let base = "/api/organisation";
-  if (url.startsWith("/employees")) base = "/api";
-  if (url.startsWith("/exits")) base = "/api";
-  if (url.startsWith("/attendance")) base = "/api";
-  if (url.startsWith("/leaves")) base = "/api";
-  if (url.startsWith("/payroll")) base = "/api";
-  if (url.startsWith("/auth")) base = "/api";
-  if (url.startsWith("/notifications")) base = "/api";
-  if (url.startsWith("/search")) base = "/api";
-  if (url.startsWith("/dashboard")) base = "/api";
-  if (url.startsWith("/roles")) base = "/api/organisation";
-  if (url.startsWith("/org-engine")) base = "/api";
-  if (url.startsWith("/offer-letters")) base = "/api";
-  if (url.startsWith("/offer-templates")) base = "/api";
-  if (url.startsWith("/documents")) base = "/api";
-  if (url.startsWith("/leaves/config")) base = "/api"; // Config is under leaves/config
-  if (url.startsWith("/organizations")) base = "/api/admin_org";
-  if (url.startsWith("/invoices")) base = "/api/admin_org";
-  if (url.startsWith("/reports")) base = "/api";
-  if (url.startsWith("/announcements")) base = "/api";
-  if (url.startsWith("/v1/superadmin")) base = "/api";
-  if (url.startsWith("/api")) base = ""; // direct path
+  const fullUrl = resolveEndpointUrl(url);
 
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
   const headers: Record<string, string> = {
-    "Accept": "application/json",
+    Accept: "application/json",
   };
 
   let fetchBody = body;
@@ -103,7 +157,7 @@ const apiCall = async (url: string, method: string = "GET", body?: any, isBlob: 
 
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  let res = await fetch(`${API_BASE_URL}${base}${url}`, {
+  let res = await fetch(fullUrl, {
     method,
     headers,
     cache: "no-store",
@@ -112,62 +166,19 @@ const apiCall = async (url: string, method: string = "GET", body?: any, isBlob: 
 
   // Auto-refresh token if 401 Unauthorized
   if (res.status === 401 && !url.includes("/token")) {
-    const refresh =
-      typeof localStorage !== "undefined" ? localStorage.getItem("refresh_token") : null;
-    if (refresh) {
-      if (!isRefreshing) {
-        isRefreshing = true;
-        try {
-          const refreshRes = await fetch(`${API_BASE_URL}/api/auth/token/refresh/`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ refresh }),
-          });
-          if (refreshRes.ok) {
-            const data = await refreshRes.json();
-            if (typeof localStorage !== "undefined")
-              localStorage.setItem("access_token", data.access);
-            if (data.refresh) {
-              if (typeof localStorage !== "undefined")
-                localStorage.setItem("refresh_token", data.refresh);
-            }
-            onRefreshed(data.access);
-          } else {
-            onRefreshed(""); // Empty token means failed
-            if (typeof window !== "undefined") {
-              localStorage.removeItem("hrms-auth");
-              localStorage.removeItem("access_token");
-              localStorage.removeItem("refresh_token");
-            }
-          }
-        } catch (err) {
-          onRefreshed("");
-        } finally {
-          isRefreshing = false;
-        }
-      }
-
-      // Wait for refresh to complete
-      const newToken = await new Promise<string>((resolve) => {
-        subscribeTokenRefresh(resolve);
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      headers["Authorization"] = `Bearer ${newToken}`;
+      res = await fetch(fullUrl, {
+        method,
+        headers,
+        cache: "no-store",
+        body: fetchBody,
       });
-
-      if (newToken) {
-        headers["Authorization"] = `Bearer ${newToken}`;
-        res = await fetch(`${API_BASE_URL}${base}${url}`, {
-          method,
-          headers,
-          cache: "no-store",
-          body: fetchBody,
-        });
-      } else {
-        throw redirect({ to: "/auth" });
-      }
     } else {
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("hrms-auth");
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
+      clearAuthStorage();
+      if (typeof window !== "undefined" && window.location.pathname !== "/auth") {
+        window.location.href = "/auth";
       }
       throw redirect({ to: "/auth" });
     }

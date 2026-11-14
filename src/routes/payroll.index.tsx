@@ -13,7 +13,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/stat-card";
-import { fmtINR } from "@/lib/mock-data";
+import { fmtINR } from "@/lib/utils";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { useAuth } from "@/lib/auth-context";
@@ -37,6 +37,10 @@ function PayrollOverview() {
   const { payrollRuns, employees, loans, reimbursements } = Route.useLoaderData();
   const { user } = useAuth();
   const canViewConfidential =
+    user?.role === "super_admin" ||
+    user?.role === "admin" ||
+    user?.role === "org_admin" ||
+    user?.is_superuser === true ||
     user?.permissions?.can_view_confidential_payroll === true ||
     user?.permissions?.can_view_confidential === true ||
     user?.permissions?.can_view_confidential_payroll === "true";

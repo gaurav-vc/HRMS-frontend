@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { designationsApi, departmentsApi } from "@/api";
-import type { Designation, Department } from "@/lib/mock-data";
+import type { Designation, Department } from "@/types";
 
 export const Route = createFileRoute("/designations")({
   component: DesignationsPage,

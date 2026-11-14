@@ -30,7 +30,7 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { departmentsApi, entitiesApi, employeesApi } from "@/api";
-import type { Department, Entity, Employee } from "@/lib/mock-data";
+import type { Department, Entity, Employee } from "@/types";
 
 export const Route = createFileRoute("/departments")({
   component: DepartmentsPage,

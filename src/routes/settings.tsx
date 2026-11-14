@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, MoreHorizontal, ChevronDown, Check, Info, Send, Wallet, Coins, Trash2, Edit, AlertCircle, Clock } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { isSuperAdminUser } from "@/lib/mock-data";
+import { isSuperAdminUser } from "@/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Pagination,

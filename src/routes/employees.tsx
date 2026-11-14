@@ -62,7 +62,7 @@ import {
   offersApi,
   offerTemplatesApi,
 } from "@/api";
-import type { Employee, Department, Designation, Branch, Entity, Site } from "@/lib/mock-data";
+import type { Employee, Department, Designation, Branch, Entity, Site } from "@/types";
 import { useAuth, usePermissions } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/employees")({

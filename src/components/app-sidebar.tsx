@@ -51,7 +51,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth-context";
-import { type Role, isSuperAdminUser } from "@/lib/mock-data";
+import { type Role, isSuperAdminUser, coerceBooleanPermission } from "@/types";
 
 export interface Item {
   title: string;
@@ -152,22 +152,37 @@ export const SUPER_ADMIN_NAV: Group[] = [
       { title: "Sites", url: "/superadmin-sites", icon: MapPin },
       { title: "Billing & Payments", url: "/billing-payments", icon: CreditCard },
       { title: "Live Telemetry APM", url: "/superadmin-telemetry", icon: Activity },
+      { title: "Payroll Operations", url: "/payroll", icon: Wallet },
     ],
   },
 ];
 
 export const canAccessRoute = (it: Item, user: any) => {
   if (!user) return false;
-  if (isSuperAdminUser(user)) return true;
+  if (isSuperAdminUser(user)) {
+    return (
+      it.url.startsWith("/payroll") ||
+      SUPER_ADMIN_NAV.some((group) =>
+        group.items.some((item) => item.url === it.url || item.title === it.title)
+      )
+    );
+  }
+
+  const isAdminOrSuper =
+    user?.role === "admin" ||
+    user?.role === "org_admin" ||
+    user?.role === "super_admin" ||
+    user?.is_superuser === true;
 
   // 1. Strict Site Module Boundary: If user's site has assigned modules, item MUST be in site_modules
-  if (user?.site_modules && Array.isArray(user.site_modules) && user.site_modules.length > 0) {
+  if (!isAdminOrSuper && user?.site_modules && Array.isArray(user.site_modules) && user.site_modules.length > 0) {
     const siteMods = user.site_modules;
     const itemTitle = it.title;
     const isAllowedBySite =
       siteMods.includes(itemTitle) ||
       ((itemTitle === "Sub Sites" || itemTitle === "Subsites" || itemTitle === "Sites") &&
-        (siteMods.includes("Sub Sites") || siteMods.includes("Subsites") || siteMods.includes("Sites")));
+        (siteMods.includes("Sub Sites") || siteMods.includes("Subsites") || siteMods.includes("Sites"))) ||
+      (it.url.startsWith("/payroll") && (siteMods.includes("Payroll") || siteMods.includes("Payroll Overview")));
 
     if (!isAllowedBySite) {
       return false; // Strictly blocked by site module boundary
@@ -176,14 +191,11 @@ export const canAccessRoute = (it: Item, user: any) => {
 
   // 2. Special workflow permission checks
   if (it.title === "Run Payroll") {
-    return Boolean(
-      user?.permissions?.can_run_payroll === true ||
-      user?.permissions?.can_run_payroll === "true" ||
-      user?.permissions?.can_run_payroll === 1 ||
-      user?.permissions?.can_approve_payroll === true ||
-      user?.permissions?.can_approve_payroll === "true" ||
-      user?.permissions?.can_approve_payroll === 1 ||
-      user?.permissions?.can_process_payroll === true
+    if (isAdminOrSuper) return true;
+    return (
+      coerceBooleanPermission(user?.permissions?.can_run_payroll) ||
+      coerceBooleanPermission(user?.permissions?.can_approve_payroll) ||
+      coerceBooleanPermission(user?.permissions?.can_process_payroll)
     );
   }
 
@@ -199,7 +211,7 @@ export const canAccessRoute = (it: Item, user: any) => {
     }
   }
   
-  // 3. Default fallback for normal employees only if permissions dictionary is not set
+  // 4. Default fallback for normal employees only if permissions dictionary is not set
   if (user?.role === "employee" && (!user?.permissions || Object.keys(user.permissions).length === 0)) {
     const defaultEmployeeModules = [
       "Dashboard",
@@ -219,6 +231,11 @@ export const canAccessRoute = (it: Item, user: any) => {
     if (defaultEmployeeModules.includes(it.title)) {
       return true;
     }
+  }
+
+  // Fallback for admin or roles with unrestricted view
+  if (isAdminOrSuper || user?.role === "executive") {
+    return true;
   }
   
   return false;
@@ -245,14 +262,13 @@ export function AppSidebar() {
 
   const isSuperAdmin = isSuperAdminUser(user);
   const can = (it: Item) => {
-    if (isSuperAdmin) return true;
     return canAccessRoute(it, user);
   };
   const isActive = (url: string) =>
     url === "/" ? pathname === "/" : pathname === url || pathname.startsWith(url + "/");
   
-  // Super admins see both platform management (SUPER_ADMIN_NAV) and all standard HRMS modules (NAV)
-  const nav = isSuperAdmin ? [...SUPER_ADMIN_NAV, ...NAV] : NAV;
+  // Super admin ONLY sees the dedicated Super Admin fleet management tabs
+  const nav = isSuperAdmin ? SUPER_ADMIN_NAV : NAV;
 
   return (
     <Sidebar collapsible="icon">

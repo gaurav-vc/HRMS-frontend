@@ -1,4 +1,5 @@
-import { fmtINR, empName, type Employee } from "./mock-data";
+import { fmtINR } from "./utils";
+import type { Employee } from "@/types";
 
 export function openPayslipPdf(emp: Employee | any, period: string) {
   const { gross, net, basic, hra, special, pf, pt, tds, ded, components = {}, actual_components = {} } = emp;

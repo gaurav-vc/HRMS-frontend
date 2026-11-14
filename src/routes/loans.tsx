@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { fmtINR } from "@/lib/mock-data";
+import { fmtINR } from "@/lib/utils";
 import { loansApi, employeesApi } from "@/api";
 import { useAuth, usePermissions } from "@/lib/auth-context";
 

@@ -27,7 +27,7 @@ import { Switch } from "@/components/ui/switch";
 import { z } from "zod";
 import { sitesApi, organizationsApi } from "@/api";
 import { useAuth } from "@/lib/auth-context";
-import { isSuperAdminUser } from "@/lib/mock-data";
+import { isSuperAdminUser } from "@/types";
 
 export const Route = createFileRoute("/superadmin-sites")({
   validateSearch: z.object({
@@ -118,7 +118,10 @@ function SitesPage() {
   const [mode, setMode] = useState<"create" | "edit" | "view">("create");
 
   useEffect(() => {
-    setRows(initial || []);
+    if (initial && initial.length > 0) {
+      setRows(initial);
+    }
+    loadSites();
   }, [initial]);
 
   if (!isSuperAdminUser(user)) {
@@ -136,8 +139,9 @@ function SitesPage() {
           new Date(a.created_at || a.createdAt || 0).getTime(),
       );
       setRows(sorted);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast.error(err?.message || "Failed to load sites");
     }
   };
 
@@ -153,8 +157,6 @@ function SitesPage() {
   const filteredRows = rows.filter((r) => {
     // Strictly main sites only: never show sub-sites in Super Admin Sites
     if (r.is_sub_site || r.isSubSite || r.parent_site) return false;
-    // Remove the specific lingering sites as requested
-    if (["Bengaluru HQ", "Mumbai HQ", "HQ"].includes(r.name)) return false;
 
     if (search.orgId && r.organization !== Number(search.orgId)) return false;
 
@@ -164,7 +166,7 @@ function SitesPage() {
   const save = async (s: any) => {
     try {
       // Map camelCase fields to snake_case for DRF
-      const payload = { 
+      const payload = {
         ...s,
         modules: (s.modules || []).map((m: any) => (typeof m === "string" ? m : m?.name)).filter(Boolean),
         is_sub_site: false,
@@ -176,7 +178,7 @@ function SitesPage() {
         contact_email: s.contactEmail,
         is_saturday_working: s.isSaturdayWorking !== undefined ? s.isSaturdayWorking : s.is_saturday_working,
       };
-      
+
       delete payload.siteCode;
       delete payload.productType;
       delete payload.activateDate;

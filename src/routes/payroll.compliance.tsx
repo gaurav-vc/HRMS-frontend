@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { fmtINR } from "@/lib/mock-data";
+import { fmtINR } from "@/lib/utils";
 
 import { payrollApi } from "@/api";
 

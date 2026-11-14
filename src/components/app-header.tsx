@@ -31,7 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth, roleLabel } from "@/lib/auth-context";
-import { ROLES, type Role, isSuperAdminUser } from "@/lib/mock-data";
+import { ROLES, type Role, isSuperAdminUser } from "@/types";
 import { notificationsApi, searchApi } from "@/api";
 import { NAV, SUPER_ADMIN_NAV, canAccessRoute } from "@/components/app-sidebar";
 import { ProfileModal } from "./profile-modal";
@@ -192,22 +192,39 @@ function NotificationBell() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id && !user?.email) return;
+    let mounted = true;
     
     const fetchNotifs = () => {
+      if (typeof document !== "undefined" && document.hidden) return;
       notificationsApi
         .getAll()
         .then((data) => {
-          if (Array.isArray(data)) setNotifs(data);
+          if (mounted && Array.isArray(data)) setNotifs(data);
         })
         .catch(() => {});
     };
 
     fetchNotifs(); // initial fetch
-    const interval = setInterval(fetchNotifs, 10000); // Poll every 10s
+    const interval = setInterval(fetchNotifs, 15000); // Poll every 15s when active
 
-    return () => clearInterval(interval);
-  }, [user]);
+    const onVisibilityChange = () => {
+      if (typeof document !== "undefined" && !document.hidden) {
+        fetchNotifs();
+      }
+    };
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", onVisibilityChange);
+    }
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", onVisibilityChange);
+      }
+    };
+  }, [user?.id, user?.email]);
 
   const markRead = (id: number) => {
     notificationsApi

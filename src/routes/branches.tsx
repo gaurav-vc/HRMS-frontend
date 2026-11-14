@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { branchesApi, entitiesApi, employeesApi } from "@/api";
-import type { Branch, Entity, Employee } from "@/lib/mock-data";
+import type { Branch, Entity, Employee } from "@/types";
 
 export const Route = createFileRoute("/branches")({
   loader: async () => {

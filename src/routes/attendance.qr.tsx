@@ -6,17 +6,23 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { QRCodeSVG } from "qrcode.react";
 import { attendanceApi } from "@/api";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/attendance/qr")({ component: QrPage });
 
 function QrPage() {
+  const { user } = useAuth();
   const [token, setToken] = useState("");
   const [counter, setCounter] = useState(120);
+
+  const siteId = user?.site_id || user?.site?.id;
+  const siteName = user?.site_name || user?.site?.name || "Assigned Site";
 
   useEffect(() => {
     const fetchToken = async () => {
       try {
-        const res = await attendanceApi.generateQr({ site_id: 1 }); // site 1 for demo
+        const payload = siteId ? { site_id: siteId } : {};
+        const res = await attendanceApi.generateQr(payload);
         if (res && res.token) setToken(res.token);
       } catch (err) {
         console.error("Failed to fetch token", err);
@@ -49,7 +55,7 @@ function QrPage() {
       <div className="grid lg:grid-cols-2 gap-6">
         <Card className="p-8 flex flex-col items-center justify-center text-center shadow-[var(--shadow-elegant)] min-h-[500px]">
           <div className="text-xs uppercase tracking-widest text-muted-foreground mb-4">
-            Bengaluru HQ • Secure Gateway
+            {siteName} • Secure Gateway
           </div>
 
           <div className="p-6 rounded-2xl bg-white border-4 border-primary/10 shadow-inner relative">

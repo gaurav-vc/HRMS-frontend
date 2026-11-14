@@ -8,10 +8,11 @@ import {
   Network,
   MapPin,
   CreditCard,
+  Activity,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth-context";
-import { isSuperAdminUser } from "@/lib/mock-data";
+import { isSuperAdminUser } from "@/types";
 
 export function MobileNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -25,6 +26,7 @@ export function MobileNav() {
         { title: "Orgs", url: "/organizations", icon: Network },
         { title: "Sites", url: "/superadmin-sites", icon: MapPin },
         { title: "Billing", url: "/billing-payments", icon: CreditCard },
+        { title: "APM", url: "/superadmin-telemetry", icon: Activity },
       ]
     : [
         { title: "Home", url: "/", icon: LayoutDashboard },

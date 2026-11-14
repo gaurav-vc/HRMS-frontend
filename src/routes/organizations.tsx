@@ -32,7 +32,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { organizationsApi } from "@/api";
 import { useAuth } from "@/lib/auth-context";
-import { isSuperAdminUser } from "@/lib/mock-data";
+import { isSuperAdminUser } from "@/types";
 
 export const Route = createFileRoute("/organizations")({
   component: OrganizationsPage,
@@ -65,7 +65,10 @@ function OrganizationsPage() {
   const isDetail = matchRoute({ to: "/organizations/$orgId", fuzzy: true });
 
   useEffect(() => {
-    setRows(initial || []);
+    if (initial && initial.length > 0) {
+      setRows(initial);
+    }
+    loadOrgs();
   }, [initial]);
 
   if (!isSuperAdminUser(user)) {
@@ -81,8 +84,9 @@ function OrganizationsPage() {
           new Date(a.created_at || a.createdAt || 0).getTime(),
       );
       setRows(sorted);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast.error(err?.message || "Failed to load organizations");
     }
   };
 

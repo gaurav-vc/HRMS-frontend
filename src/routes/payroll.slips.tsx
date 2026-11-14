@@ -7,7 +7,8 @@ import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { db, empName, fmtINR, type Employee } from "@/lib/mock-data";
+import { fmtINR } from "@/lib/utils";
+import type { Employee } from "@/types";
 import { openPayslipPdf } from "@/lib/payslip-pdf";
 
 import {
@@ -621,7 +622,7 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
   const totalDeductions = deductionsList.reduce((sum, r) => sum + (r.amount || 0), 0) || Number(emp.ded || 0);
   const netPay = Number(emp.net || (totalEarned - totalDeductions));
 
-  const entityTitle = emp.entityName || emp.companyName || "LOTUS DEVELOPERS";
+  const entityTitle = emp.entityName || emp.companyName || emp.organization || "Company";
 
   return (
     <div

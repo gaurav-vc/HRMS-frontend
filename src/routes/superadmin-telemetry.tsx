@@ -1,8 +1,8 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { isSuperAdminUser } from "@/lib/mock-data";
-import { telemetryApi } from "@/api";
+import { isSuperAdminUser } from "@/types";
+import { telemetryApi, organizationsApi } from "@/api";
 import { toast } from "sonner";
 import {
   Activity,
@@ -87,6 +87,20 @@ function SuperAdminTelemetryPage() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const pageSize = 30;
+
+  // Dynamic Organizations
+  const [dynamicOrgs, setDynamicOrgs] = useState<{ id: number; name: string }[]>([]);
+
+  useEffect(() => {
+    organizationsApi
+      .getAll()
+      .then((res: any) => {
+        if (Array.isArray(res)) {
+          setDynamicOrgs(res.map((o: any) => ({ id: o.id, name: o.name })));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Live Sandbox Executor States
   const [sandboxMethod, setSandboxMethod] = useState<string>("GET");
@@ -1450,9 +1464,11 @@ function SuperAdminTelemetryPage() {
                       className="w-full mt-1 bg-muted border border-border rounded-lg text-xs font-medium h-9 px-2 text-foreground"
                     >
                       <option value="all">System Core (Master Tenant)</option>
-                      <option value="org_1">Tenant 1: Lotus Developers</option>
-                      <option value="org_2">Tenant 2: Apex Enterprises</option>
-                      <option value="org_3">Tenant 3: Vertex Global</option>
+                      {dynamicOrgs.map((o) => (
+                        <option key={o.id} value={`org_${o.id}`}>
+                          Tenant {o.id}: {o.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -1632,8 +1648,11 @@ function SuperAdminTelemetryPage() {
                   className="w-full mt-1 bg-muted border border-border rounded-lg text-xs font-medium h-8 px-2 text-foreground"
                 >
                   <option value="all">All Tenants</option>
-                  <option value="org_1">Lotus Developers</option>
-                  <option value="org_2">Apex Enterprises</option>
+                  {dynamicOrgs.map((o) => (
+                    <option key={o.id} value={`org_${o.id}`}>
+                      {o.name}
+                    </option>
+                  ))}
                   <option value="system">System Core</option>
                 </select>
               </div>

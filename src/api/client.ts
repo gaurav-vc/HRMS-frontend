@@ -1,6 +1,4 @@
-import { db } from "@/lib/mock-data";
-
-// This is a mock API client.
+// Enterprise API client stub
 // Once the backend is ready, you can replace these with actual fetch/axios calls.
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

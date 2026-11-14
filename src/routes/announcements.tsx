@@ -22,7 +22,7 @@ import {
   ChevronsUpDown,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { isSuperAdminUser } from "@/lib/mock-data";
+import { isSuperAdminUser } from "@/types";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";

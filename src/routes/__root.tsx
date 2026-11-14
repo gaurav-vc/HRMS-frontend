@@ -12,7 +12,7 @@ import React, { Component, useEffect, type ReactNode, type ErrorInfo } from "rea
 
 import appCss from "../styles.css?url";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
-import { isSuperAdminUser } from "@/lib/mock-data";
+import { isSuperAdminUser } from "@/types";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileNav } from "@/components/mobile-nav";
@@ -255,10 +255,22 @@ function Shell() {
         pathname.startsWith("/organizations") ||
         pathname.startsWith("/superadmin-sites") ||
         pathname.startsWith("/billing-payments") ||
-        pathname.startsWith("/superadmin-");
+        pathname.startsWith("/superadmin-") ||
+        pathname.startsWith("/payroll");
+
+      // Super admin accesses Super Admin management routes and Payroll; redirect from other tenant pages to /organizations
+      if (isSuperAdmin && !isSuperAdminRoute && pathname !== "/auth") {
+        router.navigate({ to: "/organizations", replace: true });
+        return;
+      }
 
       // Non-superadmins cannot access superadmin platform management routes
-      if (!isSuperAdmin && isSuperAdminRoute && pathname !== "/auth") {
+      const isPlatformOnlyRoute =
+        pathname.startsWith("/organizations") ||
+        pathname.startsWith("/superadmin-sites") ||
+        pathname.startsWith("/billing-payments") ||
+        pathname.startsWith("/superadmin-");
+      if (!isSuperAdmin && isPlatformOnlyRoute && pathname !== "/auth") {
         router.navigate({ to: "/", replace: true });
       }
     }
@@ -273,14 +285,17 @@ function Shell() {
   }
 
   const isSuperAdmin = isSuperAdminUser(user);
-  const isSuperAdminRoute =
+  const isPlatformOnlyRoute =
     pathname.startsWith("/organizations") ||
     pathname.startsWith("/superadmin-sites") ||
     pathname.startsWith("/billing-payments") ||
     pathname.startsWith("/superadmin-");
 
   // Restrict platform administration routes to Super Admins only
-  if (!isSuperAdmin && isSuperAdminRoute) return null;
+  if (!isSuperAdmin && isPlatformOnlyRoute) return null;
+
+  // Super Admins should not render tenant HRMS routes
+  if (isSuperAdmin && !isSuperAdminRoute) return null;
 
   return (
     <SidebarProvider>
