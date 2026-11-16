@@ -1085,9 +1085,11 @@ function OneClickPanel({
                                         } else if (col.id === "ot") {
                                           const currentCtc = Number(editForm.currentSalary || 0);
                                           const total = Number(editForm.totalDays || 30) || 30;
-                                          const basicAmt = (currentCtc / 12) * 0.5;
-                                          const hourlyRate = total > 0 ? (basicAmt / total / 8) : 0;
-                                          const newOtPay = Math.round(hourlyRate * 1.5 * val * 100) / 100;
+                                          const basicAmt = Number(editForm.basic || 0) > 0 ? Number(editForm.basic) : ((currentCtc / 12) * 0.5);
+                                          const dayHours = Number(editForm.shiftBaseHours || editForm.base_hours || 8.0);
+                                          const hourlyRate = (total > 0 && dayHours > 0) ? (basicAmt / total / dayHours) : 0;
+                                          const otMultiplier = Number(editForm.otMultiplier ?? editForm.ot_multiplier ?? 1.0);
+                                          const newOtPay = Math.round(hourlyRate * otMultiplier * val * 100) / 100;
                                           const oldOtPay = Number(editForm.overtimePay || 0);
                                           const diff = newOtPay - oldOtPay;
                                           setEditForm({

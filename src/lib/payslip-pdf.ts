@@ -110,7 +110,7 @@ export function openPayslipPdf(emp: Employee | any, period: string) {
     { key: "hra", label: "HRA", aliases: ["hra", "house rent"] },
     { key: "conveyance", label: "Conveyance Allowance", aliases: ["conveyance", "transport"] },
     { key: "cca", label: "CCA", aliases: ["cca", "city compensatory"] },
-    { key: "special", label: "Special Allowance", aliases: ["special", "allowance"] },
+    { key: "special", label: "Special Allowance", aliases: ["special allowance", "special"] },
     { key: "leave encashment", label: "Leave Encashment", aliases: ["leave encashment", "encashment"] },
   ];
 
