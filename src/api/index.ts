@@ -573,6 +573,7 @@ export const payrollApi = {
   approveRun: async (id: number): Promise<any> => apiCall(`/payroll/runs/${id}/approve/`, "POST"),
   rejectRun: async (id: number, comment: string): Promise<any> =>
     apiCall(`/payroll/runs/${id}/reject/`, "POST", { comment }),
+  deleteRun: async (id: number): Promise<any> => apiCall(`/payroll/runs/${id}/`, "DELETE"),
   getStructures: async (): Promise<any[]> => {
     try {
       return await apiCall("/payroll/structures/");

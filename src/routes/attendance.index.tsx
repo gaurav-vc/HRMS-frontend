@@ -22,7 +22,7 @@ import { StatCard } from "@/components/stat-card";
 import { toast } from "sonner";
 import { useRouter } from "@tanstack/react-router";
 import { attendanceApi, employeesApi } from "@/api";
-import { EmployeeAttendanceReport } from "@/components/employee-attendance-report";
+import { EmployeeAttendanceReport, formatWorkDuration, formatOtBadge } from "@/components/employee-attendance-report";
 
 export const Route = createFileRoute("/attendance/")({
   loader: async () => {
@@ -611,10 +611,12 @@ function AttendancePage() {
             key: "hours",
             header: "Total Hrs",
             noExport: true,
-            render: (r) =>
-              r.total_work_hours || r.totalWorkHours
-                ? `${r.total_work_hours || r.totalWorkHours}h`
-                : "—",
+            render: (r) => {
+              const val = r.total_work_hours || r.totalWorkHours;
+              return val
+                ? formatWorkDuration(val, r.first_check_in || r.firstCheckIn, r.last_check_out || r.lastCheckOut)
+                : "—";
+            },
             accessor: (r) => r.total_work_hours || r.totalWorkHours,
           },
           {
@@ -625,7 +627,7 @@ function AttendancePage() {
               const ot = Number(r.overtime_hours || r.overtimeHours || 0);
               return ot > 0 ? (
                 <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200 text-xs font-semibold">
-                  {ot}h
+                  {formatOtBadge(ot) || `${ot}h`}
                 </Badge>
               ) : (
                 <span className="text-muted-foreground text-xs">—</span>

@@ -28,6 +28,8 @@ import {
   Users,
   Sliders,
   Banknote,
+  Trash2,
+  RotateCcw,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -65,6 +67,12 @@ import { payrollApi, employeesApi, entitiesApi } from "@/api";
 import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/payroll/run")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    period: typeof search.period === "string" ? search.period : undefined,
+    runId: search.runId ? Number(search.runId) : undefined,
+    action: typeof search.action === "string" ? search.action : undefined,
+    tab: typeof search.tab === "string" ? search.tab : undefined,
+  }),
   loader: async () => {
     const [employees, payrollRuns, entities] = await Promise.all([
       employeesApi.getAll().catch(() => []),
@@ -77,6 +85,7 @@ export const Route = createFileRoute("/payroll/run")({
 });
 
 function RunPage() {
+  const search = Route.useSearch();
   const [isConfirming, setIsConfirming] = useState(false);
   const { user, refreshUser } = useAuth();
   const { payrollRuns: initialRuns } = Route.useLoaderData();
@@ -132,6 +141,16 @@ function RunPage() {
     user?.permissions?.can_approve_payroll === 1
   );
 
+  const [activeTab, setActiveTab] = useState<string>(
+    search.tab || (!isMaker && canApprove ? "approvals" : isMaker ? "oneclick" : canApprove ? "approvals" : "")
+  );
+
+  useEffect(() => {
+    if (search.tab) {
+      setActiveTab(search.tab);
+    }
+  }, [search.tab]);
+
   return (
     <>
       {!isConfirming && (
@@ -141,10 +160,10 @@ function RunPage() {
             isMaker && canApprove
               ? "Execute new payroll runs or review and approve pending runs"
               : isMaker
-              ? (user?.role_name ? `One-click ${user.role_name} mode or step-by-step HR wizard` : "One-click mode or step-by-step HR wizard")
-              : canApprove
-              ? "Review and approve pending payroll runs"
-              : "Access restricted"
+                ? (user?.role_name ? `One-click ${user.role_name} mode or step-by-step HR wizard` : "One-click mode or step-by-step HR wizard")
+                : canApprove
+                  ? "Review and approve pending payroll runs"
+                  : "Access restricted"
           }
           actions={
             <Link to="/payroll">
@@ -156,16 +175,15 @@ function RunPage() {
           }
         />
       )}
-      <Tabs defaultValue={!isMaker && canApprove ? "approvals" : isMaker ? "oneclick" : canApprove ? "approvals" : ""}>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         {!isConfirming && (isMaker || canApprove) && (
           <TabsList
-            className={`grid w-full max-w-xl h-11 ${
-              isMaker && canApprove
-                ? "grid-cols-3"
-                : isMaker
+            className={`grid w-full max-w-xl h-11 ${isMaker && canApprove
+              ? "grid-cols-3"
+              : isMaker
                 ? "grid-cols-2"
                 : "grid-cols-1"
-            }`}
+              }`}
           >
             {isMaker && (
               <>
@@ -193,6 +211,11 @@ function RunPage() {
               <OneClickPanel
                 onConfirmChange={setIsConfirming}
                 canViewConfidential={canViewConfidential}
+                searchPeriod={search.period}
+                searchRunId={search.runId}
+                searchAction={search.action}
+                runs={runs}
+                onRefreshRuns={refreshRuns}
               />
             </TabsContent>
             <TabsContent value="wizard">
@@ -209,6 +232,10 @@ function RunPage() {
               canViewConfidential={canViewConfidential}
               canApprove={canApprove}
               onRefresh={refreshRuns}
+              onDeleteRun={async (runId: number) => {
+                await payrollApi.deleteRun(runId);
+                await refreshRuns();
+              }}
             />
           </TabsContent>
         )}
@@ -361,9 +388,19 @@ function getLastDayOfMonth(periodStr: string): string {
 function OneClickPanel({
   onConfirmChange,
   canViewConfidential,
+  searchPeriod,
+  searchRunId,
+  searchAction,
+  runs = [],
+  onRefreshRuns,
 }: {
   onConfirmChange?: (b: boolean) => void;
   canViewConfidential?: boolean;
+  searchPeriod?: string;
+  searchRunId?: number;
+  searchAction?: string;
+  runs?: any[];
+  onRefreshRuns?: () => Promise<void>;
 }) {
   const { user } = useAuth();
   const { employees, payrollRuns, entities } = Route.useLoaderData();
@@ -375,8 +412,8 @@ function OneClickPanel({
   const [pct, setPct] = useState(0);
   const [logs, setLogs] = useState<string[]>([]);
   const ref = useRef<HTMLDivElement>(null);
-  const [period, setPeriod] = useState("2026-06");
-  const [cutoff, setCutoff] = useState("2026-06-25");
+  const [period, setPeriod] = useState(searchPeriod || "2026-06");
+  const [cutoff, setCutoff] = useState(`${searchPeriod || "2026-06"}-25`);
   const [selectedEntities, setSelectedEntities] = useState<string[]>(() =>
     entities.map((e: any) => String(e.id)),
   );
@@ -395,6 +432,55 @@ function OneClickPanel({
   const [arrearsLogs, setArrearsLogs] = useState<string[]>([]);
   const [missingEmployees, setMissingEmployees] = useState<MissingEmployeeItem[]>([]);
   const [isMissingModalOpen, setIsMissingModalOpen] = useState(false);
+
+  const [runToDelete, setRunToDelete] = useState<any | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const PERIOD_OPTIONS = useMemo(() => {
+    const base = ["2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11", "2026-12"];
+    if (period && !base.includes(period)) {
+      return [period, ...base];
+    }
+    return base;
+  }, [period]);
+
+  useEffect(() => {
+    if (searchPeriod && searchPeriod !== period) {
+      setPeriod(searchPeriod);
+      setCutoff(`${searchPeriod}-25`);
+    }
+  }, [searchPeriod]);
+
+  const rejectedRunsForPeriod = useMemo(() => {
+    return (runs || []).filter(
+      (r: any) =>
+        (r.period === period || (searchRunId && r.id === searchRunId)) &&
+        r.status === "Rejected",
+    );
+  }, [runs, period, searchRunId]);
+
+  const activeRejectedRun = rejectedRunsForPeriod[0] || null;
+  const latestRejectionComment = useMemo(() => {
+    if (!activeRejectedRun?.comments || activeRejectedRun.comments.length === 0) return null;
+    return activeRejectedRun.comments[0]?.comment || null;
+  }, [activeRejectedRun]);
+
+  const handleDeleteRun = async (runId: number) => {
+    setIsDeleting(true);
+    try {
+      await payrollApi.deleteRun(runId);
+      toast.success("Rejected payroll run permanently deleted from database.");
+      setRunToDelete(null);
+      if (onRefreshRuns) await onRefreshRuns();
+      setPhase("setup");
+      if (onConfirmChange) onConfirmChange(false);
+      setPreviewData([]);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to delete payroll run");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const getMissingEmployees = () => {
     // 1. First prioritize previewData if available from backend engine
@@ -480,7 +566,7 @@ function OneClickPanel({
     { id: "department", label: "Department" },
     { id: "acNo", label: "Ac No" },
     { id: "ifscCode", label: "IFSC Code" },
-    { id: "currentSalary", label: "Current Salary" },
+    { id: "currentSalary", label: "CTC" },
     { id: "totalDays", label: "Working Days" },
     { id: "presentDays", label: "Total Days present" },
     { id: "leaves", label: "Annual Leaves" },
@@ -560,6 +646,14 @@ function OneClickPanel({
     }
   };
 
+  const autoEditTriggered = useRef(false);
+  useEffect(() => {
+    if (searchAction === "edit" && !autoEditTriggered.current && phase === "setup") {
+      autoEditTriggered.current = true;
+      handleReviewAndRun();
+    }
+  }, [searchAction, period]);
+
   const filteredEmployees = useMemo(
     () => employees.filter((e: any) => selectedEntities.includes(String(e.entity))),
     [employees, selectedEntities],
@@ -635,18 +729,31 @@ function OneClickPanel({
                 status: "Draft",
               })
               .then((run: any) => {
+                const targetEntityObj = entities.find((e: any) => String(e.id) === String(entId));
+                const entityData = previewData.find(
+                  (d) =>
+                    String(d.entity_id) === String(entId) ||
+                    d.entity === entId ||
+                    (targetEntityObj && d.entity === targetEntityObj.name),
+                );
+                const currentEntityEmps = entityData?.employeeDetails || entityData?.employee_details || [];
+                const finalOverrides = currentEntityEmps.map((emp: any) => ({
+                  ...emp,
+                  ...(overrides[emp.id] || {}),
+                }));
+
                 return payrollApi
-                .executeRun(run.id, {
-                  overrides: Object.values(overrides),
-                  include_variable_bonus: includeBonus,
-                  include_leaves_encashment: includeLeaves,
-                })
-                .then((r: any) => {
-                  if (r && r.arrearsLogs) {
-                    setArrearsLogs(r.arrearsLogs);
-                  }
-                  return r.data;
-                });
+                  .executeRun(run.id, {
+                    overrides: finalOverrides.length > 0 ? finalOverrides : Object.values(overrides),
+                    include_variable_bonus: includeBonus,
+                    include_leaves_encashment: includeLeaves,
+                  })
+                  .then((r: any) => {
+                    if (r && r.arrearsLogs) {
+                      setArrearsLogs(r.arrearsLogs);
+                    }
+                    return r.data;
+                  });
               });
           }),
         )
@@ -741,8 +848,77 @@ function OneClickPanel({
                 <Download className="h-4 w-4" />
                 Export CSV
               </Button>
+              {activeRejectedRun && (
+                <Button
+                  variant="outline"
+                  className="gap-2 text-muted-foreground hover:text-foreground"
+                  onClick={async () => {
+                    setIsLoadingPreview(true);
+                    try {
+                      const entityParam =
+                        selectedEntities.length === entities.length ? "__all__" : selectedEntities.join(",");
+                      const res = await payrollApi.getPreview({
+                        period,
+                        entity: entityParam === "__all__" ? undefined : entityParam,
+                        include_leaves_encashment: includeLeaves,
+                        reset: true,
+                      } as any);
+                      setPreviewData(res.data);
+                      setOverrides({});
+                      toast.success("Reset to biometric attendance calculations.");
+                    } catch (e: any) {
+                      toast.error(e.message || "Failed to reset attendance");
+                    } finally {
+                      setIsLoadingPreview(false);
+                    }
+                  }}
+                  title="Discard edits and recalculate from biometric punches"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Reset to Biometric
+                </Button>
+              )}
             </div>
           </div>
+
+          {activeRejectedRun && (
+            <div className="mb-6 p-4 rounded-xl border border-rose-300 bg-rose-50/90 dark:bg-rose-950/30 dark:border-rose-900/60 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-full bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center text-rose-600 shrink-0 mt-0.5">
+                  <AlertCircle className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold text-rose-950 dark:text-rose-200 text-base">
+                      Editing Rejected Payroll for {period}
+                    </h4>
+                    <Badge variant="destructive" className="text-xs uppercase px-2 py-0.5">
+                      Rejected
+                    </Badge>
+                  </div>
+                  {latestRejectionComment && (
+                    <div className="mt-2 text-sm text-rose-900 dark:text-rose-200 font-medium bg-white/80 dark:bg-slate-900/80 px-3 py-1.5 rounded border border-rose-200 dark:border-rose-900/40">
+                      <span className="font-bold">Rejection Reason:</span> "{latestRejectionComment}"
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    Click the edit icon (✏️) on any employee below to adjust Present Days, Leaves, LOP, Half Days, Late Penalties, or OT Hours. Calculations update in real time. Click "Process & Submit for Review" to resubmit, or delete this run permanently.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="gap-1.5 bg-rose-600 hover:bg-rose-700 text-white shadow-sm"
+                  onClick={() => setRunToDelete(activeRejectedRun)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Payroll Run
+                </Button>
+              </div>
+            </div>
+          )}
 
           {isLoadingPreview ? (
             <div className="py-20 text-center text-sm text-muted-foreground flex flex-col items-center gap-3">
@@ -1101,6 +1277,68 @@ function OneClickPanel({
             onClose={() => setIsMissingModalOpen(false)}
             missingEmployees={missingEmployees}
           />
+          <Dialog open={!!runToDelete} onOpenChange={(open) => !open && setRunToDelete(null)}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center text-rose-600 shrink-0">
+                    <Trash2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-lg font-semibold text-foreground">
+                      Permanently Delete Payroll Run?
+                    </DialogTitle>
+                    <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                      Period: <span className="font-semibold text-foreground">{runToDelete?.period}</span>
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+              <div className="py-2 text-sm text-muted-foreground space-y-3">
+                <p>
+                  Are you sure you want to permanently delete this payroll run?
+                </p>
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 rounded-lg text-xs text-rose-800 dark:text-rose-300 space-y-1">
+                  <p className="font-semibold flex items-center gap-1.5">
+                    <AlertCircle className="h-4 w-4 text-rose-600" />
+                    This action is permanent and cannot be undone:
+                  </p>
+                  <ul className="list-disc pl-5 space-y-0.5 mt-1">
+                    <li>All generated payslips and itemized breakdown lines will be deleted.</li>
+                    <li>Deducted disciplinary memos will be reverted to pending.</li>
+                    <li>The run will be permanently removed from the database backend.</li>
+                  </ul>
+                </div>
+              </div>
+              <DialogFooter className="flex sm:justify-end gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setRunToDelete(null)}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  disabled={isDeleting}
+                  onClick={() => runToDelete && handleDeleteRun(runToDelete.id)}
+                  className="gap-1.5 bg-rose-600 hover:bg-rose-700 text-white"
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4" />
+                      Delete Permanently
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </Card>
       </div>
     );
@@ -1118,6 +1356,55 @@ function OneClickPanel({
               : undefined,
         }}
       >
+        {activeRejectedRun && (
+          <div className="mb-6 p-4 rounded-xl border border-rose-300 bg-rose-50/90 dark:bg-rose-950/30 dark:border-rose-900/60 shadow-sm space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-full bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center text-rose-600 shrink-0 mt-0.5">
+                  <AlertCircle className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold text-rose-950 dark:text-rose-200 text-base">
+                      Payroll Run Rejected for {period}
+                    </h4>
+                    <Badge variant="destructive" className="text-xs uppercase px-2 py-0.5">
+                      Rejected
+                    </Badge>
+                  </div>
+                  {latestRejectionComment && (
+                    <div className="mt-2 text-sm text-rose-900 dark:text-rose-200 font-medium bg-white/80 dark:bg-slate-900/80 px-3 py-1.5 rounded border border-rose-200 dark:border-rose-900/40">
+                      <span className="font-bold">Rejection Reason:</span> "{latestRejectionComment}"
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    Choose an option below: Edit attendance inputs to recalculate and resubmit, or permanently delete this payroll run from the backend.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                <Button
+                  size="sm"
+                  className="gap-1.5 bg-rose-600 hover:bg-rose-700 text-white shadow-sm"
+                  onClick={handleReviewAndRun}
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit & Recalculate
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 border-rose-300 text-rose-700 hover:bg-rose-100 dark:border-rose-900 dark:text-rose-300"
+                  onClick={() => setRunToDelete(activeRejectedRun)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Run
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="text-xs uppercase tracking-widest text-primary mb-2 flex items-center gap-1">
           <Sparkles className="h-3 w-3" /> {user?.role_name || (user?.is_superuser ? "Super Admin" : "Executive")} mode
         </div>
@@ -1152,7 +1439,7 @@ function OneClickPanel({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {["2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11", "2026-12"].map((p) => (
+                    {PERIOD_OPTIONS.map((p) => (
                       <SelectItem key={p} value={p}>
                         {p}
                       </SelectItem>
@@ -1325,6 +1612,68 @@ function OneClickPanel({
         onClose={() => setIsMissingModalOpen(false)}
         missingEmployees={missingEmployees}
       />
+      <Dialog open={!!runToDelete} onOpenChange={(open) => !open && setRunToDelete(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center text-rose-600 shrink-0">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-semibold text-foreground">
+                  Permanently Delete Payroll Run?
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Period: <span className="font-semibold text-foreground">{runToDelete?.period}</span>
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="py-2 text-sm text-muted-foreground space-y-3">
+            <p>
+              Are you sure you want to permanently delete this payroll run?
+            </p>
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 rounded-lg text-xs text-rose-800 dark:text-rose-300 space-y-1">
+              <p className="font-semibold flex items-center gap-1.5">
+                <AlertCircle className="h-4 w-4 text-rose-600" />
+                This action is permanent and cannot be undone:
+              </p>
+              <ul className="list-disc pl-5 space-y-0.5 mt-1">
+                <li>All generated payslips and itemized breakdown lines will be deleted.</li>
+                <li>Deducted disciplinary memos will be reverted to pending.</li>
+                <li>The run will be permanently removed from the database backend.</li>
+              </ul>
+            </div>
+          </div>
+          <DialogFooter className="flex sm:justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setRunToDelete(null)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={isDeleting}
+              onClick={() => runToDelete && handleDeleteRun(runToDelete.id)}
+              className="gap-1.5 bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4" />
+                  Delete Permanently
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1675,11 +2024,13 @@ function ApprovalsPanel({
   canApprove,
   canViewConfidential,
   onRefresh,
+  onDeleteRun,
 }: {
   pendingRuns: any[];
   canApprove: boolean;
   canViewConfidential: boolean;
   onRefresh?: () => void;
+  onDeleteRun?: (runId: number) => Promise<void>;
 }) {
   const [comment, setComment] = useState("");
   const [runComments, setRunComments] = useState<Record<number, string>>({});
@@ -1689,6 +2040,26 @@ function ApprovalsPanel({
   const [rawResponse, setRawResponse] = useState<any>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [runErrors, setRunErrors] = useState<string[]>([]);
+  const [runToDelete, setRunToDelete] = useState<any | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteRun = async (runId: number) => {
+    setIsDeleting(true);
+    try {
+      if (onDeleteRun) {
+        await onDeleteRun(runId);
+      } else {
+        await payrollApi.deleteRun(runId);
+        if (onRefresh) onRefresh();
+      }
+      toast.success("Payroll run permanently deleted.");
+      setRunToDelete(null);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to delete run");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const fetchRunDetails = async (run: any) => {
     setIsLoadingPreview(true);
@@ -1834,16 +2205,16 @@ function ApprovalsPanel({
     { id: "daysPaid", label: "Payable Days" },
     ...(canViewConfidential
       ? [
-          { id: "currentSalary", label: "Current Salary" },
-          { id: "totalAmount", label: "Total Amount" },
-          { id: "arrears", label: "Arrears" },
-          { id: "deduction", label: "Deductions" },
-          { id: "pf", label: "PF" },
-          { id: "pt", label: "PT" },
-          { id: "reimbursement", label: "Reimbursement" },
-          { id: "incentive", label: "Incentive" },
-          { id: "payableSalary", label: "Payable Salary" },
-        ]
+        { id: "currentSalary", label: "CTC" },
+        { id: "totalAmount", label: "Total Amount" },
+        { id: "arrears", label: "Arrears" },
+        { id: "deduction", label: "Deductions" },
+        { id: "pf", label: "PF" },
+        { id: "pt", label: "PT" },
+        { id: "reimbursement", label: "Reimbursement" },
+        { id: "incentive", label: "Incentive" },
+        { id: "payableSalary", label: "Payable Salary" },
+      ]
       : []),
   ];
 
@@ -1912,17 +2283,30 @@ function ApprovalsPanel({
                   {canViewConfidential ? fmtINR(run.net) : "****"}
                 </div>
               </div>
-              <Button variant="outline" onClick={() => handleExpand(run)}>
-                {expandedRun === run.id ? (
-                  <>
-                    <ChevronUp className="mr-2 h-4 w-4" /> Hide Details
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="mr-2 h-4 w-4" /> View Details
-                  </>
+              <div className="flex items-center gap-2">
+                {run.status === "Rejected" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 border-rose-300 text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:border-rose-900 dark:text-rose-300"
+                    onClick={() => setRunToDelete(run)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete Run
+                  </Button>
                 )}
-              </Button>
+                <Button variant="outline" onClick={() => handleExpand(run)}>
+                  {expandedRun === run.id ? (
+                    <>
+                      <ChevronUp className="mr-2 h-4 w-4" /> Hide Details
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="mr-2 h-4 w-4" /> View Details
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -1981,8 +2365,8 @@ function ApprovalsPanel({
                           const alignClass = isFinancial
                             ? "text-right"
                             : ["presentDays", "leaves", "lopDays", "halfDays", "latePenalties", "ot", "daysPaid"].includes(
-                                  col.id,
-                                )
+                              col.id,
+                            )
                               ? "text-center"
                               : "text-left";
                           return (
@@ -2034,8 +2418,8 @@ function ApprovalsPanel({
                                       ? fmtINR(emp[col.id] || 0)
                                       : "****"
                                     : emp[col.id] !== undefined &&
-                                        emp[col.id] !== null &&
-                                        emp[col.id] !== ""
+                                      emp[col.id] !== null &&
+                                      emp[col.id] !== ""
                                       ? emp[col.id]
                                       : "—"}
                                 </td>
@@ -2051,22 +2435,22 @@ function ApprovalsPanel({
 
               {canApprove && run.status === "Maker-Submitted" && (
                 <div className="mt-4 flex flex-col sm:flex-row gap-3 justify-end border-t border-border/50 pt-4">
-                  <Input 
-                    placeholder="Rejection comment (Required if rejecting)..." 
+                  <Input
+                    placeholder="Rejection comment (Required if rejecting)..."
                     className="max-w-md w-full bg-background"
                     value={runComments[run.id] || ""}
-                    onChange={(e) => setRunComments({...runComments, [run.id]: e.target.value})}
+                    onChange={(e) => setRunComments({ ...runComments, [run.id]: e.target.value })}
                   />
                   <div className="flex gap-2">
-                    <Button 
-                      variant="destructive" 
+                    <Button
+                      variant="destructive"
                       onClick={() => handleRejectSingle(run.id)}
                       disabled={isProcessing}
                     >
                       Reject
                     </Button>
-                    <Button 
-                      className="bg-success text-success-foreground hover:bg-success/90" 
+                    <Button
+                      className="bg-success text-success-foreground hover:bg-success/90"
                       onClick={() => handleApproveSingle(run.id)}
                       disabled={isProcessing}
                     >
@@ -2080,7 +2464,68 @@ function ApprovalsPanel({
         </Card>
       ))}
 
-
+      <Dialog open={!!runToDelete} onOpenChange={(open) => !open && setRunToDelete(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center text-rose-600 shrink-0">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-semibold text-foreground">
+                  Permanently Delete Payroll Run?
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Period: <span className="font-semibold text-foreground">{runToDelete?.period}</span>
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="py-2 text-sm text-muted-foreground space-y-3">
+            <p>
+              Are you sure you want to permanently delete this payroll run?
+            </p>
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 rounded-lg text-xs text-rose-800 dark:text-rose-300 space-y-1">
+              <p className="font-semibold flex items-center gap-1.5">
+                <AlertCircle className="h-4 w-4 text-rose-600" />
+                This action is permanent and cannot be undone:
+              </p>
+              <ul className="list-disc pl-5 space-y-0.5 mt-1">
+                <li>All generated payslips and itemized breakdown lines will be deleted.</li>
+                <li>Deducted disciplinary memos will be reverted to pending.</li>
+                <li>The run will be permanently removed from the database backend.</li>
+              </ul>
+            </div>
+          </div>
+          <DialogFooter className="flex sm:justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setRunToDelete(null)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={isDeleting}
+              onClick={() => runToDelete && handleDeleteRun(runToDelete.id)}
+              className="gap-1.5 bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4" />
+                  Delete Permanently
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

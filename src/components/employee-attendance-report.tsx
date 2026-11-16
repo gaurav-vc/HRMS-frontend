@@ -18,6 +18,45 @@ interface EmployeeAttendanceReportProps {
   employees: any[];
 }
 
+export function formatWorkDuration(
+  hoursVal: number | string | undefined | null,
+  firstCheckIn?: string | null,
+  lastCheckOut?: string | null,
+): string {
+  // If we have both check-in and check-out timestamps, calculate exact elapsed minutes
+  if (firstCheckIn && lastCheckOut) {
+    const inDate = new Date(firstCheckIn);
+    const outDate = new Date(lastCheckOut);
+    if (!isNaN(inDate.getTime()) && !isNaN(outDate.getTime())) {
+      const diffMs = outDate.getTime() - inDate.getTime();
+      if (diffMs > 0) {
+        const totalMinutes = Math.round(diffMs / 60000);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        return `${hours}h ${String(minutes).padStart(2, "0")}m`;
+      }
+    }
+  }
+
+  // Fallback to converting decimal hours to hours and minutes
+  const num = parseFloat(String(hoursVal ?? 0));
+  if (isNaN(num) || num <= 0) return "0h 00m";
+  const totalMinutes = Math.round(num * 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}h ${String(minutes).padStart(2, "0")}m`;
+}
+
+export function formatOtBadge(otVal: number): string {
+  if (!otVal || otVal <= 0) return "";
+  const totalMinutes = Math.round(otVal * 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours > 0 && minutes > 0) return `+${hours}h ${minutes}m OT`;
+  if (hours > 0) return `+${hours}h OT`;
+  return `+${minutes}m OT`;
+}
+
 export function EmployeeAttendanceReport({
   open,
   onOpenChange,
@@ -195,7 +234,9 @@ export function EmployeeAttendanceReport({
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-4 pt-0">
-                    <div className="text-3xl font-bold">{data.summary.present_days}</div>
+                    <div className="text-3xl font-bold text-success">
+                      {data.summary?.presentDays ?? data.summary?.present_days ?? 0}
+                    </div>
                   </CardContent>
                 </Card>
                 
@@ -210,7 +251,9 @@ export function EmployeeAttendanceReport({
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-4 pt-0">
-                    <div className="text-3xl font-bold">{data.summary.absent_days}</div>
+                    <div className="text-3xl font-bold text-destructive">
+                      {data.summary?.absentDays ?? data.summary?.absent_days ?? 0}
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -225,7 +268,9 @@ export function EmployeeAttendanceReport({
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-4 pt-0">
-                    <div className="text-3xl font-bold">{data.summary.late_marks}</div>
+                    <div className="text-3xl font-bold text-warning">
+                      {data.summary?.lateMarks ?? data.summary?.late_marks ?? 0}
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -240,7 +285,14 @@ export function EmployeeAttendanceReport({
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-4 pt-0">
-                    <div className="text-3xl font-bold">{data.summary.total_overtime_hours}</div>
+                    <div className="text-3xl font-bold text-info">
+                      {formatWorkDuration(data.summary?.totalOvertimeHours ?? data.summary?.total_overtime_hours ?? 0)}
+                    </div>
+                    {Number(data.summary?.totalOvertimeHours ?? data.summary?.total_overtime_hours ?? 0) > 0 && (
+                      <div className="text-[11px] text-info/80 font-medium mt-0.5">
+                        ({Number(data.summary?.totalOvertimeHours ?? data.summary?.total_overtime_hours ?? 0).toFixed(2)} decimal hrs)
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -252,12 +304,12 @@ export function EmployeeAttendanceReport({
                   Daily Logs {activeFilter !== 'All' && <span className="text-sm text-muted-foreground ml-2">(Filtered by {activeFilter})</span>}
                 </h3>
                 {(() => {
-                  const filteredRecords = data.records.filter((record: any) => {
+                  const filteredRecords = (data.records || []).filter((record: any) => {
                     if (activeFilter === 'All') return true;
                     if (activeFilter === 'Present') return record.status === 'Present' || record.status === 'Late';
                     if (activeFilter === 'Absent') return record.status === 'Absent';
                     if (activeFilter === 'Late') return record.status === 'Late';
-                    if (activeFilter === 'Overtime') return (record.otHours ?? 0) > 0;
+                    if (activeFilter === 'Overtime') return Number(record.otHours ?? record.ot_hours ?? 0) > 0;
                     return true;
                   });
                   return filteredRecords.length > 0 ? (
@@ -265,6 +317,10 @@ export function EmployeeAttendanceReport({
                       {filteredRecords.map((record: any, index: number) => {
                       const dateObj = new Date(record.date);
                       const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+                      const otVal = Number(record.otHours ?? record.ot_hours ?? 0);
+                      const firstIn = record.firstCheckIn ?? record.first_check_in;
+                      const lastOut = record.lastCheckOut ?? record.last_check_out;
+                      const totalHrs = record.totalHours ?? record.total_hours ?? 0;
                       
                       return (
                         <div key={record.id || index}>
@@ -287,23 +343,28 @@ export function EmployeeAttendanceReport({
                                   }>
                                     {record.status}
                                   </Badge>
-                                  {record.otHours > 0 && (
-                                    <Badge variant="outline" className="text-info border-info/50 bg-info/5">
-                                      +{record.otHours}h OT
+                                  {otVal > 0 && (
+                                    <Badge variant="outline" className="text-info border-info/50 bg-info/5 font-semibold">
+                                      {formatOtBadge(otVal)}
                                     </Badge>
                                   )}
                                 </div>
                                 <div className="text-sm text-muted-foreground flex items-center gap-2">
-                                  <span>In: <strong className="text-foreground">{record.firstCheckIn ? new Date(record.firstCheckIn).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '—'}</strong></span>
+                                  <span>In: <strong className="text-foreground">{firstIn ? new Date(firstIn).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '—'}</strong></span>
                                   <span>•</span>
-                                  <span>Out: <strong className="text-foreground">{record.lastCheckOut ? new Date(record.lastCheckOut).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '—'}</strong></span>
+                                  <span>Out: <strong className="text-foreground">{lastOut ? new Date(lastOut).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '—'}</strong></span>
                                 </div>
                               </div>
                             </div>
                             
                             <div className="text-left sm:text-right text-sm">
                               <div className="text-muted-foreground mb-1">Total Hours</div>
-                              <div className="font-bold text-lg">{record.totalHours !== undefined && record.totalHours !== null ? record.totalHours : 0}h</div>
+                              <div className="font-bold text-lg text-foreground">
+                                {formatWorkDuration(totalHrs, firstIn, lastOut)}
+                              </div>
+                              <div className="text-[11px] text-muted-foreground font-mono">
+                                ({Number(totalHrs).toFixed(2)} hrs)
+                              </div>
                             </div>
                           </div>
                         </div>

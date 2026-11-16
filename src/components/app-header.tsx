@@ -403,16 +403,41 @@ function NotificationBell() {
                       );
                     })()
                   ) : isRun ? (
-                    <span
-                      className="text-xs text-primary font-medium mt-2 block w-full cursor-pointer hover:underline"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        navigate({ to: "/payroll/run" });
-                        markRead(n.id);
-                      }}
-                    >
-                      View Payroll Run →
-                    </span>
+                    <div className="flex flex-col gap-1.5 mt-2 w-full">
+                      {(n.title?.toLowerCase().includes("reject") || n.message?.toLowerCase().includes("reject")) ? (
+                        <span
+                          className="text-xs text-rose-600 dark:text-rose-400 font-semibold cursor-pointer hover:underline flex items-center gap-1"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            const periodMatch = n.message?.match(/\b(20\d{2}-\d{2})\b/);
+                            const period = n.relatedRunPeriod || n.related_run_period || (periodMatch ? periodMatch[1] : undefined);
+                            navigate({
+                              to: "/payroll/run",
+                              search: {
+                                period: period || undefined,
+                                runId: relatedRunId,
+                                action: "edit",
+                                tab: "oneclick",
+                              } as any,
+                            });
+                            markRead(n.id);
+                          }}
+                        >
+                          ⚠️ Review & Fix Rejected Payroll {n.relatedRunPeriod || n.related_run_period ? `(${n.relatedRunPeriod || n.related_run_period})` : ""} →
+                        </span>
+                      ) : (
+                        <span
+                          className="text-xs text-primary font-medium cursor-pointer hover:underline"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            navigate({ to: "/payroll/run" });
+                            markRead(n.id);
+                          }}
+                        >
+                          View Payroll Run →
+                        </span>
+                      )}
+                    </div>
                   ) : null}
                 </div>
               );
