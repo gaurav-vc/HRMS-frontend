@@ -469,14 +469,7 @@ function OneClickPanel({
         };
       }),
     );
-    const cleanOverride = { ...editForm };
-    delete cleanOverride.totalAmount;
-    delete cleanOverride.deduction;
-    delete cleanOverride.payableSalary;
-    delete cleanOverride.pf;
-    delete cleanOverride.pt;
-    delete cleanOverride.currentSalary;
-    
+    const cleanOverride = { ...editForm, id: empId };
     setOverrides((prev) => ({ ...prev, [empId]: cleanOverride }));
     setEditingRow(null);
   };
@@ -488,6 +481,7 @@ function OneClickPanel({
     { id: "acNo", label: "Ac No" },
     { id: "ifscCode", label: "IFSC Code" },
     { id: "currentSalary", label: "Current Salary" },
+    { id: "totalDays", label: "Working Days" },
     { id: "presentDays", label: "Total Days present" },
     { id: "leaves", label: "Annual Leaves" },
     { id: "lopDays", label: "LOP" },
@@ -837,55 +831,80 @@ function OneClickPanel({
                               return (
                                 <td
                                   key={col.id}
-                                  className={`px-2.5 py-1.5 align-middle border-r border-border ${isFinancial ? "text-right" : ["presentDays", "leaves", "lopDays", "halfDays", "latePenalties", "ot", "daysPaid"].includes(col.id) ? "text-center" : "text-left"}`}
+                                  className={`px-2.5 py-1.5 align-middle border-r border-border ${isFinancial ? "text-right" : ["totalDays", "presentDays", "leaves", "lopDays", "halfDays", "latePenalties", "ot", "daysPaid"].includes(col.id) ? "text-center" : "text-left"}`}
                                 >
-                                  {isEditing && (isFinancial || ["presentDays", "leaves", "lopDays", "halfDays", "latePenalties", "ot", "daysPaid"].includes(col.id)) ? (
+                                  {isEditing && (isFinancial || ["totalDays", "presentDays", "leaves", "lopDays", "halfDays", "latePenalties", "ot", "daysPaid"].includes(col.id)) ? (
                                     <Input
                                       type="number"
                                       className="h-7 w-24 px-2 text-xs font-mono border-primary/50 focus-visible:ring-primary/30"
-                                      value={editForm[col.id] || ""}
+                                      value={editForm[col.id] ?? ""}
                                       onChange={(e) => {
                                         const val = parseFloat(e.target.value) || 0;
-                                        if (["presentDays", "lopDays", "leaves", "daysPaid", "halfDays", "latePenalties"].includes(col.id)) {
-                                          let updated = { ...editForm, [col.id]: val };
-                                          const total = Number(updated.totalDays || 30) || 30;
+                                        let updated = { ...editForm, [col.id]: val };
+
+                                        if (["totalDays", "presentDays", "lopDays", "leaves", "daysPaid", "halfDays", "latePenalties"].includes(col.id)) {
+                                          const total = Number(col.id === "totalDays" ? Math.max(1, val) : (updated.totalDays || 30)) || 30;
                                           const hDays = Number(col.id === "halfDays" ? val : (updated.halfDays || 0));
                                           const lPenalties = Number(col.id === "latePenalties" ? val : (updated.latePenalties || 0));
-                                          
-                                          if (col.id === "daysPaid") {
-                                            updated.daysPaid = Math.max(0, Math.min(total, val));
-                                            updated.lopDays = Math.max(0, total - updated.daysPaid - (hDays * 0.5) - lPenalties);
-                                          } else if (col.id === "lopDays") {
-                                            updated.lopDays = Math.max(0, val);
-                                            updated.daysPaid = Math.max(0, total - updated.lopDays - (hDays * 0.5) - lPenalties);
-                                          } else if (col.id === "halfDays") {
-                                            updated.halfDays = Math.max(0, val);
-                                            updated.daysPaid = Math.max(0, total - Number(updated.lopDays || 0) - (val * 0.5) - lPenalties);
-                                          } else if (col.id === "latePenalties") {
-                                            updated.latePenalties = Math.max(0, val);
-                                            updated.daysPaid = Math.max(0, total - Number(updated.lopDays || 0) - (hDays * 0.5) - val);
-                                          } else if (col.id === "presentDays") {
+                                          const lLeaves = Number(col.id === "leaves" ? val : (updated.leaves || 0));
+
+                                          if (col.id === "presentDays") {
                                             updated.presentDays = Math.max(0, val);
-                                            updated.lopDays = Math.max(0, total - val - Number(updated.leaves || 0) - (hDays * 0.5) - lPenalties);
-                                            updated.daysPaid = Math.max(0, total - updated.lopDays - (hDays * 0.5) - lPenalties);
+                                            updated.lopDays = Math.max(0, total - val - lLeaves);
+                                            updated.daysPaid = Math.max(0, val + lLeaves - (hDays * 0.5) - lPenalties);
                                           } else if (col.id === "leaves") {
                                             updated.leaves = Math.max(0, val);
-                                            updated.lopDays = Math.max(0, total - Number(updated.presentDays || 0) - val - (hDays * 0.5) - lPenalties);
-                                            updated.daysPaid = Math.max(0, total - updated.lopDays - (hDays * 0.5) - lPenalties);
+                                            updated.lopDays = Math.max(0, total - Number(updated.presentDays || 0) - val);
+                                            updated.daysPaid = Math.max(0, Number(updated.presentDays || 0) + val - (hDays * 0.5) - lPenalties);
+                                          } else if (col.id === "lopDays") {
+                                            updated.lopDays = Math.max(0, val);
+                                            updated.daysPaid = Math.max(0, total - val - (hDays * 0.5) - lPenalties);
+                                            updated.presentDays = Math.max(0, updated.daysPaid - lLeaves);
+                                          } else if (col.id === "daysPaid") {
+                                            updated.daysPaid = Math.max(0, val);
+                                            updated.presentDays = Math.max(0, val - lLeaves + (hDays * 0.5) + lPenalties);
+                                            updated.lopDays = Math.max(0, total - val);
+                                          } else if (col.id === "halfDays") {
+                                            updated.halfDays = Math.max(0, val);
+                                            updated.daysPaid = Math.max(0, Number(updated.presentDays || 0) + lLeaves - (val * 0.5) - lPenalties);
+                                          } else if (col.id === "latePenalties") {
+                                            updated.latePenalties = Math.max(0, val);
+                                            updated.daysPaid = Math.max(0, Number(updated.presentDays || 0) + lLeaves - (hDays * 0.5) - val);
+                                          } else if (col.id === "totalDays") {
+                                            updated.totalDays = Math.max(1, val);
+                                            const newTotal = updated.totalDays;
+                                            const currentLop = Number(updated.lopDays || 0);
+                                            if (currentLop > 0) {
+                                              updated.daysPaid = Math.max(0, newTotal - currentLop - (hDays * 0.5) - lPenalties);
+                                              updated.presentDays = Math.max(0, updated.daysPaid - lLeaves);
+                                            } else {
+                                              if (Number(editForm.presentDays || total) >= total) {
+                                                updated.presentDays = newTotal;
+                                                updated.daysPaid = Math.max(0, newTotal + lLeaves - (hDays * 0.5) - lPenalties);
+                                              } else {
+                                                updated.lopDays = Math.max(0, newTotal - Number(updated.presentDays || 0) - lLeaves);
+                                              }
+                                            }
                                           }
-                                          
-                                          // Dynamically recalculate prorated gross and net for live preview
+
+                                          // Dynamically recalculate prorated gross and deductions for live preview
                                           const currentCtc = Number(updated.currentSalary || 0);
-                                          const monthlyBase = currentCtc > 0 ? (currentCtc / 12) : Number(updated.totalAmount || 0);
+                                          const monthlyBase = currentCtc > 0 ? (currentCtc / 12) : Number(editForm.totalAmount || 0);
                                           const prorationRatio = total > 0 ? (updated.daysPaid / total) : 1;
                                           const otAmt = Number(updated.overtimePay || 0);
                                           const arrearsAmt = Number(updated.arrears || 0);
                                           const reimbAmt = Number(updated.reimbursement || 0);
                                           const incAmt = Number(updated.incentive || 0);
                                           const proratedGross = Math.round((monthlyBase * prorationRatio + otAmt + arrearsAmt + reimbAmt + incAmt) * 100) / 100;
-                                          const dedAmt = Number(updated.deduction || 0);
+
+                                          let basePf = Number(editForm.pf || 0);
+                                          let newPf = basePf > 0 ? Math.round(basePf * prorationRatio * 100) / 100 : 0;
+                                          updated.pf = newPf;
+                                          const ptAmt = Number(updated.pt || 0);
+                                          const newDeductions = Math.round((newPf + ptAmt) * 100) / 100 || Number(editForm.deduction || 0);
+                                          updated.deduction = newDeductions;
                                           updated.totalAmount = proratedGross;
-                                          updated.payableSalary = Math.max(0, Math.round((proratedGross - dedAmt) * 100) / 100);
+                                          updated.payableSalary = Math.max(0, Math.round((proratedGross - newDeductions) * 100) / 100);
                                           setEditForm(updated);
                                         } else if (col.id === "ot") {
                                           const currentCtc = Number(editForm.currentSalary || 0);
@@ -900,7 +919,7 @@ function OneClickPanel({
                                             ot: val,
                                             overtimePay: newOtPay,
                                             totalAmount: Math.round((Number(editForm.totalAmount || 0) + diff) * 100) / 100,
-                                            payableSalary: Math.round((Number(editForm.payableSalary || 0) + diff) * 100) / 100,
+                                            payableSalary: Math.max(0, Math.round((Number(editForm.payableSalary || 0) + diff) * 100) / 100),
                                           });
                                         } else {
                                           setEditForm({
@@ -1671,13 +1690,25 @@ function ApprovalsPanel({
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [runErrors, setRunErrors] = useState<string[]>([]);
 
-  const fetchPreview = async (period: string, entityId: number) => {
+  const fetchRunDetails = async (run: any) => {
     setIsLoadingPreview(true);
     try {
-      const response = await payrollApi.getPreview({ period, entity: String(entityId) });
-      setRawResponse(response);
-      const results = Array.isArray(response) ? response : response.data || [];
+      let results: any[] = [];
+      try {
+        const runData = await payrollApi.getRunDetails(run.id);
+        if (runData && (runData.employee_details || runData.employeeDetails)) {
+          results = [runData];
+        }
+      } catch (err) {
+        console.warn("Could not load run details, falling back to preview:", err);
+      }
 
+      if (results.length === 0) {
+        const response = await payrollApi.getPreview({ period: run.period, entity: String(run.entity) });
+        results = Array.isArray(response) ? response : response.data || [];
+      }
+
+      setRawResponse(results);
       const backendErrors = results.flatMap((d: any) => d.errors || []);
       setRunErrors(backendErrors);
       if (backendErrors.length > 0) {
@@ -1703,7 +1734,7 @@ function ApprovalsPanel({
       setExpandedRun(null);
     } else {
       setExpandedRun(run.id);
-      fetchPreview(run.period, run.entity);
+      fetchRunDetails(run);
     }
   };
 
@@ -1797,6 +1828,8 @@ function ApprovalsPanel({
     { id: "presentDays", label: "Total Days present" },
     { id: "leaves", label: "Annual Leaves" },
     { id: "lopDays", label: "LOP" },
+    { id: "halfDays", label: "Half Days" },
+    { id: "latePenalties", label: "Late Penalties" },
     { id: "ot", label: "OT Overtime" },
     { id: "daysPaid", label: "Payable Days" },
     ...(canViewConfidential
@@ -1947,7 +1980,7 @@ function ApprovalsPanel({
                           ].includes(col.id);
                           const alignClass = isFinancial
                             ? "text-right"
-                            : ["presentDays", "leaves", "lopDays", "ot", "daysPaid"].includes(
+                            : ["presentDays", "leaves", "lopDays", "halfDays", "latePenalties", "ot", "daysPaid"].includes(
                                   col.id,
                                 )
                               ? "text-center"
@@ -1994,7 +2027,7 @@ function ApprovalsPanel({
                               return (
                                 <td
                                   key={col.id}
-                                  className={`px-2.5 py-1.5 align-middle border-r border-border ${isFinancial ? "text-right" : ["presentDays", "leaves", "lopDays", "ot", "daysPaid"].includes(col.id) ? "text-center" : "text-left"}`}
+                                  className={`px-2.5 py-1.5 align-middle border-r border-border ${isFinancial ? "text-right" : ["presentDays", "leaves", "lopDays", "halfDays", "latePenalties", "ot", "daysPaid"].includes(col.id) ? "text-center" : "text-left"}`}
                                 >
                                   {isFinancial
                                     ? canViewConfidential

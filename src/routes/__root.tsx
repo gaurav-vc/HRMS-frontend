@@ -285,6 +285,12 @@ function Shell() {
   }
 
   const isSuperAdmin = isSuperAdminUser(user);
+  const isSuperAdminRoute =
+    pathname.startsWith("/organizations") ||
+    pathname.startsWith("/superadmin-sites") ||
+    pathname.startsWith("/billing-payments") ||
+    pathname.startsWith("/superadmin-") ||
+    pathname.startsWith("/payroll");
   const isPlatformOnlyRoute =
     pathname.startsWith("/organizations") ||
     pathname.startsWith("/superadmin-sites") ||

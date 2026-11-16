@@ -91,6 +91,20 @@ export const Route = createFileRoute("/payroll/slips")({
   component: SlipsPage,
 });
 
+const formatPeriodMonth = (periodStr: string): string => {
+  if (!periodStr) return "";
+  try {
+    const parts = periodStr.split("-");
+    if (parts.length < 2) return periodStr;
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const date = new Date(year, month - 1, 1);
+    return date.toLocaleString("en-US", { month: "long", year: "numeric" });
+  } catch {
+    return periodStr;
+  }
+};
+
 function SlipsPage() {
   const { data } = Route.useLoaderData();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -324,14 +338,38 @@ function SlipsPage() {
         )}
       />
       <Dialog open={!!open} onOpenChange={() => setOpen(null)}>
-        <DialogContent className="max-w-4xl w-[90vw]">
+        <DialogContent className="max-w-4xl w-[95vw] max-h-[96vh] flex flex-col p-4 sm:p-5 overflow-hidden">
           <DialogTitle className="sr-only">Payslip</DialogTitle>
           {open && (
             <>
-              <div className="max-h-[70vh] overflow-y-auto pr-2">
+              {/* Quick Summary Header Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 bg-muted/50 border rounded-md">
+                <div>
+                  <div className="font-semibold text-sm text-foreground">
+                    {open.firstName} {open.lastName} ({open.code})
+                  </div>
+                  <div className="text-xs text-muted-foreground">{formatPeriodMonth(period)} • {open.department || "General"}</div>
+                </div>
+                <div className="flex items-center gap-4 text-xs">
+                  <div className="text-right">
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Gross Earned</div>
+                    <div className="font-bold text-foreground">{fmtINR(open.gross)}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Deductions</div>
+                    <div className="font-bold text-destructive">{fmtINR(open.ded)}</div>
+                  </div>
+                  <div className="text-right pl-3 border-l border-border">
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Net Payout</div>
+                    <div className="font-bold text-success text-sm">{fmtINR(open.net)}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto pr-1 mt-2">
                 <Payslip emp={open} period={period} />
               </div>
-              <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+              <div className="flex justify-end gap-2 mt-3 pt-3 border-t">
                 <Button
                   variant="outline"
                   onClick={async () => {
@@ -383,21 +421,6 @@ function SlipsPage() {
 
 function Payslip({ emp, period }: { emp: any; period: string }) {
   const { components = {}, actual_components = {} } = emp;
-
-  // Format month and year, e.g. "April 2025"
-  const formatPeriodMonth = (periodStr: string): string => {
-    if (!periodStr) return "";
-    try {
-      const parts = periodStr.split("-");
-      if (parts.length < 2) return periodStr;
-      const year = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10);
-      const date = new Date(year, month - 1, 1);
-      return date.toLocaleString("en-US", { month: "long", year: "numeric" });
-    } catch {
-      return periodStr;
-    }
-  };
 
   const formatDate = (dateStr: string): string => {
     if (!dateStr) return "N/A";
@@ -513,7 +536,7 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
     if (found && Number(found[1]) > 0) return Number(found[1]);
     const daysPaid = Number(emp.daysPaid ?? 30);
     const totalDays = Number(emp.totalDays || 30) || 30;
-    if (daysPaid > 0 && daysPaid < totalDays && earnedVal > 0) {
+    if (daysPaid > 0 && earnedVal > 0) {
       return Math.round((earnedVal / daysPaid) * totalDays * 100) / 100;
     }
     return earnedVal;
@@ -529,16 +552,18 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
     if (match) {
       earned = match.val;
       processedKeys.add(match.key);
-    } else if (std.key === "basic") {
-      earned = Number(emp.basic || 0);
-    } else if (std.key === "hra") {
-      earned = Number(emp.hra || 0);
-    } else if (std.key === "special") {
-      earned = Number(emp.special || 0);
+    } else if (std.key === "basic" && Number(emp.basic || 0) > 0) {
+      earned = Number(emp.basic);
+    } else if (std.key === "hra" && Number(emp.hra || 0) > 0) {
+      earned = Number(emp.hra);
+    } else if (std.key === "special" && Number(emp.special || 0) > 0) {
+      earned = Number(emp.special);
     }
 
     const actual = findActualComp(std.key, earned);
-    earningsList.push({ name: std.label, actual, earned });
+    if (earned > 0 || actual > 0 || match !== null) {
+      earningsList.push({ name: std.label, actual, earned });
+    }
 
     Object.keys(components).forEach((k) => {
       const lower = k.toLowerCase().trim();
@@ -554,7 +579,9 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
       processedKeys.add(k);
       const earned = Number(v || 0);
       const actual = findActualComp(k, earned);
-      earningsList.push({ name: k, actual, earned });
+      if (earned > 0 || actual > 0) {
+        earningsList.push({ name: k, actual, earned });
+      }
     }
   });
 
@@ -608,8 +635,8 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
     }
   });
 
-  // Pad empty lines so the table rows align symmetrically with the vertical divider
-  const maxRows = Math.max(earningsList.length, deductionsList.length, 6);
+  // Symmetrically align rows without adding arbitrary empty blank space
+  const maxRows = Math.max(earningsList.length, deductionsList.length);
   while (earningsList.length < maxRows) {
     earningsList.push({ name: "", actual: 0, earned: 0 });
   }
@@ -617,92 +644,108 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
     deductionsList.push({ name: "", amount: null });
   }
 
-  const totalActual = earningsList.reduce((sum, r) => sum + (r.name ? r.actual : 0), 0);
-  const totalEarned = earningsList.reduce((sum, r) => sum + (r.name ? r.earned : 0), 0) || Number(emp.gross || 0);
-  const totalDeductions = deductionsList.reduce((sum, r) => sum + (r.amount || 0), 0) || Number(emp.ded || 0);
-  const netPay = Number(emp.net || (totalEarned - totalDeductions));
+  const totalActual = Math.round(earningsList.reduce((sum, r) => sum + (r.name ? r.actual : 0), 0) * 100) / 100 || Number(emp.actual_gross || (Number(emp.ctc || 0) / 12) || emp.gross || 0);
+  const totalEarned = Math.round(earningsList.reduce((sum, r) => sum + (r.name ? r.earned : 0), 0) * 100) / 100 || Number(emp.gross || 0);
+  const totalDeductions = Math.round(deductionsList.reduce((sum, r) => sum + (r.amount || 0), 0) * 100) / 100 || Number(emp.ded || 0);
+  const netPay = Math.max(0, Math.round((totalEarned - totalDeductions) * 100) / 100);
 
   const entityTitle = emp.entityName || emp.companyName || emp.organization || "Company";
+
+  const otHours = Number(emp.ot ?? emp.overtimeHours ?? 0);
+  const extraDaysFromPresent = Math.max(0, Number(emp.daysPresent || 0) - Number(emp.totalDays || 30));
+  const extraDaysFromOt = otHours > 0 ? otHours / 8 : 0;
+  const extraDaysVal = Number(emp.extraDays || 0);
+  const otDays = extraDaysVal > 0 ? extraDaysVal : Math.max(extraDaysFromPresent, extraDaysFromOt);
 
   return (
     <div
       id="payslip-capture"
-      className="w-full max-w-[900px] mx-auto bg-white text-black p-6 font-sans text-xs border border-black shadow-none print:m-0 print:border-black print:max-w-none select-text"
+      className="w-full max-w-[850px] mx-auto bg-white text-black p-4 sm:p-5 font-sans text-xs border border-black shadow-none print:m-0 print:border-black print:max-w-none select-text"
       style={{ color: "#000", backgroundColor: "#fff", fontFamily: 'Arial, Helvetica, sans-serif' }}
     >
       {/* Entity Header & Title */}
-      <div className="text-center pb-4 pt-1">
-        <h1 className="text-lg sm:text-xl font-bold uppercase tracking-wider text-black m-0 leading-tight">
+      <div className="text-center pb-2.5 pt-0.5">
+        <h1 className="text-base sm:text-lg font-bold uppercase tracking-wider text-black m-0 leading-tight">
           {entityTitle}
         </h1>
-        <div className="text-xs sm:text-sm font-medium text-slate-700 mt-1">
+        <div className="text-xs font-medium text-slate-700 mt-0.5">
           Payslip for the month of {formatPeriodMonth(period)}
         </div>
       </div>
 
       {/* Top Information Box */}
-      <div className="border border-black grid grid-cols-2 text-xs leading-relaxed">
+      <div className="border border-black grid grid-cols-2 text-xs leading-normal">
         {/* Left Column */}
-        <div className="border-r border-black p-3 space-y-1.5">
-          <div className="grid grid-cols-[160px_1fr]">
+        <div className="border-r border-black p-2.5 space-y-1">
+          <div className="grid grid-cols-[140px_1fr]">
             <span className="text-slate-700">Name :</span>
             <span className="font-bold text-slate-950">{emp.firstName} {emp.lastName}</span>
           </div>
-          <div className="grid grid-cols-[160px_1fr]">
+          <div className="grid grid-cols-[140px_1fr]">
             <span className="text-slate-700">EmpCode :</span>
             <span className="font-bold text-slate-950">{emp.code || "N/A"}</span>
           </div>
-          <div className="grid grid-cols-[160px_1fr]">
+          <div className="grid grid-cols-[140px_1fr]">
             <span className="text-slate-700">DOJ :</span>
             <span className="font-medium">{formatDate(emp.doj)}</span>
           </div>
-          <div className="grid grid-cols-[160px_1fr]">
+          <div className="grid grid-cols-[140px_1fr]">
             <span className="text-slate-700">Department :</span>
-            <span className="font-medium">{emp.department || "Department"}</span>
+            <span className="font-medium">{emp.department || "General"}</span>
           </div>
-          <div className="grid grid-cols-[160px_1fr]">
+          <div className="grid grid-cols-[140px_1fr]">
             <span className="text-slate-700">Designation :</span>
-            <span className="font-medium">{emp.designation || "Designation"}</span>
+            <span className="font-medium">{emp.designation || "N/A"}</span>
           </div>
-          <div className="grid grid-cols-[160px_1fr]">
+          <div className="grid grid-cols-[140px_1fr]">
             <span className="text-slate-700">No. of. Workingdays :</span>
             <span className="font-semibold">{emp.totalDays || 30}</span>
           </div>
-          <div className="grid grid-cols-[160px_1fr]">
+          <div className="grid grid-cols-[140px_1fr]">
             <span className="text-slate-700">Holidays :</span>
             <span className="font-semibold">{fmt(emp.holidays || emp.daysOff || 0)}</span>
           </div>
-          <div className="grid grid-cols-[160px_1fr]">
+          <div className="grid grid-cols-[140px_1fr]">
             <span className="text-slate-700">No. of. Days Paid :</span>
             <span className="font-semibold">{fmt(emp.daysPaid ?? 30)}</span>
           </div>
         </div>
 
         {/* Right Column */}
-        <div className="p-3 space-y-1.5">
-          <div className="grid grid-cols-[160px_1fr]">
+        <div className="p-2.5 space-y-1">
+          <div className="grid grid-cols-[140px_1fr]">
             <span className="text-slate-700">Location :</span>
             <span className="font-medium">{emp.location || emp.entityName || "Bangalore"}</span>
           </div>
-          <div className="grid grid-cols-[160px_1fr]">
+          <div className="grid grid-cols-[140px_1fr]">
             <span className="text-slate-700">Bank Name :</span>
             <span className="font-medium">{emp.bankName || "N/A"}</span>
           </div>
-          <div className="grid grid-cols-[160px_1fr]">
+          <div className="grid grid-cols-[140px_1fr]">
             <span className="text-slate-700">Bank Account No. :</span>
             <span className="font-medium font-mono">{emp.bankAccount || "N/A"}</span>
           </div>
-          <div className="grid grid-cols-[160px_1fr]">
-            <span className="text-slate-700">LOP Days :</span>
-            <span className="font-semibold">{fmt(emp.lopDays || 0)}</span>
-          </div>
-          <div className="grid grid-cols-[160px_1fr]">
+          <div className="grid grid-cols-[140px_1fr]">
             <span className="text-slate-700">PAN NO :</span>
             <span className="font-medium font-mono">{emp.pan || "N/A"}</span>
           </div>
-          <div className="grid grid-cols-[160px_1fr]">
+          <div className="grid grid-cols-[140px_1fr]">
+            <span className="text-slate-700">Half Days :</span>
+            <span className="font-semibold">{fmt(emp.halfDays || 0)}</span>
+          </div>
+          <div className="grid grid-cols-[140px_1fr]">
+            <span className="text-slate-700">LOP Days :</span>
+            <span className="font-semibold">{fmt(emp.lopDays || 0)}</span>
+          </div>
+          <div className="grid grid-cols-[140px_1fr]">
+            <span className="text-slate-700">Late Penalties :</span>
+            <span className="font-semibold">{fmt(emp.latePenalties || 0)}</span>
+          </div>
+          <div className="grid grid-cols-[140px_1fr]">
             <span className="text-slate-700">Extra days (OT Days) :</span>
-            <span className="font-semibold">{fmt(emp.extraDays ?? (Number(emp.overtimeHours || emp.ot || 0) / 8))}</span>
+            <span className="font-semibold">
+              {fmt(otDays)} {otHours > 0 ? `(${fmt(otHours)} hrs)` : ""}
+            </span>
           </div>
         </div>
       </div>
@@ -711,12 +754,12 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
       <div className="border-x border-b border-black text-xs">
         {/* Table Header */}
         <div className="grid grid-cols-2 border-b border-black font-bold bg-slate-50">
-          <div className="grid grid-cols-[1fr_110px_110px] px-3 py-2 border-r border-black">
+          <div className="grid grid-cols-[1fr_100px_100px] px-3 py-1.5 border-r border-black">
             <span>Earnings</span>
             <span className="text-right pr-1">Actual</span>
             <span className="text-right pr-1">Earned</span>
           </div>
-          <div className="grid grid-cols-[1fr_120px] px-3 py-2">
+          <div className="grid grid-cols-[1fr_110px] px-3 py-1.5">
             <span>Deductions</span>
             <span className="text-right pr-1">Amount</span>
           </div>
@@ -727,7 +770,7 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
           {/* Earnings Column */}
           <div className="border-r border-black">
             {earningsList.map((row, idx) => (
-              <div key={idx} className="grid grid-cols-[1fr_110px_110px] px-3 py-1.5 min-h-[26px] items-center border-b border-slate-100 last:border-b-0">
+              <div key={idx} className="grid grid-cols-[1fr_100px_100px] px-3 py-1 min-h-[22px] items-center border-b border-slate-100 last:border-b-0">
                 <span className="truncate pr-2 font-normal text-slate-800">{row.name}</span>
                 <span className="text-right font-mono font-medium tabular-nums text-slate-900 pr-1">{row.name ? fmt(row.actual) : ""}</span>
                 <span className="text-right font-mono font-semibold tabular-nums text-slate-950 pr-1">{row.name ? fmt(row.earned) : ""}</span>
@@ -738,7 +781,7 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
           {/* Deductions Column */}
           <div>
             {deductionsList.map((row, idx) => (
-              <div key={idx} className="grid grid-cols-[1fr_120px] px-3 py-1.5 min-h-[26px] items-center border-b border-slate-100 last:border-b-0">
+              <div key={idx} className="grid grid-cols-[1fr_110px] px-3 py-1 min-h-[22px] items-center border-b border-slate-100 last:border-b-0">
                 <span className="truncate pr-2 font-normal text-slate-800">{row.name}</span>
                 <span className="text-right font-mono font-semibold tabular-nums text-slate-950 pr-1">{row.name && row.amount !== null ? fmt(row.amount) : ""}</span>
               </div>
@@ -747,38 +790,38 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
         </div>
 
         {/* Total Row */}
-        <div className="grid grid-cols-2 border-t border-black font-bold bg-slate-50">
-          <div className="grid grid-cols-[1fr_110px_110px] px-3 py-2 border-r border-black">
+        <div className="grid grid-cols-2 border-t-2 border-black font-bold bg-slate-100/90 text-xs">
+          <div className="grid grid-cols-[1fr_100px_100px] px-3 py-1.5 border-r border-black">
             <span>Total Earnings:</span>
             <span className="text-right font-mono tabular-nums pr-1">{fmt(totalActual)}</span>
-            <span className="text-right font-mono tabular-nums pr-1">{fmt(totalEarned)}</span>
+            <span className="text-right font-mono tabular-nums pr-1 text-slate-950">{fmt(totalEarned)}</span>
           </div>
-          <div className="grid grid-cols-[1fr_120px] px-3 py-2">
+          <div className="grid grid-cols-[1fr_110px] px-3 py-1.5">
             <span>Total Deductions:</span>
-            <span className="text-right font-mono tabular-nums pr-1">{fmt(totalDeductions)}</span>
+            <span className="text-right font-mono tabular-nums pr-1 text-red-600">{fmt(totalDeductions)}</span>
           </div>
         </div>
       </div>
 
       {/* Net Pay Box */}
-      <div className="border-x border-b border-black p-3 text-xs bg-slate-50/50">
+      <div className="border-x border-b border-black p-2.5 text-xs bg-slate-50">
         <div className="flex justify-between items-center">
-          <span className="font-semibold text-slate-800">Net Pay for the month (Total Earnings - Total Deductions) :</span>
-          <span className="font-bold text-sm font-mono tabular-nums text-slate-950">{fmt(netPay)}</span>
+          <span className="font-semibold text-slate-900">Net Pay for the month (Total Earnings - Total Deductions) :</span>
+          <span className="font-bold text-sm font-mono tabular-nums text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">{fmt(netPay)}</span>
         </div>
-        <div className="font-semibold text-xs mt-1.5 text-slate-700 uppercase tracking-wide">
+        <div className="font-semibold text-[11px] mt-1 text-slate-700 uppercase tracking-wide">
           {numberToWords(netPay)}
         </div>
       </div>
 
       {/* Remarks Box */}
-      <div className="border-x border-b border-black p-3 min-h-[44px] text-xs">
+      <div className="border-x border-b border-black px-3 py-1.5 min-h-[30px] text-xs">
         <span className="font-bold">Remarks :</span>
-        <span className="ml-2 font-medium text-slate-800">{emp.remarks || ""}</span>
+        <span className="ml-2 font-medium text-slate-800">{emp.remarks || "—"}</span>
       </div>
 
       {/* Footer */}
-      <div className="py-2.5 text-center text-[10px] text-black">
+      <div className="py-1.5 text-center text-[10px] text-slate-600">
         This is a system generated payslip and does not require signature
       </div>
     </div>

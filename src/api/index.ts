@@ -566,6 +566,7 @@ export const leavesApi = {
 
 export const payrollApi = {
   getRuns: async (): Promise<any[]> => apiCall("/payroll/runs/"),
+  getRunDetails: async (id: number): Promise<any> => apiCall(`/payroll/runs/${id}/details/`),
   createRun: async (data: any): Promise<any> => apiCall("/payroll/runs/", "POST", data),
   executeRun: async (id: number, payload?: any): Promise<any> =>
     apiCall(`/payroll/runs/${id}/execute/`, "POST", payload || {}),
