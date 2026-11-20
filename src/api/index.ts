@@ -231,12 +231,12 @@ export const authApi = {
   getMe: async () => apiCall("/auth/me/"),
   updateProfile: async (data: any) => apiCall("/auth/me/", "PATCH", data),
   logout: async (refresh: string) => apiCall("/auth/logout/", "POST", { refresh }),
-  requestPasswordReset: async (email: string) =>
-    apiCall("/auth/password-reset/request/", "POST", { email }),
-  verifyOTP: async (email: string, otp: string) =>
-    apiCall("/auth/password-reset/verify-otp/", "POST", { email, otp }),
+  requestPasswordReset: async (emailOrPhone: string) =>
+    apiCall("/auth/password-reset/request/", "POST", { email: emailOrPhone, identifier: emailOrPhone }),
+  verifyOTP: async (emailOrPhone: string, otp: string) =>
+    apiCall("/auth/password-reset/verify-otp/", "POST", { email: emailOrPhone, identifier: emailOrPhone, otp }),
   confirmPasswordReset: async (data: any) =>
-    apiCall("/auth/password-reset/confirm/", "POST", data),
+    apiCall("/auth/password-reset/confirm/", "POST", { ...data, identifier: data.email || data.identifier }),
   changePassword: async (data: any) =>
     apiCall("/auth/change-password/", "POST", data),
 };

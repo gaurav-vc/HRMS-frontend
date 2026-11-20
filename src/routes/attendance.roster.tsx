@@ -78,8 +78,12 @@ function RosterPage() {
       return;
     }
 
-    if (dateObj.getDay() === 0) {
-      toast.error("Sunday is a weekly off. Shifts cannot be assigned on Sundays.");
+    const row = roster.find((r) => r.employee?.id === employeeId);
+    const isSunday = dateObj.getDay() === 0;
+
+    // Check Sunday working permission dynamically
+    if (isSunday && row?.employee?.is_sunday_working === false) {
+      toast.error("Cannot assign shift on Sunday: Sunday weekly off (Sunday working is disabled for this site).");
       return;
     }
 
@@ -215,7 +219,7 @@ function RosterPage() {
                     <div
                       className={`text-xs uppercase ${isCurrentDay ? "text-primary font-bold" : isSunday ? "text-amber-600 dark:text-amber-400 font-bold" : "text-muted-foreground"}`}
                     >
-                      {format(d, "EEE")} {isSunday ? "• OFF" : ""}
+                      {format(d, "EEE")}
                     </div>
                     <div
                       className={`font-semibold ${isCurrentDay ? "text-primary" : "text-foreground"}`}
@@ -242,6 +246,7 @@ function RosterPage() {
                   const assignment = (row.shifts || {})[dateStr];
                   const isCurrentDay = isToday(d);
                   const isSunday = d.getDay() === 0;
+                  const isSundayOff = isSunday && row.employee?.is_sunday_working === false;
 
                   return (
                     <td
@@ -268,7 +273,7 @@ function RosterPage() {
                             <X className="h-3 w-3" />
                           </button>
                         </div>
-                      ) : isSunday ? (
+                      ) : isSundayOff ? (
                         <div className="w-full h-full min-h-[44px] flex items-center justify-center text-[11px] text-muted-foreground/50 italic select-none">
                           Weekly Off
                         </div>

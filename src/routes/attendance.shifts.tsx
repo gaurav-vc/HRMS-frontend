@@ -86,19 +86,46 @@ function ShiftsPage() {
 
   const save = async (e: any) => {
     try {
+      const isSplit = Boolean(e.isSplitShift ?? e.is_split_shift);
+      const sTime = e.start_time || e.startTime;
+      const eTime = e.end_time || e.endTime;
+      const p1 = computeHours(sTime, eTime);
+      const p2 = isSplit ? computeHours(e.part2_start_time || e.part2StartTime, e.part2_end_time || e.part2EndTime) : 0;
+      const autoBaseHours = Math.round((p1 + p2) * 100) / 100;
+
+      const payload: any = {
+        name: e.name,
+        code: e.code,
+        color_hex: e.color_hex || e.colorHex || "#6366f1",
+        start_time: sTime,
+        end_time: eTime,
+        grace_minutes: Number(e.grace_minutes ?? e.graceMinutes ?? 0),
+        ot_multiplier: Number(e.ot_multiplier ?? e.otMultiplier ?? 1.0),
+        is_active: Boolean(e.is_active ?? e.isActive ?? true),
+        is_split_shift: isSplit,
+        part2_start_time: isSplit ? (e.part2_start_time || e.part2StartTime || null) : null,
+        part2_end_time: isSplit ? (e.part2_end_time || e.part2EndTime || null) : null,
+        is_ot_enabled: Boolean(e.is_ot_enabled ?? e.isOtEnabled ?? true),
+        min_hours_for_ot: Number(e.min_hours_for_ot ?? e.minHoursForOt ?? 0),
+        ot_calculation_base_hours: Number(e.ot_calculation_base_hours ?? e.otCalculationBaseHours ?? autoBaseHours),
+      };
       if (editing && e.id) {
-        await attendanceApi.updateShift(e.id, e);
+        await attendanceApi.updateShift(e.id, payload);
         toast.success("Shift updated");
       } else {
-        const { id, ...data } = e;
-        await attendanceApi.createShift(data);
+        await attendanceApi.createShift(payload);
         toast.success("Shift created");
       }
       setOpen(false);
       setEditing(null);
       router.invalidate();
     } catch (err: any) {
-      toast.error(err.message || "Failed to save shift");
+      let msg = err.message || "Failed to save shift";
+      try {
+        const parsed = JSON.parse(msg);
+        msg = parsed.error || parsed.detail || msg;
+      } catch (e) {}
+      toast.error(msg);
     }
   };
 
@@ -186,12 +213,23 @@ function ShiftsPage() {
 
             <div className="space-y-2 text-sm mb-6">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Hours</span>
+                <span className="text-muted-foreground">
+                  {(shift.isSplitShift || shift.is_split_shift) ? "Part 1 Hours" : "Hours"}
+                </span>
                 <span className="font-medium">
-                  {(shift.startTime || "00:00").substring(0, 5)} -{" "}
-                  {(shift.endTime || "00:00").substring(0, 5)}
+                  {(shift.startTime || shift.start_time || "00:00").substring(0, 5)} -{" "}
+                  {(shift.endTime || shift.end_time || "00:00").substring(0, 5)}
                 </span>
               </div>
+              {(shift.isSplitShift || shift.is_split_shift) && (
+                <div className="flex justify-between text-indigo-600 bg-indigo-50/60 px-2 py-1 rounded">
+                  <span className="font-medium text-xs">Part 2 Hours</span>
+                  <span className="font-semibold text-xs">
+                    {(shift.part2StartTime || shift.part2_start_time || "00:00").substring(0, 5)} -{" "}
+                    {(shift.part2EndTime || shift.part2_end_time || "00:00").substring(0, 5)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Grace</span>
                 <span className="font-medium">{shift.graceMinutes || 0} min</span>
@@ -246,6 +284,18 @@ function ShiftsPage() {
   );
 }
 
+function computeHours(startTime?: string, endTime?: string): number {
+  if (!startTime || !endTime) return 0;
+  const [sH, sM] = startTime.split(":").map((v) => parseInt(v, 10));
+  const [eH, eM] = endTime.split(":").map((v) => parseInt(v, 10));
+  if (isNaN(sH) || isNaN(sM) || isNaN(eH) || isNaN(eM)) return 0;
+  let diffMinutes = (eH * 60 + eM) - (sH * 60 + sM);
+  if (diffMinutes < 0) {
+    diffMinutes += 24 * 60; // Overnight crossover
+  }
+  return Math.round((diffMinutes / 60) * 100) / 100;
+}
+
 function ShiftDialog({
   open,
   onOpenChange,
@@ -263,19 +313,92 @@ function ShiftDialog({
     code: "",
     startTime: "09:00:00",
     endTime: "18:00:00",
+    start_time: "09:00:00",
+    end_time: "18:00:00",
+    isSplitShift: false,
+    is_split_shift: false,
+    part2StartTime: "17:00:00",
+    part2EndTime: "21:00:00",
+    part2_start_time: "17:00:00",
+    part2_end_time: "21:00:00",
     graceMinutes: 10,
+    grace_minutes: 10,
     otMultiplier: 1.5,
+    ot_multiplier: 1.5,
     colorHex: "#6366f1",
+    color_hex: "#6366f1",
     isActive: true,
+    is_active: true,
     isOtEnabled: true,
+    is_ot_enabled: true,
     minHoursForOt: 0,
-    otCalculationBaseHours: 8,
+    min_hours_for_ot: 0,
+    otCalculationBaseHours: 9,
+    ot_calculation_base_hours: 9,
   };
   const [form, setForm] = useState<any>(shift ?? defaultForm);
 
   useEffect(() => {
-    if (open) setForm(shift ?? defaultForm);
+    if (open) {
+      if (shift) {
+        const sTime = shift.startTime || shift.start_time || "09:00:00";
+        const eTime = shift.endTime || shift.end_time || "18:00:00";
+        const isSplit = Boolean(shift.isSplitShift ?? shift.is_split_shift);
+        const p2s = shift.part2StartTime || shift.part2_start_time || "17:00:00";
+        const p2e = shift.part2EndTime || shift.part2_end_time || "21:00:00";
+        const p1 = computeHours(sTime, eTime);
+        const p2 = isSplit ? computeHours(p2s, p2e) : 0;
+        const total = Math.round((p1 + p2) * 100) / 100;
+
+        setForm({
+          ...shift,
+          startTime: sTime,
+          start_time: sTime,
+          endTime: eTime,
+          end_time: eTime,
+          isSplitShift: isSplit,
+          is_split_shift: isSplit,
+          part2StartTime: p2s,
+          part2_start_time: p2s,
+          part2EndTime: p2e,
+          part2_end_time: p2e,
+          otCalculationBaseHours: shift.otCalculationBaseHours ?? shift.ot_calculation_base_hours ?? total,
+          ot_calculation_base_hours: shift.ot_calculation_base_hours ?? shift.otCalculationBaseHours ?? total,
+        });
+      } else {
+        setForm(defaultForm);
+      }
+    }
   }, [open, shift]);
+
+  const recalculateBaseHours = (updatedFields: any) => {
+    const nextForm = { ...form, ...updatedFields };
+    const sTime = nextForm.startTime || nextForm.start_time || "";
+    const eTime = nextForm.endTime || nextForm.end_time || "";
+    const isSplit = Boolean(nextForm.isSplitShift ?? nextForm.is_split_shift);
+    const p2s = nextForm.part2StartTime || nextForm.part2_start_time || "";
+    const p2e = nextForm.part2EndTime || nextForm.part2_end_time || "";
+
+    const p1 = computeHours(sTime, eTime);
+    const p2 = isSplit ? computeHours(p2s, p2e) : 0;
+    const total = Math.round((p1 + p2) * 100) / 100;
+
+    setForm({
+      ...nextForm,
+      otCalculationBaseHours: total,
+      ot_calculation_base_hours: total,
+    });
+  };
+
+  const currentStartTime = form.startTime || form.start_time || "";
+  const currentEndTime = form.endTime || form.end_time || "";
+  const currentIsSplit = Boolean(form.isSplitShift ?? form.is_split_shift);
+  const currentP2Start = form.part2StartTime || form.part2_start_time || "";
+  const currentP2End = form.part2EndTime || form.part2_end_time || "";
+
+  const p1Hours = computeHours(currentStartTime, currentEndTime);
+  const p2Hours = currentIsSplit ? computeHours(currentP2Start, currentP2End) : 0;
+  const calculatedTotalHours = Math.round((p1Hours + p2Hours) * 100) / 100;
 
   return (
     <Dialog
@@ -285,7 +408,7 @@ function ShiftDialog({
         if (b && shift) setForm(shift);
       }}
     >
-      <DialogContent>
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{shift ? "Edit" : "New"} shift definition</DialogTitle>
         </DialogHeader>
@@ -309,32 +432,103 @@ function ShiftDialog({
             <Field label="Color">
               <Input
                 type="color"
-                value={form.colorHex}
-                onChange={(e) => setForm({ ...form, colorHex: e.target.value })}
+                value={form.colorHex || form.color_hex || "#6366f1"}
+                onChange={(e) => setForm({ ...form, colorHex: e.target.value, color_hex: e.target.value })}
                 className="h-10 p-1 cursor-pointer"
               />
             </Field>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Start time">
-              <Input
-                type="time"
-                value={form.startTime || form.start_time}
-                onChange={(e) =>
-                  setForm({ ...form, startTime: e.target.value, start_time: e.target.value })
-                }
-              />
-            </Field>
-            <Field label="End time">
-              <Input
-                type="time"
-                value={form.endTime || form.end_time}
-                onChange={(e) =>
-                  setForm({ ...form, endTime: e.target.value, end_time: e.target.value })
-                }
-              />
-            </Field>
+          <div className="space-y-1">
+            <div className="grid grid-cols-2 gap-4">
+              <Field label={currentIsSplit ? "Part 1 Start (First Half)" : "Start time"}>
+                <Input
+                  type="time"
+                  value={form.startTime || form.start_time}
+                  onChange={(e) =>
+                    recalculateBaseHours({ startTime: e.target.value, start_time: e.target.value })
+                  }
+                />
+              </Field>
+              <Field label={currentIsSplit ? "Part 1 End (First Half)" : "End time"}>
+                <Input
+                  type="time"
+                  value={form.endTime || form.end_time}
+                  onChange={(e) =>
+                    recalculateBaseHours({ endTime: e.target.value, end_time: e.target.value })
+                  }
+                />
+              </Field>
+            </div>
+            {p1Hours > 0 && (
+              <div className="text-[11px] text-muted-foreground flex items-center justify-between px-1">
+                <span>{currentIsSplit ? "Part 1 Working Duration:" : "Total Shift Duration:"}</span>
+                <span className="font-semibold text-primary">{p1Hours} hrs</span>
+              </div>
+            )}
+          </div>
+
+          {/* Split Shift Mode Toggle and Part 2 Timings */}
+          <div className="p-3 bg-muted/40 rounded-lg border space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-xs font-semibold text-foreground">Split Shift Mode</span>
+                <p className="text-[11px] text-muted-foreground">Divide shift into 2 parts with 2 pairs of IN/OUT punches</p>
+              </div>
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={form.isSplitShift === true || form.is_split_shift === true}
+                  onChange={(e) =>
+                    recalculateBaseHours({
+                      isSplitShift: e.target.checked,
+                      is_split_shift: e.target.checked,
+                    })
+                  }
+                  className="rounded border-input text-primary focus:ring-primary h-4 w-4"
+                />
+                <span className="text-xs font-medium">Enable Split Shift</span>
+              </label>
+            </div>
+
+            {(form.isSplitShift === true || form.is_split_shift === true) && (
+              <div className="pt-2 border-t space-y-3">
+                <div className="flex items-center justify-between text-[11px] font-semibold text-indigo-600 uppercase tracking-wider">
+                  <span>Part 2 Timing (Second Half)</span>
+                  {p2Hours > 0 && (
+                    <span className="text-xs normal-case font-bold bg-indigo-50 px-2 py-0.5 rounded text-indigo-700">
+                      Part 2 Duration: {p2Hours} hrs
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Part 2 Start Time">
+                    <Input
+                      type="time"
+                      value={form.part2StartTime || form.part2_start_time || "17:00:00"}
+                      onChange={(e) =>
+                        recalculateBaseHours({
+                          part2StartTime: e.target.value,
+                          part2_start_time: e.target.value,
+                        })
+                      }
+                    />
+                  </Field>
+                  <Field label="Part 2 End Time">
+                    <Input
+                      type="time"
+                      value={form.part2EndTime || form.part2_end_time || "21:00:00"}
+                      onChange={(e) =>
+                        recalculateBaseHours({
+                          part2EndTime: e.target.value,
+                          part2_end_time: e.target.value,
+                        })
+                      }
+                    />
+                  </Field>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -407,17 +601,22 @@ function ShiftDialog({
                 <Input
                   type="number"
                   step="0.5"
-                  value={form.otCalculationBaseHours ?? form.ot_calculation_base_hours ?? 8}
+                  value={form.otCalculationBaseHours ?? form.ot_calculation_base_hours ?? calculatedTotalHours}
                   onChange={(e) =>
                     setForm({
                       ...form,
-                      otCalculationBaseHours: parseFloat(e.target.value) || 8,
-                      ot_calculation_base_hours: parseFloat(e.target.value) || 8,
+                      otCalculationBaseHours: parseFloat(e.target.value) || 0,
+                      ot_calculation_base_hours: parseFloat(e.target.value) || 0,
                     })
                   }
                   placeholder="e.g. 8.0"
                 />
-                <span className="text-[10px] text-muted-foreground">Hours deducted for OT (e.g. 10h - 8h = 2h OT)</span>
+                <span className="text-[10px] text-muted-foreground flex items-center justify-between">
+                  <span>Auto-calculated:</span>
+                  <strong className="text-foreground">
+                    {calculatedTotalHours} hrs {currentIsSplit ? `(${p1Hours}h + ${p2Hours}h)` : `(${p1Hours}h)`}
+                  </strong>
+                </span>
               </Field>
             </div>
           </div>

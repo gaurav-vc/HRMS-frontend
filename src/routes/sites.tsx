@@ -68,6 +68,8 @@ function SitesPage() {
         kiosk_pin: kioskPin || "1234",
         kiosk_token: kioskToken || undefined,
         site_code: rest.site_code || rest.siteCode,
+        is_sunday_working: s.isSundayWorking !== undefined ? s.isSundayWorking : (s.is_sunday_working ?? false),
+        split_shift_incomplete_policy: s.splitShiftIncompletePolicy || s.split_shift_incomplete_policy || 'Half Day',
       };
 
       if (isExistingMain) {
@@ -348,6 +350,8 @@ function SiteDialog({ open, onOpenChange, site, onSave, readOnly }: any) {
     kioskAutoPunch: true,
     kioskPin: "1234",
     kioskToken: "",
+    isSundayWorking: false,
+    splitShiftIncompletePolicy: "Half Day",
   };
 
   const [form, setForm] = useState<any>(defaultForm);
@@ -369,6 +373,8 @@ function SiteDialog({ open, onOpenChange, site, onSave, readOnly }: any) {
           kioskAutoPunch: site.kioskAutoPunch !== false && site.kiosk_auto_punch !== false,
           kioskPin: site.kioskPin ?? site.kiosk_pin ?? "1234",
           kioskToken: site.kioskToken || site.kiosk_token || "",
+          isSundayWorking: site.isSundayWorking === true || site.is_sunday_working === true,
+          splitShiftIncompletePolicy: site.splitShiftIncompletePolicy || site.split_shift_incomplete_policy || "Half Day",
         });
       } else {
         setForm(defaultForm);
