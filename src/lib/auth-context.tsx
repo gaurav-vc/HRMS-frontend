@@ -25,6 +25,7 @@ interface User {
   access_scope?: string;
   has_all_entity_access?: boolean;
   can_manage_users?: boolean;
+  can_approve?: boolean;
   is_wfh?: boolean;
   can_bypass_geofence?: boolean;
 }

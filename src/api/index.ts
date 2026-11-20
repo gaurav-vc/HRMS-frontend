@@ -485,7 +485,18 @@ export const attendanceApi = {
   getDashboard: async (): Promise<any> => apiCall("/attendance/dashboard/"),
   requestRegularization: async (data: any): Promise<any> =>
     apiCall("/attendance/regularization/", "POST", data),
-  getRegularizations: async (): Promise<any[]> => apiCall("/attendance/regularization/"),
+  bulkApplyRegularization: async (data: any): Promise<any> =>
+    apiCall("/attendance/regularization/bulk_apply/", "POST", data),
+  getRegularizations: async (params?: { time?: string; start_date?: string; end_date?: string; status?: string; employee?: string | number }): Promise<any[]> => {
+    const q = new URLSearchParams();
+    if (params?.time) q.append("time", params.time);
+    if (params?.start_date) q.append("start_date", params.start_date);
+    if (params?.end_date) q.append("end_date", params.end_date);
+    if (params?.status) q.append("status", params.status);
+    if (params?.employee) q.append("employee", String(params.employee));
+    const qs = q.toString() ? `?${q.toString()}` : "";
+    return apiCall(`/attendance/regularization/${qs}`);
+  },
   approveRegularization: async (id: string | number, data: any): Promise<any> =>
     apiCall(`/attendance/regularization/${id}/`, "PATCH", data),
   uploadCsv: async (file: File): Promise<any> => {
@@ -511,7 +522,10 @@ export const attendanceApi = {
     shift_id: number | null;
   }): Promise<any> => apiCall("/attendance/roster/assign/", "POST", data),
   bulkAssign: async (data: {
-    department_ids: number[];
+    department_ids?: number[];
+    designation_ids?: number[];
+    role_ids?: number[];
+    employee_ids?: number[];
     shift_id: number;
     start_date: string;
     end_date: string;
@@ -541,8 +555,18 @@ export const designationsApi = {
 export const kioskApi = {
   getConfig: async (token: string): Promise<any> =>
     apiCall(`/attendance/kiosk/config/?token=${encodeURIComponent(token)}`),
-  punch: async (token: string, frameB64: string, punchType: string = "AUTO"): Promise<any> =>
-    apiCall("/attendance/kiosk/punch/", "POST", { token, frame: frameB64, punch_type: punchType }),
+  punch: async (
+    token: string,
+    frameB64?: string,
+    punchType: string = "AUTO",
+    employeeId?: number | string
+  ): Promise<any> =>
+    apiCall("/attendance/kiosk/punch/", "POST", {
+      token,
+      frame: frameB64,
+      punch_type: punchType,
+      employee_id: employeeId,
+    }),
   verifyPin: async (token: string, pin: string): Promise<any> =>
     apiCall("/attendance/kiosk/verify-pin/", "POST", { token, pin }),
 };

@@ -95,7 +95,7 @@ export const NAV: Group[] = [
       { title: "Weekly Roster", url: "/attendance/roster", icon: CalendarRange },
       { title: "QR Check-in", url: "/attendance/qr", icon: QrCode },
       { title: "Face Verification", url: "/attendance/face", icon: ScanFace },
-      { title: "GPS Capture", url: "/attendance/gps", icon: Navigation },
+      // { title: "GPS Capture", url: "/attendance/gps", icon: Navigation },
       { title: "Regularization", url: "/attendance/regularize", icon: ClipboardList },
     ],
   },
