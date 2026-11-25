@@ -176,12 +176,13 @@ function AuthPage() {
 
               <form className="mt-6 space-y-4" onSubmit={handleLogin}>
                 <div className="space-y-1.5">
-                  <Label htmlFor="email">Work email / Username</Label>
+                  <Label htmlFor="email">Work Email, Username, or Phone Number</Label>
                   <div className="relative">
                     <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="email"
                       className="pl-8"
+                      placeholder="e.g. name@company.com, username, or phone"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       disabled={loading}
@@ -229,18 +230,19 @@ function AuthPage() {
             <>
               <h2 className="text-2xl font-semibold">Reset Password</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Enter your registered work email to receive an OTP.
+                Enter your registered work email or phone number to receive an OTP.
               </p>
 
               <form className="mt-6 space-y-4" onSubmit={handleSendOTP}>
                 <div className="space-y-1.5">
-                  <Label htmlFor="resetEmail">Email</Label>
+                  <Label htmlFor="resetEmail">Email or Phone Number</Label>
                   <div className="relative">
                     <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="resetEmail"
-                      type="email"
+                      type="text"
                       className="pl-8"
+                      placeholder="e.g. name@company.com or 10-digit mobile"
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
                       disabled={loading}

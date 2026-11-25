@@ -2271,6 +2271,8 @@ function AttendanceSettingsTab() {
     requireQr: boolean;
     requireGps: boolean;
     wfhEmployees: string[];
+    isSundayWorking: boolean;
+    splitShiftIncompletePolicy: string;
   }>({
     maxLateMinutes: 15,
     halfDayHours: 4.0,
@@ -2280,6 +2282,8 @@ function AttendanceSettingsTab() {
     requireQr: true,
     requireGps: true,
     wfhEmployees: [],
+    isSundayWorking: false,
+    splitShiftIncompletePolicy: "Half Day",
   });
 
   const [loading, setLoading] = useState(false);
@@ -2340,6 +2344,8 @@ function AttendanceSettingsTab() {
           wfhEmployees: (p.wfhEmployees ?? p.wfh_employees ?? []).map((x: any) =>
             String(typeof x === "object" && x !== null ? x.id : x),
           ),
+          isSundayWorking: p.isSundayWorking === true || p.is_sunday_working === true,
+          splitShiftIncompletePolicy: p.splitShiftIncompletePolicy || p.split_shift_incomplete_policy || "Half Day",
         });
       } else {
         // No policy found for this scope, reset to defaults
@@ -2353,6 +2359,8 @@ function AttendanceSettingsTab() {
           requireQr: true,
           requireGps: true,
           wfhEmployees: [],
+          isSundayWorking: false,
+          splitShiftIncompletePolicy: "Half Day",
         });
       }
     } catch (e) {
@@ -2375,6 +2383,10 @@ function AttendanceSettingsTab() {
         require_gps: formData.requireGps,
         wfh_employees: formData.wfhEmployees.map(Number),
         wfhEmployees: formData.wfhEmployees.map(Number),
+        is_sunday_working: formData.isSundayWorking,
+        isSundayWorking: formData.isSundayWorking,
+        split_shift_incomplete_policy: formData.splitShiftIncompletePolicy,
+        splitShiftIncompletePolicy: formData.splitShiftIncompletePolicy,
       };
       if (selectedEmployeeId) {
         payload.employee = selectedEmployeeId;
@@ -2721,6 +2733,54 @@ function AttendanceSettingsTab() {
             </div>
           </div>
 
+          {/* Working Days & Split Shift Policy */}
+          <div className="p-4 border rounded-md bg-muted/10 space-y-4">
+            <div className="space-y-1">
+              <Label className="text-base font-semibold">Working Days & Split Shift Policy</Label>
+              <p className="text-sm text-muted-foreground">
+                Configure Sunday working permissions and penalty deductions for split shifts.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start pt-2">
+              <div className="flex items-start justify-between p-4 rounded-lg border bg-background">
+                <div className="space-y-0.5 pr-3">
+                  <Label htmlFor="att-sunday-working" className="font-medium cursor-pointer">
+                    Sunday is a Working Day
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Allow shift assignments and attendance punches on Sundays for this policy scope.
+                  </p>
+                </div>
+                <Switch
+                  id="att-sunday-working"
+                  checked={formData.isSundayWorking ?? false}
+                  onCheckedChange={(c) => setFormData({ ...formData, isSundayWorking: c })}
+                />
+              </div>
+
+              <div className="space-y-1.5 p-4 rounded-lg border bg-background">
+                <Label htmlFor="att-split-policy" className="font-medium">
+                  Split Shift Incomplete Policy
+                </Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Penalty rule when employee finishes Part 1 but skips Part 2.
+                </p>
+                <select
+                  id="att-split-policy"
+                  value={formData.splitShiftIncompletePolicy || "Half Day"}
+                  onChange={(e) =>
+                    setFormData({ ...formData, splitShiftIncompletePolicy: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border rounded-md text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="Half Day">Mark as Half Day</option>
+                  <option value="Absent">Full Day Deduction (Mark as Absent)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
           {/* Site-Isolated Punctuality & Late Deduction Slabs */}
           <div className="pt-6 border-t">
             <PunctualitySlabsSection
@@ -2779,8 +2839,8 @@ function PunctualitySlabsSection({
         scope === "site" && selectedId
           ? `?site=${selectedId}`
           : policyId
-          ? `?policy=${policyId}`
-          : "";
+            ? `?policy=${policyId}`
+            : "";
       const res = await punctualitySlabsApi.getAvailableRoles(siteParam);
       setAvailableRoles(Array.isArray(res) ? res : res?.results || []);
     } catch (err) {

@@ -499,7 +499,7 @@ function ScanPunchPage() {
                 <Loader2 className="w-16 h-16 mx-auto mb-4 text-primary animate-spin" />
                 <h4 className="text-xl font-semibold">Authenticating Identity</h4>
                 <p className="text-sm text-slate-400 mt-2">
-                  Running DeepFace embeddings & cryptographic checks...
+                  Verifying face identity...
                 </p>
               </div>
             )}

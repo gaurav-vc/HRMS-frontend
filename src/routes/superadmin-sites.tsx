@@ -177,6 +177,8 @@ function SitesPage() {
         contact_phone: s.contactPhone,
         contact_email: s.contactEmail,
         is_saturday_working: s.isSaturdayWorking !== undefined ? s.isSaturdayWorking : s.is_saturday_working,
+        is_sunday_working: s.isSundayWorking !== undefined ? s.isSundayWorking : s.is_sunday_working,
+        split_shift_incomplete_policy: s.splitShiftIncompletePolicy || s.split_shift_incomplete_policy || 'Half Day',
       };
 
       delete payload.siteCode;
@@ -186,6 +188,8 @@ function SitesPage() {
       delete payload.contactPhone;
       delete payload.contactEmail;
       delete payload.isSaturdayWorking;
+      delete payload.isSundayWorking;
+      delete payload.splitShiftIncompletePolicy;
 
       // Clean up empty strings for optional fields that DRF expects to be null
       if (payload.activate_date === "") payload.activate_date = null;
@@ -414,6 +418,8 @@ function SiteDialog({ open, onOpenChange, site, onSave, organizations, mode, loc
     contactEmail: "",
     modules: [],
     isSaturdayWorking: false,
+    isSundayWorking: false,
+    splitShiftIncompletePolicy: "Half Day",
   };
 
   const [form, setForm] = useState<any>(defaultForm);
