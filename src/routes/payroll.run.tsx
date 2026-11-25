@@ -62,8 +62,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { fmtINR } from "@/lib/utils";
-import { payrollApi, employeesApi, entitiesApi } from "@/api";
+import { payrollApi, employeesApi, entitiesApi, attendanceApi } from "@/api";
 import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/payroll/run")({
@@ -120,7 +121,11 @@ function RunPage() {
   );
 
   const canViewConfidential = Boolean(
-    isSuperOrAdmin ||
+    user?.can_view_confidential === true ||
+    user?.is_ceo === true ||
+    user?.is_superuser === true ||
+    user?.role === "super_admin" ||
+    user?.employee_id === "CEO001" ||
     user?.permissions?.can_view_confidential_payroll === true ||
     user?.permissions?.can_view_confidential_payroll === "true" ||
     user?.permissions?.can_view_confidential_payroll === 1
@@ -376,6 +381,261 @@ function MissingPayrollConfigModal({
   );
 }
 
+function AttendanceVerificationModal({
+  isOpen,
+  onClose,
+  period,
+  entities,
+  selectedEntities,
+  onVerificationComplete,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  period: string;
+  entities: any[];
+  selectedEntities: string[];
+  onVerificationComplete: () => void;
+}) {
+  const [selectedEntityId, setSelectedEntityId] = useState<string>(
+    selectedEntities[0] || (entities[0] ? String(entities[0].id) : "")
+  );
+  const [verificationData, setVerificationData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [remarks, setRemarks] = useState("");
+
+  const activeEntities = useMemo(() => {
+    return entities.filter((e: any) => selectedEntities.includes(String(e.id)));
+  }, [entities, selectedEntities]);
+
+  useEffect(() => {
+    if (activeEntities.length > 0 && (!selectedEntityId || !selectedEntities.includes(selectedEntityId))) {
+      setSelectedEntityId(String(activeEntities[0].id));
+    }
+  }, [activeEntities, selectedEntities, selectedEntityId]);
+
+  const fetchStatus = async (entId: string) => {
+    if (!period || !entId) return;
+    setLoading(true);
+    try {
+      const res = await attendanceApi.getPeriodVerification(period, entId);
+      setVerificationData(res);
+      if (res.verification?.remarks) {
+        setRemarks(res.verification.remarks);
+      } else {
+        setRemarks("");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load verification status");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      const validId = (selectedEntityId && selectedEntities.includes(selectedEntityId))
+        ? selectedEntityId
+        : (activeEntities[0] ? String(activeEntities[0].id) : (selectedEntities[0] || ""));
+      if (validId) {
+        if (validId !== selectedEntityId) {
+          setSelectedEntityId(validId);
+        }
+        fetchStatus(validId);
+      }
+    }
+  }, [isOpen, selectedEntityId, period, activeEntities, selectedEntities]);
+
+  const handleVerify = async () => {
+    if (!remarks.trim() || remarks.trim().length < 3) {
+      toast.error("Verification remarks are mandatory (minimum 3 characters).");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await attendanceApi.verifyPeriod({
+        period,
+        entity: selectedEntityId,
+        remarks: remarks.trim(),
+      });
+      toast.success(res.message || "Attendance verified and signed off successfully!");
+      await fetchStatus(selectedEntityId);
+      onVerificationComplete();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to sign off attendance");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-6 overflow-hidden">
+        <DialogHeader className="space-y-2">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <DialogTitle className="text-xl font-semibold text-foreground">
+                Attendance Period Verification & Sign-Off
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground mt-0.5">
+                Review and approve attendance records for Period <span className="font-semibold text-foreground">{period}</span> before running payroll.
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2 overflow-y-auto">
+          {activeEntities.length > 1 && (
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">Select Entity to Review</Label>
+              <Select value={selectedEntityId} onValueChange={setSelectedEntityId}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeEntities.map((ent: any) => (
+                    <SelectItem key={ent.id} value={String(ent.id)}>
+                      {ent.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="py-12 flex flex-col items-center justify-center text-muted-foreground text-sm gap-2">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              Loading attendance verification metrics...
+            </div>
+          ) : (() => {
+            const metrics = verificationData?.metrics;
+            const activeStaff = metrics?.totalActiveEmployees ?? metrics?.total_active_employees ?? 0;
+            const totalPunchDays = metrics?.totalAttendanceDays ?? metrics?.total_attendance_days ?? 0;
+            const approvedDays = metrics?.approvedDays ?? metrics?.approved_days ?? 0;
+            const pendingRegs = metrics?.pendingRegularizations ?? metrics?.pending_regularizations ?? 0;
+            const isVerified = Boolean(verificationData?.isVerified ?? verificationData?.is_verified);
+            const verifiedByName =
+              verificationData?.verification?.verifiedByName ??
+              verificationData?.verification?.verified_by_name ??
+              "IT Manager / Payroll Admin";
+            const verifiedAt =
+              verificationData?.verification?.verifiedAt ??
+              verificationData?.verification?.verified_at;
+            const verifiedRemarks = verificationData?.verification?.remarks;
+
+            return (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3 bg-muted/40 rounded-lg border text-center">
+                    <div className="text-xs text-muted-foreground">Active Staff</div>
+                    <div className="text-lg font-bold mt-0.5 text-foreground">
+                      {activeStaff}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-muted/40 rounded-lg border text-center">
+                    <div className="text-xs text-muted-foreground">Total Punch Days</div>
+                    <div className="text-lg font-bold mt-0.5 text-foreground">
+                      {totalPunchDays}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-muted/40 rounded-lg border text-center">
+                    <div className="text-xs text-muted-foreground">Approved Days</div>
+                    <div className="text-lg font-bold mt-0.5 text-emerald-600 dark:text-emerald-400">
+                      {approvedDays}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-muted/40 rounded-lg border text-center">
+                    <div className="text-xs text-muted-foreground">Pending Regularizations</div>
+                    <div className={`text-lg font-bold mt-0.5 ${pendingRegs > 0 ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>
+                      {pendingRegs}
+                    </div>
+                  </div>
+                </div>
+
+                {isVerified ? (
+                  <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/25 rounded-lg flex items-start gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <div className="text-xs text-emerald-950 dark:text-emerald-200 space-y-1">
+                      <p className="font-semibold text-sm">Attendance Verified & Signed Off</p>
+                      <p>
+                        Verified by <span className="font-medium">{verifiedByName}</span> on{" "}
+                        {verifiedAt ? new Date(verifiedAt).toLocaleString() : "N/A"}.
+                      </p>
+                      {verifiedRemarks && (
+                        <p className="italic text-emerald-800 dark:text-emerald-300">
+                          "{verifiedRemarks}"
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3.5 bg-amber-500/10 border border-amber-500/25 rounded-lg flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div className="text-xs text-amber-950 dark:text-amber-200 space-y-1">
+                      <p className="font-semibold text-sm">Attendance Verification Required</p>
+                      <p>
+                        Attendance records for this period must be audited and verified before payroll execution.
+                        Signing off will approve all daily attendance records and enable payroll calculation.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-1.5 pt-1">
+                  <Label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                    <span>Sign-Off & Verification Remarks <span className="text-rose-500">*</span></span>
+                    <span className="text-[11px] text-muted-foreground font-normal">Minimum 3 characters</span>
+                  </Label>
+                  <Textarea
+                    placeholder="Enter detailed audit remarks (e.g., Attendance records and biometric logs reviewed by IT Manager, all regularization requests addressed, approved for payroll processing)..."
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    className="min-h-[90px] text-xs resize-none"
+                  />
+                </div>
+              </>
+            );
+          })()}
+        </div>
+
+        <DialogFooter className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-3 border-t">
+          <Button variant="outline" onClick={onClose} disabled={submitting}>
+            Close
+          </Button>
+          <Button
+            onClick={handleVerify}
+            disabled={submitting || loading || !remarks.trim() || remarks.trim().length < 3}
+            className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Signing Off...
+              </>
+            ) : Boolean(verificationData?.isVerified ?? verificationData?.is_verified) ? (
+              <>
+                <CheckCircle2 className="h-4 w-4" />
+                Update Verification Sign-Off
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="h-4 w-4" />
+                Verify & Sign Off Attendance
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 const STEPS = ["Cutoff", "Validate Inputs", "Calculate", "Review", "Approve & Disburse"];
 
 function getLastDayOfMonth(periodStr: string): string {
@@ -435,6 +695,36 @@ function OneClickPanel({
 
   const [runToDelete, setRunToDelete] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const [verificationMap, setVerificationMap] = useState<Record<string, any>>({});
+  const [isVerifyingModalOpen, setIsVerifyingModalOpen] = useState(false);
+  const [payrollRemarks, setPayrollRemarks] = useState("");
+
+  const loadVerificationStatus = async () => {
+    if (!period || selectedEntities.length === 0) return;
+    const newMap: Record<string, any> = {};
+    for (const entId of selectedEntities) {
+      try {
+        const res = await attendanceApi.getPeriodVerification(period, entId);
+        newMap[entId] = res;
+      } catch (err) {
+        // silent
+      }
+    }
+    setVerificationMap(newMap);
+  };
+
+  useEffect(() => {
+    loadVerificationStatus();
+  }, [period, selectedEntities]);
+
+  const unverifiedEntities = useMemo(() => {
+    return selectedEntities.filter((entId) => {
+      const v = verificationMap[entId];
+      const isVer = v?.isVerified ?? v?.is_verified;
+      return !v || !isVer;
+    });
+  }, [selectedEntities, verificationMap]);
 
   const PERIOD_OPTIONS = useMemo(() => {
     const base = ["2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11", "2026-12"];
@@ -685,6 +975,17 @@ function OneClickPanel({
       return;
     }
 
+    if (unverifiedEntities.length > 0) {
+      toast.error(`Attendance verification required for ${unverifiedEntities.length} entity(ies) before payroll execution.`);
+      setIsVerifyingModalOpen(true);
+      return;
+    }
+
+    if (!payrollRemarks.trim() || payrollRemarks.trim().length < 3) {
+      toast.error("Payroll execution remarks are mandatory (minimum 3 characters).");
+      return;
+    }
+
     setPhase("running");
     setPct(0);
     setLogs([]);
@@ -747,6 +1048,7 @@ function OneClickPanel({
                     overrides: finalOverrides.length > 0 ? finalOverrides : Object.values(overrides),
                     include_variable_bonus: includeBonus,
                     include_leaves_encashment: includeLeaves,
+                    remarks: payrollRemarks.trim(),
                   })
                   .then((r: any) => {
                     if (r && r.arrearsLogs) {
@@ -879,6 +1181,63 @@ function OneClickPanel({
                 </Button>
               )}
             </div>
+          </div>
+
+          <div className={`mb-6 p-4 rounded-xl border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+            unverifiedEntities.length > 0
+              ? "bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200"
+              : "bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200"
+          }`}>
+            <div className="flex items-start gap-3">
+              <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                unverifiedEntities.length > 0
+                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                  : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+              }`}>
+                {unverifiedEntities.length > 0 ? (
+                  <AlertCircle className="h-5 w-5" />
+                ) : (
+                  <ShieldCheck className="h-5 w-5" />
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-semibold text-sm sm:text-base">
+                    {unverifiedEntities.length > 0
+                      ? "Attendance Verification Required Prior to Payroll Execution"
+                      : `Attendance Verified & Signed Off for ${period}`}
+                  </h4>
+                  <Badge
+                    variant={unverifiedEntities.length > 0 ? "outline" : "default"}
+                    className={`text-[10px] uppercase font-semibold ${
+                      unverifiedEntities.length > 0
+                        ? "border-amber-500/50 text-amber-700 dark:text-amber-300"
+                        : "bg-emerald-600 text-white"
+                    }`}
+                  >
+                    {unverifiedEntities.length > 0 ? "Pending Sign-Off" : "Verified"}
+                  </Badge>
+                </div>
+                <p className="text-xs mt-1 text-muted-foreground">
+                  {unverifiedEntities.length > 0
+                    ? `Daily attendance records must be audited and signed off by the IT Manager or Payroll Administrator before payroll calculations can run.`
+                    : `All daily attendance records for this period have been approved and locked. Calculations strictly utilize verified attendance.`}
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant={unverifiedEntities.length > 0 ? "default" : "outline"}
+              className={`gap-1.5 shrink-0 ${
+                unverifiedEntities.length > 0
+                  ? "bg-amber-600 hover:bg-amber-700 text-white shadow-sm"
+                  : "border-emerald-500/40 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-500/15"
+              }`}
+              onClick={() => setIsVerifyingModalOpen(true)}
+            >
+              <ShieldCheck className="h-4 w-4" />
+              {unverifiedEntities.length > 0 ? "Verify & Sign Off Attendance" : "View Attendance Sign-Off"}
+            </Button>
           </div>
 
           {activeRejectedRun && (
@@ -1157,7 +1516,7 @@ function OneClickPanel({
                                     canViewConfidential ? (
                                       fmtINR(emp[col.id] || 0)
                                     ) : (
-                                      "****"
+                                      "xxxx"
                                     )
                                   ) : emp[col.id] !== undefined &&
                                     emp[col.id] !== null &&
@@ -1235,7 +1594,15 @@ function OneClickPanel({
                     </>
                   )}
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                  <div className="w-full sm:w-72">
+                    <Input
+                      placeholder="Mandatory payroll remarks (min 3 chars)..."
+                      value={payrollRemarks}
+                      onChange={(e) => setPayrollRemarks(e.target.value)}
+                      className="bg-background h-10 text-xs"
+                    />
+                  </div>
                   <Button
                     variant="outline"
                     onClick={() => {
@@ -1253,15 +1620,44 @@ function OneClickPanel({
                         setIsMissingModalOpen(true);
                         return;
                       }
+                      if (unverifiedEntities.length > 0) {
+                        toast.error(`Attendance verification required for ${unverifiedEntities.length} entity(ies) before payroll execution.`);
+                        setIsVerifyingModalOpen(true);
+                        return;
+                      }
+                      if (!payrollRemarks.trim() || payrollRemarks.trim().length < 3) {
+                        toast.error("Payroll execution remarks are mandatory (minimum 3 characters).");
+                        return;
+                      }
                       startEngine();
                     }}
-                    className={`gap-2 px-8 ${missingInCurrentFilter.length > 0 ? "bg-amber-600 hover:bg-amber-700 text-white" : "bg-indigo-600 hover:bg-indigo-700 text-white"}`}
-                    disabled={isLoadingPreview || previewData.length === 0}
+                    className={`gap-2 px-8 ${
+                      missingInCurrentFilter.length > 0
+                        ? "bg-amber-600 hover:bg-amber-700 text-white"
+                        : unverifiedEntities.length > 0
+                        ? "bg-amber-600 hover:bg-amber-700 text-white"
+                        : !payrollRemarks.trim() || payrollRemarks.trim().length < 3
+                        ? "bg-indigo-600/60 cursor-not-allowed text-white"
+                        : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                    }`}
+                    disabled={
+                      isLoadingPreview ||
+                      previewData.length === 0 ||
+                      missingInCurrentFilter.length > 0 ||
+                      unverifiedEntities.length > 0 ||
+                      !payrollRemarks.trim() ||
+                      payrollRemarks.trim().length < 3
+                    }
                   >
                     {missingInCurrentFilter.length > 0 ? (
                       <>
                         <AlertCircle className="h-4 w-4" />
                         Resolve Missing Requirements ({missingInCurrentFilter.length})
+                      </>
+                    ) : unverifiedEntities.length > 0 ? (
+                      <>
+                        <ShieldCheck className="h-4 w-4" />
+                        Verify Attendance First ({unverifiedEntities.length})
                       </>
                     ) : (
                       <>
@@ -1274,6 +1670,17 @@ function OneClickPanel({
               </div>
             </div>
           )}
+          <AttendanceVerificationModal
+            isOpen={isVerifyingModalOpen}
+            onClose={() => setIsVerifyingModalOpen(false)}
+            period={period}
+            entities={entities}
+            selectedEntities={selectedEntities}
+            onVerificationComplete={() => {
+              loadVerificationStatus();
+              handleReviewAndRun();
+            }}
+          />
           <MissingPayrollConfigModal
             isOpen={isMissingModalOpen}
             onClose={() => setIsMissingModalOpen(false)}
@@ -1416,7 +1823,7 @@ function OneClickPanel({
           with one click.
         </h2>
         <p className="text-muted-foreground mt-2">
-          {empCount} employees • Estimated net pay {canViewConfidential ? fmtINR(netEst) : "***"}
+          {empCount} employees • Estimated net pay {canViewConfidential ? fmtINR(netEst) : "xxxx"}
         </p>
 
         {phase === "setup" && (
@@ -1551,6 +1958,64 @@ function OneClickPanel({
                 Leave Encashment
               </label>
             </div>
+
+            <div className={`p-4 rounded-xl border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+              unverifiedEntities.length > 0
+                ? "bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200"
+                : "bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200"
+            }`}>
+              <div className="flex items-start gap-3">
+                <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                  unverifiedEntities.length > 0
+                    ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                    : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                }`}>
+                  {unverifiedEntities.length > 0 ? (
+                    <AlertCircle className="h-5 w-5" />
+                  ) : (
+                    <ShieldCheck className="h-5 w-5" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold text-sm sm:text-base">
+                      {unverifiedEntities.length > 0
+                        ? "Attendance Verification Required Prior to Payroll Execution"
+                        : `Attendance Verified & Signed Off for ${period}`}
+                    </h4>
+                    <Badge
+                      variant={unverifiedEntities.length > 0 ? "outline" : "default"}
+                      className={`text-[10px] uppercase font-semibold ${
+                        unverifiedEntities.length > 0
+                          ? "border-amber-500/50 text-amber-700 dark:text-amber-300"
+                          : "bg-emerald-600 text-white"
+                      }`}
+                    >
+                      {unverifiedEntities.length > 0 ? "Pending Sign-Off" : "Verified"}
+                    </Badge>
+                  </div>
+                  <p className="text-xs mt-1 text-muted-foreground">
+                    {unverifiedEntities.length > 0
+                      ? `Attendance records for ${unverifiedEntities.length} selected entity(ies) must be audited and signed off by IT Manager / Payroll Admin before payroll calculations can run.`
+                      : `All attendance records for this period have been approved and locked. Calculations strictly utilize verified attendance.`}
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant={unverifiedEntities.length > 0 ? "default" : "outline"}
+                className={`gap-1.5 shrink-0 ${
+                  unverifiedEntities.length > 0
+                    ? "bg-amber-600 hover:bg-amber-700 text-white shadow-sm"
+                    : "border-emerald-500/40 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-500/15"
+                }`}
+                onClick={() => setIsVerifyingModalOpen(true)}
+              >
+                <ShieldCheck className="h-4 w-4" />
+                {unverifiedEntities.length > 0 ? "Verify & Sign Off Attendance" : "View Attendance Sign-Off"}
+              </Button>
+            </div>
+
             <Button
               size="lg"
               className="h-14 text-base px-8 gap-2 w-full sm:w-auto"
@@ -1609,6 +2074,16 @@ function OneClickPanel({
           ))}
         </div>
       </Card>
+      <AttendanceVerificationModal
+        isOpen={isVerifyingModalOpen}
+        onClose={() => setIsVerifyingModalOpen(false)}
+        period={period}
+        entities={entities}
+        selectedEntities={selectedEntities}
+        onVerificationComplete={() => {
+          loadVerificationStatus();
+        }}
+      />
       <MissingPayrollConfigModal
         isOpen={isMissingModalOpen}
         onClose={() => setIsMissingModalOpen(false)}
@@ -1697,6 +2172,7 @@ function WizardPanel({ canViewConfidential }: { canViewConfidential?: boolean })
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [approved, setApproved] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [wizardRemarks, setWizardRemarks] = useState("");
   const [missingEmployees, setMissingEmployees] = useState<MissingEmployeeItem[]>([]);
   const [isMissingModalOpen, setIsMissingModalOpen] = useState(false);
 
@@ -1747,6 +2223,11 @@ function WizardPanel({ canViewConfidential }: { canViewConfidential?: boolean })
       return;
     }
 
+    if (!wizardRemarks.trim() || wizardRemarks.trim().length < 3) {
+      toast.error("Payroll execution remarks are mandatory (minimum 3 characters).");
+      return;
+    }
+
     setIsProcessing(true);
     payrollApi
       .createRun({
@@ -1760,7 +2241,7 @@ function WizardPanel({ canViewConfidential }: { canViewConfidential?: boolean })
         run_on: new Date().toISOString().split("T")[0],
       })
       .then((run: any) => {
-        return payrollApi.executeRun(run.id);
+        return payrollApi.executeRun(run.id, { remarks: wizardRemarks.trim() });
       })
       .then(() => {
         setApproved(true);
@@ -1926,12 +2407,12 @@ function WizardPanel({ canViewConfidential }: { canViewConfidential?: boolean })
             <div className="grid sm:grid-cols-3 gap-4">
               <Stat
                 label="Net Payout"
-                value={canViewConfidential ? fmtINR(netEst) : "****"}
+                value={canViewConfidential ? fmtINR(netEst) : "xxxx"}
                 tone="success"
               />
               <Stat
                 label="Total Deductions"
-                value={canViewConfidential ? fmtINR(dedEst) : "****"}
+                value={canViewConfidential ? fmtINR(dedEst) : "xxxx"}
               />
               <Stat label="Employees Processed" value={String(empCount)} />
             </div>
@@ -1989,13 +2470,24 @@ function WizardPanel({ canViewConfidential }: { canViewConfidential?: boolean })
             <ConfirmRow label="Period" value={period} />
             <ConfirmRow label="Cutoff" value={cutoff} />
             <ConfirmRow label="Employees" value={`${empCount}`} />
-            <ConfirmRow label="Net payout" value={canViewConfidential ? fmtINR(netEst) : "***"} />
+            <ConfirmRow label="Net payout" value={canViewConfidential ? fmtINR(netEst) : "xxxx"} />
+          </div>
+          <div className="pt-3 space-y-1.5 border-t mt-2">
+            <Label className="text-xs font-semibold text-foreground">
+              Payroll Execution Remarks <span className="text-rose-500">*</span>
+            </Label>
+            <Input
+              placeholder="Mandatory execution remarks (min 3 characters)..."
+              value={wizardRemarks}
+              onChange={(e) => setWizardRemarks(e.target.value)}
+              className="text-xs"
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={isProcessing}>
               Cancel
             </Button>
-            <Button onClick={handleApprove} disabled={isProcessing}>
+            <Button onClick={handleApprove} disabled={isProcessing || !wizardRemarks.trim() || wizardRemarks.trim().length < 3}>
               {isProcessing ? "Processing..." : "Confirm Approval"}
             </Button>
           </DialogFooter>
@@ -2112,6 +2604,11 @@ function ApprovalsPanel({
   };
 
   const handleApprove = async () => {
+    const bulkRemarks = (comment || "").trim();
+    if (!bulkRemarks || bulkRemarks.length < 3) {
+      toast.error("Approval remarks are mandatory (minimum 3 characters). Please enter remarks above.");
+      return;
+    }
     setIsProcessing(true);
     try {
       const readyRuns = pendingRuns.filter((r: any) => r.status === "Maker-Submitted");
@@ -2120,7 +2617,7 @@ function ApprovalsPanel({
         setIsProcessing(false);
         return;
       }
-      await Promise.all(readyRuns.map((run: any) => payrollApi.approveRun(run.id)));
+      await Promise.all(readyRuns.map((run: any) => payrollApi.approveRun(run.id, bulkRemarks)));
       toast.success(
         "✅ All pending payrolls approved successfully! They have been moved to Finance.",
         { duration: 5000 },
@@ -2151,9 +2648,14 @@ function ApprovalsPanel({
   };
 
   const handleApproveSingle = async (runId: number) => {
+    const runComment = (runComments[runId] || "").trim();
+    if (!runComment || runComment.length < 3) {
+      toast.error("Approval remarks are mandatory (minimum 3 characters). Please enter remarks before approving.");
+      return;
+    }
     setIsProcessing(true);
     try {
-      await payrollApi.approveRun(runId);
+      await payrollApi.approveRun(runId, runComment);
       toast.success("✅ Payroll approved successfully!", { duration: 5000 });
       if (onRefresh) onRefresh();
       setTimeout(() => window.location.reload(), 1500);
@@ -2282,7 +2784,7 @@ function ApprovalsPanel({
               <div className="text-right mr-4">
                 <div className="text-sm text-muted-foreground">Total Net Payout</div>
                 <div className="text-2xl font-bold text-success">
-                  {canViewConfidential ? fmtINR(run.net) : "****"}
+                  {canViewConfidential ? fmtINR(run.net) : "xxxx"}
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -2322,11 +2824,11 @@ function ApprovalsPanel({
                 />
                 <Stat
                   label="Total Gross"
-                  value={canViewConfidential ? fmtINR(run.gross) : "****"}
+                  value={canViewConfidential ? fmtINR(run.gross) : "xxxx"}
                 />
                 <Stat
                   label="Total Deductions"
-                  value={canViewConfidential ? fmtINR(run.deductions) : "****"}
+                  value={canViewConfidential ? fmtINR(run.deductions) : "xxxx"}
                 />
               </div>
 
@@ -2418,7 +2920,7 @@ function ApprovalsPanel({
                                   {isFinancial
                                     ? canViewConfidential
                                       ? fmtINR(emp[col.id] || 0)
-                                      : "****"
+                                      : "xxxx"
                                     : emp[col.id] !== undefined &&
                                       emp[col.id] !== null &&
                                       emp[col.id] !== ""
@@ -2438,8 +2940,8 @@ function ApprovalsPanel({
               {canApprove && run.status === "Maker-Submitted" && (
                 <div className="mt-4 flex flex-col sm:flex-row gap-3 justify-end border-t border-border/50 pt-4">
                   <Input
-                    placeholder="Rejection comment (Required if rejecting)..."
-                    className="max-w-md w-full bg-background"
+                    placeholder="Approval / rejection remarks (Mandatory, min 3 characters)..."
+                    className="max-w-md w-full bg-background text-xs"
                     value={runComments[run.id] || ""}
                     onChange={(e) => setRunComments({ ...runComments, [run.id]: e.target.value })}
                   />

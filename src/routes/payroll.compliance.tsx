@@ -38,19 +38,22 @@ function CompliancePage() {
   const [activeTab, setActiveTab] = useState("Provident Fund");
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const handleGenerateReturn = async () => {
+  const handleGenerateReturn = async (formType?: string) => {
     try {
       setIsGenerating(true);
-      const blob = await payrollApi.generateReturn(activeTab);
+      const is26Q = formType === "26Q";
+      const blob = await payrollApi.generateReturn(activeTab, formType);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Compliance_Return_${activeTab.replace(" ", "_")}.csv`;
+      a.download = is26Q 
+        ? "Form_26Q_Professional_TDS_Return.csv" 
+        : `Compliance_Return_${activeTab.replace(" ", "_")}.csv`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      toast.success(`${activeTab} return generated and downloaded successfully!`);
+      toast.success(`${is26Q ? "Form 26Q (Professional Fees)" : activeTab} return generated and downloaded successfully!`);
     } catch (err: any) {
       toast.error(err.message || "Failed to generate return");
     } finally {
@@ -136,14 +139,36 @@ function CompliancePage() {
             </DialogContent>
           </Dialog>
 
-          <Button
-            className="bg-[#0b1b3d] text-white hover:bg-[#0b1b3d]/90 shadow-sm"
-            onClick={handleGenerateReturn}
-            disabled={isGenerating}
-          >
-            <ShieldCheck className="h-4 w-4 mr-2" />
-            {isGenerating ? "Generating..." : "Generate Return"}
-          </Button>
+          {activeTab === "TDS" ? (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                className="border-emerald-600 text-emerald-700 hover:bg-emerald-50 shadow-sm"
+                onClick={() => handleGenerateReturn("26Q")}
+                disabled={isGenerating}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {isGenerating ? "Exporting..." : "Form 26Q (Professional u/s 194J)"}
+              </Button>
+              <Button
+                className="bg-[#0b1b3d] text-white hover:bg-[#0b1b3d]/90 shadow-sm"
+                onClick={() => handleGenerateReturn()}
+                disabled={isGenerating}
+              >
+                <ShieldCheck className="h-4 w-4 mr-2" />
+                {isGenerating ? "Generating..." : "Form 24Q (Salary TDS)"}
+              </Button>
+            </div>
+          ) : (
+            <Button
+              className="bg-[#0b1b3d] text-white hover:bg-[#0b1b3d]/90 shadow-sm"
+              onClick={() => handleGenerateReturn()}
+              disabled={isGenerating}
+            >
+              <ShieldCheck className="h-4 w-4 mr-2" />
+              {isGenerating ? "Generating..." : "Generate Return"}
+            </Button>
+          )}
         </div>
       </div>
 

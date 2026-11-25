@@ -154,12 +154,34 @@ export interface Employee {
   bonusValue?: number;
   bonusMonths?: number;
   pfApplicable?: boolean;
+  pf_applicable?: boolean;
+  workerType?: string;
+  worker_type?: string;
+  tdsApplicable?: boolean;
+  tds_applicable?: boolean;
+  tdsSection?: string;
+  tds_section?: string;
+  tdsRate?: number;
+  tds_rate?: number;
+  tdsLowerDeductionCert?: string;
+  tds_lower_deduction_cert?: string;
+  isProfessionalFee?: boolean;
   taxRegime?: string;
   taxSavingDeductions?: number | string;
   groupCategory?: string;
   group_category?: string;
   gradeCategory?: string;
   grade_category?: string;
+  profileEditUnlocked?: boolean;
+  profile_edit_unlocked?: boolean;
+  profileEditCount?: number;
+  profile_edit_count?: number;
+  profileUnlockRequested?: boolean;
+  profile_unlock_requested?: boolean;
+  profileUnlockRequestedAt?: string;
+  profile_unlock_requested_at?: string;
+  profileUnlockReason?: string;
+  profile_unlock_reason?: string;
 }
 
 export interface Attendance {
@@ -211,15 +233,94 @@ export interface SalaryComponent {
   value: number;
 }
 
+export interface LoanInstallment {
+  id: number | string;
+  installmentNumber: number;
+  period: string;
+  dueDate: string;
+  emiAmount: number;
+  principalAmount: number;
+  paidAmount: number;
+  balanceAfter: number;
+  status: "PENDING" | "DEBITED" | "SKIPPED" | "WAIVED";
+  debitedInRunPeriod?: string;
+  debitedInPayslipNumber?: string;
+  debitedAt?: string;
+  skipStrategy?: "EXTEND_TENURE" | "ADJUST_NEXT_MONTH" | "NONE";
+  skipReason?: string;
+  skippedByName?: string;
+  skippedAt?: string;
+}
+
 export interface Loan {
   id: string;
-  employeeId: string;
-  type: "Personal" | "Salary Advance" | "Education";
+  employee?: number | string;
+  employeeId?: string;
+  employeeName?: string;
+  employeeCode?: string;
+  departmentName?: string;
+  designationTitle?: string;
+  type: "Personal" | "Salary Advance" | "Education" | string;
   amount: number;
   emi: number;
   tenure: number;
   outstanding: number;
   status: "Active" | "Closed" | "Pending";
+  startPeriod?: string;
+  disbursementDate?: string;
+  reason?: string;
+  moratoriumCount?: number;
+  installmentsPaidCount?: number;
+  installmentsRemainingCount?: number;
+  totalAmountPaid?: number;
+  pendingReliefRequest?: {
+    id: number | string;
+    reason: string;
+    preferred_strategy: string;
+    preferred_strategy_display: string;
+    created_at: string;
+    installment_id?: number | string;
+    installment_period?: string;
+  };
+}
+
+export interface EmiReliefRequest {
+  id: number | string;
+  loan: number | string;
+  installment?: number | string;
+  employee: number | string;
+  employeeName?: string;
+  employeeCode?: string;
+  loanType?: string;
+  loanAmount?: number;
+  loanOutstanding?: number;
+  emiAmount?: number;
+  installmentPeriod?: string;
+  installmentNumber?: number;
+  reason: string;
+  preferredStrategy: "EXTEND_TENURE" | "ADJUST_NEXT_MONTH" | "EITHER" | string;
+  status: "PENDING" | "APPROVED" | "REJECTED" | string;
+  appliedStrategy?: string;
+  decisionRemarks?: string;
+  decidedByName?: string;
+  decidedAt?: string;
+  createdAt: string;
+}
+
+export interface LoanStatement {
+  loan: Loan;
+  installments: LoanInstallment[];
+  summary: {
+    principal: number;
+    emi: number;
+    tenure: number;
+    outstanding: number;
+    totalPaid: number;
+    installmentsPaid: number;
+    installmentsRemaining: number;
+    moratoriumCount: number;
+    nextDue?: LoanInstallment | null;
+  };
 }
 
 export interface Reimbursement {
@@ -241,4 +342,140 @@ export interface Regularization {
   requestedOut: string;
   status: "Pending" | "Approved" | "Rejected";
 }
+
+export interface SalaryAdvanceInstallment {
+  id: number | string;
+  installmentNumber: number;
+  period: string;
+  dueDate: string;
+  amount: number;
+  recoveredAmount: number;
+  balanceAfter: number;
+  status: "PENDING" | "RECOVERED" | "SKIPPED" | "WAIVED";
+  debitedInRunPeriod?: string;
+  debitedInPayslipNumber?: string;
+  debitedAt?: string;
+  skipReason?: string;
+  skippedByName?: string;
+}
+
+export interface SalaryAdvance {
+  id: number | string;
+  employee: number | string;
+  employeeName?: string;
+  employeeCode?: string;
+  departmentName?: string;
+  designationTitle?: string;
+  amount: number;
+  tenure: number;
+  monthlyInstallment: number;
+  outstanding: number;
+  startPeriod: string;
+  reason: string;
+  status: "Pending" | "Approved" | "Disbursed" | "Recovered" | "Rejected" | "Cancelled";
+  approvedByName?: string;
+  approvedAt?: string;
+  disbursementDate?: string;
+  disbursementMode?: string;
+  disbursementRef?: string;
+  installmentsRecoveredCount?: number;
+  installmentsPendingCount?: number;
+  totalAmountRecovered?: number;
+  installments?: SalaryAdvanceInstallment[];
+  createdAt?: string;
+}
+
+export interface CompensationHistory {
+  id: number | string;
+  employee: number | string;
+  employeeName?: string;
+  employeeCode?: string;
+  previousCtc: number;
+  ctc: number;
+  hikePercentage: number;
+  revisionType: string;
+  salaryStructure: number | string;
+  salaryStructureName?: string;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  reason?: string;
+  notes?: string;
+  changedByName?: string;
+  createdAt: string;
+}
+
+export interface CTCComponentBreakup {
+  name: string;
+  type: "Earning" | "Deduction" | "Employer Contribution";
+  monthly: number;
+  annual: number;
+  isStatutory: boolean;
+}
+
+export interface CTCBreakupResponse {
+  structureId?: number | string | null;
+  structureName: string;
+  taxRegime: string;
+  workerType: string;
+  annualCtc: number;
+  monthlyCtc: number;
+  earnings: CTCComponentBreakup[];
+  totalGrossEarnings: { monthly: number; annual: number };
+  employeeDeductions: CTCComponentBreakup[];
+  totalEmployeeDeductions: { monthly: number; annual: number };
+  netTakeHome: { monthly: number; annual: number };
+  employerContributions: CTCComponentBreakup[];
+  totalEmployerCost: { monthly: number; annual: number };
+  calculatedCtc: { monthly: number; annual: number };
+  isBalanced: boolean;
+}
+
+export interface FnFStatement {
+  employeeId: number | string;
+  employeeName: string;
+  employeeCode: string;
+  annualCtc: number;
+  monthlyCtc: number;
+  dailyRate: number;
+  lastWorkingDay: string;
+  workedDaysInExitMonth: number;
+  unpaidSalary: number;
+  outstandingLoanRecovery: number;
+  outstandingAdvanceRecovery: number;
+  noticePeriodDays: number;
+  shortfallDays: number;
+  shortfallDeduction: number;
+  totalEarnings: number;
+  totalDeductions: number;
+  netFnfPayable: number;
+  shortfallWaived?: boolean;
+  settledBy?: string;
+  settlementRemarks?: string;
+  settledAt?: string;
+}
+
+export interface EmployeeExit {
+  id: number | string;
+  employee: number | string;
+  employeeName?: string;
+  employeeCode?: string;
+  departmentName?: string;
+  designationName?: string;
+  exitType: "Resignation" | "Termination" | "Absconding" | "Retirement";
+  reason?: string;
+  noticePeriodDays: number;
+  resignationDate: string;
+  lastWorkingDay: string;
+  managerApproved: boolean;
+  hrCleared: boolean;
+  itCleared: boolean;
+  financeCleared: boolean;
+  clearanceRemarks?: Record<string, { cleared: boolean; remarks: string; clearedBy: string; clearedAt: string }>;
+  fnfStatus: "Pending" | "Settled" | "Waived";
+  fnfStatement?: FnFStatement;
+  settledAt?: string;
+  status: "Pending" | "In Progress" | "Approved" | "Rejected" | "Completed" | "Deactivated";
+  createdAt?: string;
+}
+
 

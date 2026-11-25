@@ -42,10 +42,14 @@ function AuthPage() {
         window.location.reload();
         return;
       }
+      const search = typeof window !== "undefined" ? window.location.search : "";
+      const params = new URLSearchParams(search);
+      const redirectPath = params.get("redirect");
+
       if (user.is_superuser) {
-        navigate({ to: "/superadmin-dashboard" });
+        navigate({ to: redirectPath || "/superadmin-dashboard" });
       } else {
-        navigate({ to: "/" });
+        navigate({ to: redirectPath || "/" });
       }
     }
   }, [user, navigate]);

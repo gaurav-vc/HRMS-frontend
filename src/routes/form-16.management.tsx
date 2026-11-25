@@ -21,12 +21,13 @@ import {
   sitesApi,
   API_BASE_URL,
 } from "@/api";
-import { Upload, UploadCloud, Search, Download, Eye } from "lucide-react";
+import { Upload, UploadCloud, Search, Download, Eye, Lock } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/form-16/management")({
   component: Form16ManagementPage,
@@ -47,6 +48,29 @@ export const Route = createFileRoute("/form-16/management")({
 
 function Form16ManagementPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const isCeo = Boolean(
+    user?.can_view_confidential ||
+    user?.is_ceo ||
+    user?.is_superuser ||
+    user?.role === "super_admin" ||
+    user?.employee_id === "CEO001"
+  );
+
+  if (!isCeo) {
+    return (
+      <div className="space-y-6 max-w-xl mx-auto py-16 text-center">
+        <div className="p-8 space-y-4 bg-muted/20 border rounded-xl">
+          <Lock className="h-16 w-16 text-muted-foreground mx-auto" />
+          <h2 className="text-xl font-bold">Confidential Access Restricted</h2>
+          <p className="text-muted-foreground text-sm">
+            Company-wide Form 16 tax and salary document management is restricted to the CEO. You can view your own documents under <span className="font-semibold text-foreground">My Form 16</span>.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const { documents, departments, entities, branches, employees, designations, sites } =
     Route.useLoaderData();
   const [searchTerm, setSearchTerm] = useState("");

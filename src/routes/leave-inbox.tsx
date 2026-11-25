@@ -1,22 +1,51 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/stat-card";
-import { MessageSquare, Check, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MessageSquare, Check, X, ShieldAlert, ArrowLeft, CalendarDays } from "lucide-react";
 import { leavesApi } from "@/api";
 
 export const Route = createFileRoute("/leave-inbox")({
+  ssr: false,
+  errorComponent: ({ error }: { error: any }) => (
+    <div className="p-8 max-w-2xl mx-auto text-center space-y-4">
+      <div className="inline-flex p-4 rounded-full bg-amber-500/10 text-amber-600 mb-2">
+        <ShieldAlert className="h-10 w-10" />
+      </div>
+      <h2 className="text-xl font-bold text-foreground">Leave Inbox Notice</h2>
+      <p className="text-sm text-muted-foreground">
+        {error?.message || "You do not have administrative approval access or no team members are assigned to report to you."}
+      </p>
+      <div className="pt-4 flex items-center justify-center gap-3">
+        <Link to="/leave">
+          <Button variant="default" className="gap-2">
+            <CalendarDays className="h-4 w-4" /> Go to My Leave Requests
+          </Button>
+        </Link>
+        <Link to="/">
+          <Button variant="outline" className="gap-2">
+            <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+          </Button>
+        </Link>
+      </div>
+    </div>
+  ),
   loader: async () => {
-    const [inboxRaw, typesRaw] = await Promise.all([
-      leavesApi.getAll("inbox"),
-      leavesApi.getTypes(),
-    ]);
-    const inboxLeaves = Array.isArray(inboxRaw) ? inboxRaw : (inboxRaw as any)?.results || [];
-    const types = Array.isArray(typesRaw) ? typesRaw : (typesRaw as any)?.results || [];
-    return { inboxLeaves, types };
+    try {
+      const [inboxRaw, typesRaw] = await Promise.all([
+        leavesApi.getAll("inbox").catch(() => []),
+        leavesApi.getTypes().catch(() => []),
+      ]);
+      const inboxLeaves = Array.isArray(inboxRaw) ? inboxRaw : (inboxRaw as any)?.results || [];
+      const types = Array.isArray(typesRaw) ? typesRaw : (typesRaw as any)?.results || [];
+      return { inboxLeaves, types };
+    } catch {
+      return { inboxLeaves: [], types: [] };
+    }
   },
   component: LeaveInboxPage,
 });
@@ -59,7 +88,28 @@ function LeaveInboxPage() {
 
   const columns = [
     { key: "empName", header: "Employee", accessor: (r: any) => r.empName },
-    { key: "type", header: "Type", render: (r: any) => <Badge variant="outline">{r.type}</Badge> },
+    {
+      key: "type",
+      header: "Type",
+      render: (r: any) => {
+        const isLop = r.type === "LOP" || r.leaveTypeCode === "LOP" || String(r.leaveTypeName || "").toLowerCase().includes("loss of pay");
+        return (
+          <div className="flex items-center gap-1.5">
+            <Badge
+              variant="outline"
+              className={isLop ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-400 font-semibold" : ""}
+            >
+              {r.type}
+            </Badge>
+            {isLop && (
+              <span className="text-[10px] text-amber-600 font-medium bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200">
+                Unpaid (Salary Cut)
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
     { key: "from", header: "From", accessor: (r: any) => r.from, sortable: true },
     { key: "to", header: "To", accessor: (r: any) => r.to },
     { key: "days", header: "Days", accessor: (r: any) => r.days },
@@ -89,6 +139,22 @@ function LeaveInboxPage() {
         title="Leave Inbox"
         description="Review and manage leave approvals for your team."
       />
+
+      {inboxLeaves.length === 0 && (
+        <div className="mt-4 p-4 rounded-xl border border-border/60 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 text-xs text-muted-foreground">
+            <MessageSquare className="h-4 w-4 text-primary shrink-0" />
+            <span>
+              You do not have any pending leave approval requests from reportees. Only leave applications submitted by team members who report to you appear in this inbox.
+            </span>
+          </div>
+          <Link to="/leave">
+            <Button variant="outline" size="sm" className="text-xs h-8 shrink-0">
+              Go to My Leave Requests
+            </Button>
+          </Link>
+        </div>
+      )}
 
       <div className="grid sm:grid-cols-3 gap-4 mt-6">
         <div

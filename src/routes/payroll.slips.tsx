@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { fmtINR } from "@/lib/utils";
 import type { Employee } from "@/types";
 import { openPayslipPdf } from "@/lib/payslip-pdf";
+import { useAuth } from "@/lib/auth-context";
 
 import {
   Select,
@@ -119,7 +120,17 @@ function SlipsPage() {
 
   const [open, setOpen] = useState<any | null>(null);
 
-  const totalPayroll = rows.reduce((acc: number, r: any) => acc + r.gross, 0);
+  const { user } = useAuth();
+  const canViewConfidential = Boolean(
+    user?.can_view_confidential ??
+    (user?.is_ceo ||
+     user?.role === "super_admin" ||
+     user?.is_superuser === true ||
+     user?.employee_id === "CEO001" ||
+     user?.permissions?.can_view_confidential_payroll === true)
+  );
+
+  const totalPayroll = rows.reduce((acc: number, r: any) => acc + (r.gross || 0), 0);
 
   const [yearStr, monthStr] = period.split("-");
   const daysInMonth = new Date(parseInt(yearStr), parseInt(monthStr), 0).getDate();
@@ -189,7 +200,7 @@ function SlipsPage() {
           <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
             Total Payroll
           </div>
-          <div className="text-2xl font-bold">{fmtINR(totalPayroll)}</div>
+          <div className="text-2xl font-bold">{canViewConfidential ? fmtINR(totalPayroll) : "xxxx"}</div>
           <div className="text-xs text-muted-foreground mt-2">{rows.length} employees</div>
         </Card>
         <Card className="p-5 shadow-[var(--shadow-card)]">
@@ -246,21 +257,25 @@ function SlipsPage() {
             key: "gross",
             header: "Gross",
             accessor: (r) => r.gross,
-            render: (r) => fmtINR(r.gross),
+            render: (r) => (canViewConfidential || r.code === user?.employee_id || r.email === user?.email ? fmtINR(r.gross) : "xxxx"),
             sortable: true,
           },
           {
             key: "ded",
             header: "Deductions",
             accessor: (r) => r.ded,
-            render: (r) => fmtINR(r.ded),
+            render: (r) => (canViewConfidential || r.code === user?.employee_id || r.email === user?.email ? fmtINR(r.ded) : "xxxx"),
             sortable: true,
           },
           {
             key: "net",
             header: "Net Pay",
             accessor: (r) => r.net,
-            render: (r) => <span className="font-semibold text-success">{fmtINR(r.net)}</span>,
+            render: (r) => (
+              <span className="font-semibold text-success">
+                {canViewConfidential || r.code === user?.employee_id || r.email === user?.email ? fmtINR(r.net) : "xxxx"}
+              </span>
+            ),
             sortable: true,
           },
         ]}
@@ -353,64 +368,82 @@ function SlipsPage() {
                 <div className="flex items-center gap-4 text-xs">
                   <div className="text-right">
                     <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Gross Earned</div>
-                    <div className="font-bold text-foreground">{fmtINR(open.gross)}</div>
+                    <div className="font-bold text-foreground">
+                      {canViewConfidential || open.code === user?.employee_id || open.email === user?.email ? fmtINR(open.gross) : "xxxx"}
+                    </div>
                   </div>
                   <div className="text-right">
                     <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Deductions</div>
-                    <div className="font-bold text-destructive">{fmtINR(open.ded)}</div>
+                    <div className="font-bold text-destructive">
+                      {canViewConfidential || open.code === user?.employee_id || open.email === user?.email ? fmtINR(open.ded) : "xxxx"}
+                    </div>
                   </div>
                   <div className="text-right pl-3 border-l border-border">
                     <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Net Payout</div>
-                    <div className="font-bold text-success text-sm">{fmtINR(open.net)}</div>
+                    <div className="font-bold text-success text-sm">
+                      {canViewConfidential || open.code === user?.employee_id || open.email === user?.email ? fmtINR(open.net) : "xxxx"}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto pr-1 mt-2">
-                <Payslip emp={open} period={period} />
-              </div>
-              <div className="flex justify-end gap-2 mt-3 pt-3 border-t">
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    const element = document.getElementById("payslip-capture");
-                    if (!element) throw new Error("Payslip view not rendered yet");
-                    const loading = toast.loading("Rendering PDF...");
-                    try {
-                      const pdfBase64 = await generatePdf(
-                        element,
-                        `Payslip_${period}_${open.code}.pdf`,
-                        false,
-                      );
-                      toast.loading("Sending email with attached PDF...", { id: loading });
-                      await payrollApi.emailSlipWithAttachment(open.id, pdfBase64);
-                      toast.success(`Payslip emailed successfully!`, { id: loading });
-                    } catch (e: any) {
-                      toast.error(e.message || "Failed to send email", { id: loading });
-                    }
-                  }}
-                >
-                  <Mail className="h-4 w-4 mr-1" />
-                  Email
-                </Button>
-                <Button
-                  onClick={async () => {
-                    const loading = toast.loading("Generating beautiful PDF...");
-                    try {
-                      const element = document.getElementById("payslip-capture");
-                      if (!element) throw new Error("Payslip view not rendered yet");
-                      toast.loading("Rendering PDF...", { id: loading });
-                      await generatePdf(element, `Payslip_${period}_${open.code}.pdf`, true);
-                      toast.success("PDF downloaded successfully!", { id: loading });
-                    } catch (e: any) {
-                      toast.error(e.message || "Failed to generate PDF", { id: loading });
-                    }
-                  }}
-                >
-                  <Download className="h-4 w-4 mr-1" />
-                  Download PDF
-                </Button>
-              </div>
+              {!(canViewConfidential || open.code === user?.employee_id || open.email === user?.email) ? (
+                <div className="p-8 text-center space-y-3 bg-muted/20 border rounded-lg my-4">
+                  <Lock className="h-12 w-12 text-muted-foreground mx-auto" />
+                  <h3 className="font-semibold text-base">Confidential Salary Record</h3>
+                  <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                    Individual employee compensation and salary slips are strictly restricted to the CEO. You see 'xxxx' only.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex-1 overflow-y-auto pr-1 mt-2">
+                    <Payslip emp={open} period={period} />
+                  </div>
+                  <div className="flex justify-end gap-2 mt-3 pt-3 border-t">
+                    <Button
+                      variant="outline"
+                      onClick={async () => {
+                        const element = document.getElementById("payslip-capture");
+                        if (!element) throw new Error("Payslip view not rendered yet");
+                        const loading = toast.loading("Rendering PDF...");
+                        try {
+                          const pdfBase64 = await generatePdf(
+                            element,
+                            `Payslip_${period}_${open.code}.pdf`,
+                            false,
+                          );
+                          toast.loading("Sending email with attached PDF...", { id: loading });
+                          await payrollApi.emailSlipWithAttachment(open.id, pdfBase64);
+                          toast.success(`Payslip emailed successfully!`, { id: loading });
+                        } catch (e: any) {
+                          toast.error(e.message || "Failed to send email", { id: loading });
+                        }
+                      }}
+                    >
+                      <Mail className="h-4 w-4 mr-1" />
+                      Email
+                    </Button>
+                    <Button
+                      onClick={async () => {
+                        const loading = toast.loading("Generating beautiful PDF...");
+                        try {
+                          const element = document.getElementById("payslip-capture");
+                          if (!element) throw new Error("Payslip view not rendered yet");
+                          toast.loading("Rendering PDF...", { id: loading });
+                          await generatePdf(element, `Payslip_${period}_${open.code}.pdf`, true);
+                          toast.success("PDF downloaded successfully!", { id: loading });
+                        } catch (e: any) {
+                          toast.error(e.message || "Failed to generate PDF", { id: loading });
+                        }
+                      }}
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      Download PDF
+                    </Button>
+                  </div>
+                </>
+              )}
             </>
           )}
         </DialogContent>
@@ -530,6 +563,17 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
   };
 
   const findActualComp = (targetKey: string, earnedVal: number) => {
+    const lk = targetKey.toLowerCase();
+    if (
+      lk.includes("overtime") ||
+      lk === "ot" ||
+      lk.includes("bonus") ||
+      lk.includes("arrear") ||
+      lk.includes("reimb") ||
+      lk.includes("encash")
+    ) {
+      return earnedVal;
+    }
     const found = Object.entries(actual_components).find(
       ([k]) => k.toLowerCase() === targetKey.toLowerCase() || k.toLowerCase().includes(targetKey.toLowerCase()),
     );
@@ -597,10 +641,19 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
   const deductionsList: { name: string; amount: number | null }[] = [];
   const processedDedKeys = new Set<string>();
 
+  const isProfWorker = emp.isProfessionalFee || emp.workerType === "Professional" || emp.workerType === "Contractor" || String(emp.tdsSection || "").startsWith("194");
+
   const standardDeductions = [
     { key: "pf", label: "PF", aliases: ["pf", "provident", "epf"], directVal: emp.pf },
     { key: "pt", label: "Professional Tax", aliases: ["pt", "professional tax", "professional", "prof tax"], directVal: emp.pt },
-    { key: "tds", label: "Income Tax (TDS)", aliases: ["tds", "income tax", "tax deducted"], directVal: emp.tds },
+    {
+      key: "tds",
+      label: isProfWorker
+        ? (emp.workerType === "Contractor" ? "TDS u/s 194C (Contractor)" : "TDS u/s 194J (Professional Fees)")
+        : "Income Tax (TDS)",
+      aliases: ["tds", "income tax", "tax deducted", "194j", "194c"],
+      directVal: emp.tds
+    },
   ];
 
   standardDeductions.forEach((std) => {
@@ -611,7 +664,7 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
       processedDedKeys.add(match.key);
     } else if (Number(std.directVal) > 0) {
       amt = Number(std.directVal);
-    } else if (std.key === "pf" && (emp.pf_applicable || !Object.keys(components).some(isDeduction))) {
+    } else if (std.key === "pf" && !isProfWorker && (emp.pf_applicable || !Object.keys(components).some(isDeduction))) {
       amt = Number(emp.pf) > 0 ? Number(emp.pf) : 1800;
     }
 
@@ -668,8 +721,8 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
         <h1 className="text-base sm:text-lg font-bold uppercase tracking-wider text-black m-0 leading-tight">
           {entityTitle}
         </h1>
-        <div className="text-xs font-medium text-slate-700 mt-0.5">
-          Payslip for the month of {formatPeriodMonth(period)}
+        <div className="text-xs font-semibold text-slate-800 mt-0.5">
+          PAYSLIP / PROFESSIONAL FEE VOUCHER - {formatPeriodMonth(period)}
         </div>
       </div>
 
@@ -696,6 +749,14 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
           <div className="grid grid-cols-[140px_1fr]">
             <span className="text-slate-700">Designation :</span>
             <span className="font-medium">{emp.designation || "N/A"}</span>
+          </div>
+          <div className="grid grid-cols-[140px_1fr]">
+            <span className="text-slate-700">Payment Nature :</span>
+            <span className="font-semibold text-emerald-800">
+              {isProfWorker 
+                ? (emp.workerType === 'Contractor' ? 'Contractor Retainer (Section 194C)' : 'Professional Fees (Section 194J) / Retainer Payout') 
+                : 'Salaried Employment (Section 192)'}
+            </span>
           </div>
           <div className="grid grid-cols-[140px_1fr]">
             <span className="text-slate-700">No. of. Workingdays :</span>
@@ -727,8 +788,16 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
           </div>
           <div className="grid grid-cols-[140px_1fr]">
             <span className="text-slate-700">PAN NO :</span>
-            <span className="font-medium font-mono">{emp.pan || "N/A"}</span>
+            <span className="font-bold font-mono text-slate-950">
+              {emp.pan || (emp.tdsApplicable !== false ? 'NOT PROVIDED (20% Sec 206AA)' : 'N/A')}
+            </span>
           </div>
+          {emp.tdsLowerDeductionCert && (
+            <div className="grid grid-cols-[140px_1fr]">
+              <span className="text-slate-700">Sec 197 Cert :</span>
+              <span className="font-semibold font-mono text-slate-950">{emp.tdsLowerDeductionCert}</span>
+            </div>
+          )}
           <div className="grid grid-cols-[140px_1fr]">
             <span className="text-slate-700">Half Days :</span>
             <span className="font-semibold">{fmt(emp.halfDays || 0)}</span>
@@ -742,9 +811,9 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
             <span className="font-semibold">{fmt(emp.latePenalties || 0)}</span>
           </div>
           <div className="grid grid-cols-[140px_1fr]">
-            <span className="text-slate-700">Extra days (OT Days) :</span>
+            <span className="text-slate-700">Overtime (OT) :</span>
             <span className="font-semibold">
-              {fmt(otDays)} {otHours > 0 ? `(${fmt(otHours)} hrs)` : ""}
+              {otHours > 0 ? `${fmt(otHours)} hrs (${fmt(otDays)} days)` : "0.00 hrs"}
             </span>
           </div>
         </div>
@@ -816,8 +885,21 @@ function Payslip({ emp, period }: { emp: any; period: string }) {
 
       {/* Remarks Box */}
       <div className="border-x border-b border-black px-3 py-1.5 min-h-[30px] text-xs">
-        <span className="font-bold">Remarks :</span>
-        <span className="ml-2 font-medium text-slate-800">{emp.remarks || "—"}</span>
+        <div className="flex items-start">
+          <span className="font-bold">Remarks :</span>
+          <span className="ml-2 font-medium text-slate-800">
+            {emp.remarks || (emp.loanRemarks && emp.loanRemarks.length > 0 ? emp.loanRemarks.join("; ") : "—")}
+          </span>
+        </div>
+        {emp.loanDetails && emp.loanDetails.length > 0 && (
+          <div className="mt-1 pt-1 border-t border-slate-200 text-[11px] text-slate-600 flex flex-wrap gap-3">
+            {emp.loanDetails.map((ld: any, idx: number) => (
+              <span key={idx} className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
+                <strong className="text-slate-800">{ld.type} Loan:</strong> {ld.installmentsPaid} / {ld.tenure} Paid ({fmtINR(ld.outstanding)} remaining)
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Footer */}

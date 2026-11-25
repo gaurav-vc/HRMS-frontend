@@ -1,13 +1,14 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
-import { UploadCloud, FileSpreadsheet } from "lucide-react";
+import { UploadCloud, FileSpreadsheet, Lock } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ctcImportApi, API_BASE_URL } from "@/api";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/payroll/import-ctc")({
   component: ImportCTCPage,
@@ -23,6 +24,29 @@ export const Route = createFileRoute("/payroll/import-ctc")({
 
 function ImportCTCPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const isCeo = Boolean(
+    user?.can_view_confidential ||
+    user?.is_ceo ||
+    user?.is_superuser ||
+    user?.role === "super_admin" ||
+    user?.employee_id === "CEO001"
+  );
+
+  if (!isCeo) {
+    return (
+      <div className="space-y-6 max-w-xl mx-auto py-16 text-center">
+        <div className="p-8 space-y-4 bg-muted/20 border rounded-xl">
+          <Lock className="h-16 w-16 text-muted-foreground mx-auto" />
+          <h2 className="text-xl font-bold">Confidential Access Restricted</h2>
+          <p className="text-muted-foreground text-sm">
+            Importing and modifying employee CTC and salary templates is strictly restricted to the CEO.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const { history } = Route.useLoaderData();
   const [activeTab, setActiveTab] = useState("upload");
   const [isDragging, setIsDragging] = useState(false);

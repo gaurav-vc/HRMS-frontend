@@ -125,6 +125,17 @@ export function openPayslipPdf(emp: Employee | any, period: string) {
   };
 
   const findActualComp = (targetKey: string, earnedVal: number) => {
+    const lk = targetKey.toLowerCase();
+    if (
+      lk.includes("overtime") ||
+      lk === "ot" ||
+      lk.includes("bonus") ||
+      lk.includes("arrear") ||
+      lk.includes("reimb") ||
+      lk.includes("encash")
+    ) {
+      return earnedVal;
+    }
     const found = Object.entries(actual_components).find(
       ([k]) => k.toLowerCase() === targetKey.toLowerCase() || k.toLowerCase().includes(targetKey.toLowerCase()),
     );
@@ -185,10 +196,19 @@ export function openPayslipPdf(emp: Employee | any, period: string) {
   const deductionsList: { name: string; amount: number | null }[] = [];
   const processedDedKeys = new Set<string>();
 
+  const isProfWorker = emp.isProfessionalFee || emp.workerType === "Professional" || emp.workerType === "Contractor" || String(emp.tdsSection || "").startsWith("194");
+
   const standardDeductions = [
     { key: "pf", label: "PF", aliases: ["pf", "provident", "epf"], directVal: emp.pf },
     { key: "pt", label: "Professional Tax", aliases: ["pt", "professional tax", "professional", "prof tax"], directVal: emp.pt },
-    { key: "tds", label: "Income Tax (TDS)", aliases: ["tds", "income tax", "tax deducted"], directVal: emp.tds },
+    {
+      key: "tds",
+      label: isProfWorker
+        ? (emp.workerType === "Contractor" ? "TDS u/s 194C (Contractor)" : "TDS u/s 194J (Professional Fees)")
+        : "Income Tax (TDS)",
+      aliases: ["tds", "income tax", "tax deducted", "194j", "194c"],
+      directVal: emp.tds
+    },
   ];
 
   standardDeductions.forEach((std) => {
@@ -199,7 +219,7 @@ export function openPayslipPdf(emp: Employee | any, period: string) {
       processedDedKeys.add(match.key);
     } else if (Number(std.directVal) > 0) {
       amt = Number(std.directVal);
-    } else if (std.key === "pf" && (emp.pf_applicable || !Object.keys(components).some(isDeduction))) {
+    } else if (std.key === "pf" && !isProfWorker && (emp.pf_applicable || !Object.keys(components).some(isDeduction))) {
       amt = Number(emp.pf) > 0 ? Number(emp.pf) : 1800;
     }
 
@@ -307,7 +327,7 @@ export function openPayslipPdf(emp: Employee | any, period: string) {
 <div class="payslip-box">
   <div class="header-container">
     <h1 class="entity-title">${entityTitle}</h1>
-    <div class="period-subtitle">Payslip for the month of ${formatPeriodMonth(period)}</div>
+    <div class="period-subtitle">PAYSLIP / PROFESSIONAL FEE VOUCHER - ${formatPeriodMonth(period)}</div>
   </div>
 
   <table class="meta-table">
@@ -318,6 +338,14 @@ export function openPayslipPdf(emp: Employee | any, period: string) {
         <div class="meta-row"><span class="meta-label">DOJ :</span><span>${formatDate(emp.doj)}</span></div>
         <div class="meta-row"><span class="meta-label">Department :</span><span>${emp.department || 'Department'}</span></div>
         <div class="meta-row"><span class="meta-label">Designation :</span><span>${emp.designation || 'Designation'}</span></div>
+        <div class="meta-row">
+          <span class="meta-label">Payment Nature :</span>
+          <span class="meta-val" style="color:#0f766e;">
+            ${isProfWorker 
+              ? (emp.workerType === 'Contractor' ? 'Contractor Retainer (Section 194C)' : 'Professional Fees (Section 194J) / Retainer Payout') 
+              : 'Salaried Employment (Section 192)'}
+          </span>
+        </div>
         <div class="meta-row"><span class="meta-label">No. of. Workingdays :</span><span style="font-weight:600;">${emp.totalDays || 30}</span></div>
         <div class="meta-row"><span class="meta-label">Holidays :</span><span style="font-weight:600;">${fmt(emp.holidays || emp.daysOff || 0)}</span></div>
         <div class="meta-row"><span class="meta-label">No. of. Days Paid :</span><span style="font-weight:600;">${fmt(emp.daysPaid ?? 30)}</span></div>
@@ -327,8 +355,17 @@ export function openPayslipPdf(emp: Employee | any, period: string) {
         <div class="meta-row"><span class="meta-label">Bank Name :</span><span>${emp.bankName || 'N/A'}</span></div>
         <div class="meta-row"><span class="meta-label">Bank Account No. :</span><span style="font-family:monospace;">${emp.bankAccount || 'N/A'}</span></div>
         <div class="meta-row"><span class="meta-label">LOP Days :</span><span style="font-weight:600;">${fmt(emp.lopDays || 0)}</span></div>
-        <div class="meta-row"><span class="meta-label">PAN NO :</span><span style="font-family:monospace;">${emp.pan || 'N/A'}</span></div>
-        <div class="meta-row"><span class="meta-label">Extra days (OT Days) :</span><span style="font-weight:600;">${fmt(emp.extraDays ?? (Number(emp.overtimeHours || emp.ot || 0) / 8))}</span></div>
+        <div class="meta-row">
+          <span class="meta-label">PAN NO :</span>
+          <span style="font-family:monospace;font-weight:bold;">${emp.pan || (emp.tdsApplicable !== false ? 'NOT PROVIDED (20% Sec 206AA)' : 'N/A')}</span>
+        </div>
+        ${emp.tdsLowerDeductionCert ? `
+        <div class="meta-row"><span class="meta-label">Sec 197 Cert :</span><span style="font-family:monospace;font-weight:600;">${emp.tdsLowerDeductionCert}</span></div>
+        ` : ''}
+        <div class="meta-row">
+          <span class="meta-label">Overtime (OT) :</span>
+          <span style="font-weight:600;">${Number(emp.overtimeHours || emp.ot || 0) > 0 ? `${fmt(emp.overtimeHours || emp.ot || 0)} hrs (${fmt(Number(emp.overtimeHours || emp.ot || 0) / 8)} days)` : '0.00 hrs'}</span>
+        </div>
       </td>
     </tr>
   </table>

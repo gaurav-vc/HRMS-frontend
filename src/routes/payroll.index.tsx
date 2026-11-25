@@ -36,14 +36,16 @@ export const Route = createFileRoute("/payroll/")({
 function PayrollOverview() {
   const { payrollRuns, employees, loans, reimbursements } = Route.useLoaderData();
   const { user } = useAuth();
-  const canViewConfidential =
-    user?.role === "super_admin" ||
-    user?.role === "admin" ||
-    user?.role === "org_admin" ||
-    user?.is_superuser === true ||
-    user?.permissions?.can_view_confidential_payroll === true ||
-    user?.permissions?.can_view_confidential === true ||
-    user?.permissions?.can_view_confidential_payroll === "true";
+  const canViewConfidential = Boolean(
+    user?.can_view_confidential ??
+    (user?.is_ceo ||
+     user?.role === "super_admin" ||
+     user?.is_superuser === true ||
+     user?.employee_id === "CEO001" ||
+     user?.permissions?.can_view_confidential_payroll === true ||
+     user?.permissions?.can_view_confidential === true ||
+     user?.permissions?.can_view_confidential_payroll === "true")
+  );
 
   const last = payrollRuns.length > 0 ? payrollRuns[0] : { gross: 0, net: 0, period: "No Runs" };
   const data = payrollRuns.map((r: any) => ({
@@ -72,7 +74,7 @@ function PayrollOverview() {
         <StatCard label="Employees" value={String(employees.length)} icon={Users} />
         <StatCard
           label="Est. Net Pay"
-          value={canViewConfidential ? fmtINR(last.net) : "***"}
+          value={canViewConfidential ? fmtINR(last.net) : "xxxx"}
           delta="+0.8%"
           icon={Wallet}
           tone="success"
@@ -144,7 +146,7 @@ function PayrollOverview() {
                   <div>
                     <div className="font-medium">{r.period}</div>
                     <div className="text-xs text-muted-foreground">
-                      {r.employees} employees • {canViewConfidential ? fmtINR(r.net) : "***"} net
+                      {r.employees} employees • {canViewConfidential ? fmtINR(r.net) : "xxxx"} net
                     </div>
                   </div>
                   <Badge

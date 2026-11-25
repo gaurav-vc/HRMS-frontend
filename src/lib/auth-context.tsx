@@ -14,6 +14,7 @@ interface User {
   role_name?: string;
   dashboard_type?: string;
   employee_id?: string | number;
+  employee_pk?: string | number;
   is_superuser?: boolean;
   site_name?: string;
   site_id?: number | string;
@@ -84,6 +85,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             parsed.is_superuser = true;
           }
           setUser(parsed);
+          if (mounted) setInit(true);
+        } else if (user && mounted) {
+          if (mounted) setInit(true);
         }
 
         // Background refresh of user data to ensure latest permissions
@@ -106,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 permissions: me.permissions || {},
                 role_name: me.roleName || me.role_name || (isSuper ? "Super Admin" : ""),
                 employee_id: me.employeeId || me.employee_id,
+                employee_pk: me.employeePk || me.employee_pk,
                 avatar: me.photoUrl || me.photo_url,
                 site_name: me.siteName || me.site_name,
                 site_id: me.siteId || me.site_id,
@@ -124,7 +129,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               }
             }
           } catch (e) {
-            // Token might be expired, but we let axios interceptor or logout logic handle it later
+            // Token might be expired
+            if (!raw && mounted) {
+              setUser(null);
+            }
           }
         }
       } catch {
@@ -180,6 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role_name: me.roleName || me.role_name || (isSuper ? "Super Admin" : ""),
           dashboard_type: me.dashboardType || me.dashboard_type || me.permissions?.dashboard_type,
           employee_id: me.employeeId || me.employee_id,
+          employee_pk: me.employeePk || me.employee_pk,
           avatar: me.photoUrl || me.photo_url,
           site_name: me.siteName || me.site_name,
           site_id: me.siteId || me.site_id,
@@ -231,6 +240,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           permissions: me.permissions || {},
           role_name: me.roleName || me.role_name || (isSuper ? "Super Admin" : ""),
           employee_id: me.employeeId || me.employee_id || user?.employee_id,
+          employee_pk: me.employeePk || me.employee_pk || user?.employee_pk,
           avatar: me.photoUrl || me.photo_url || user?.avatar,
           site_name: me.siteName || me.site_name || user?.site_name,
           site_id: me.siteId || me.site_id || user?.site_id,

@@ -9,7 +9,11 @@ import {
   Building,
   Loader2,
   LayoutDashboard,
+  Check,
+  X,
+  Lock,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useState, useEffect, useRef, useTransition } from "react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
@@ -32,7 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth, roleLabel } from "@/lib/auth-context";
 import { ROLES, type Role, isSuperAdminUser } from "@/types";
-import { notificationsApi, searchApi } from "@/api";
+import { notificationsApi, searchApi, employeesApi } from "@/api";
 import { NAV, SUPER_ADMIN_NAV, canAccessRoute } from "@/components/app-sidebar";
 import { ProfileModal } from "./profile-modal";
 
@@ -318,6 +322,95 @@ function NotificationBell() {
                   {isEmp ? (
                     (() => {
                       const title = (n.title || "").toLowerCase();
+                      const notifType = n.notificationType || (n as any).notification_type;
+
+                      if (
+                        notifType === "PROFILE_UNLOCK_REQUEST" ||
+                        title.includes("profile edit request") ||
+                        title.includes("profile unlock")
+                      ) {
+                        return (
+                          <div className="flex flex-col gap-2 mt-3 w-full bg-amber-500/10 p-2.5 rounded-md border border-amber-500/25">
+                            <div className="text-[11px] text-amber-800 dark:text-amber-300 font-medium">
+                              Requested approval to edit bank/statutory details or upload documents.
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                className="h-7 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1 font-medium shadow-none"
+                                onClick={async (e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  try {
+                                    await employeesApi.approveProfileUnlock(relatedEmployeeId);
+                                    markRead(n.id);
+                                    toast.success("Profile edit approved! Employee can now update details.");
+                                  } catch (err: any) {
+                                    toast.error(err?.message || "Failed to approve profile edit");
+                                  }
+                                }}
+                              >
+                                <Check className="h-3.5 w-3.5" /> Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 px-3 border-red-200 text-red-600 hover:bg-red-50 text-xs gap-1 font-medium shadow-none"
+                                onClick={async (e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  try {
+                                    await employeesApi.rejectProfileUnlock(relatedEmployeeId, "Rejected by manager");
+                                    markRead(n.id);
+                                    toast.info("Profile edit request rejected.");
+                                  } catch (err: any) {
+                                    toast.error(err?.message || "Failed to reject profile edit");
+                                  }
+                                }}
+                              >
+                                <X className="h-3.5 w-3.5" /> Reject
+                              </Button>
+                              <span
+                                className="text-[11px] text-muted-foreground hover:text-foreground cursor-pointer underline ml-auto"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  navigate({
+                                    to: "/employees/$id",
+                                    params: { id: String(relatedEmployeeId) },
+                                  });
+                                  markRead(n.id);
+                                }}
+                              >
+                                View Profile
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      if (
+                        notifType === "PROFILE_UNLOCKED" ||
+                        title.includes("profile edit request approved")
+                      ) {
+                        return (
+                          <div className="flex gap-4 mt-3 w-full">
+                            <span
+                              className="text-xs text-emerald-600 font-semibold cursor-pointer hover:underline"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                navigate({
+                                  to: "/employees/$id",
+                                  params: { id: String(relatedEmployeeId) },
+                                });
+                                markRead(n.id);
+                              }}
+                            >
+                              Update Details Now →
+                            </span>
+                          </div>
+                        );
+                      }
+
                       if (title.includes("loan")) {
                         return (
                           <div className="flex gap-4 mt-3 w-full">
@@ -508,13 +601,37 @@ export function AppHeader() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => setIsProfileOpen(true)}>Profile</DropdownMenuItem>
-          {!isSuperAdminUser(user) && (
+          <DropdownMenuItem onClick={() => setIsProfileOpen(true)}>Edit Photo & Password</DropdownMenuItem>
+          {(user?.employee_pk || user?.employee_id) && (
             <DropdownMenuItem asChild>
-              <Link to="/payroll/slips" search={{ period: undefined }} className="w-full cursor-pointer">
-                My Payslips
+              <Link
+                to="/employees/$id"
+                params={{ id: String(user.employee_pk || user.employee_id) }}
+                className="w-full cursor-pointer flex items-center"
+              >
+                <User className="h-4 w-4 mr-2 text-primary" />
+                My CTC & Salary Structure
               </Link>
             </DropdownMenuItem>
+          )}
+          {!isSuperAdminUser(user) && (
+            <>
+              <DropdownMenuItem asChild>
+                <Link to="/payroll/slips" search={{ period: undefined }} className="w-full cursor-pointer">
+                  My Payslips
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/loans" className="w-full cursor-pointer">
+                  Loans & EMI Statement
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/employee-separation" className="w-full cursor-pointer">
+                  Resignation / Separation
+                </Link>
+              </DropdownMenuItem>
+            </>
           )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={logout}>

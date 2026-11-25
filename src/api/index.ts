@@ -10,6 +10,14 @@ import type {
   PayrollRun,
   SalaryComponent,
   Loan,
+  LoanInstallment,
+  LoanStatement,
+  SalaryAdvance,
+  SalaryAdvanceInstallment,
+  CompensationHistory,
+  CTCBreakupResponse,
+  EmployeeExit,
+  FnFStatement,
   Reimbursement,
   Regularization,
 } from "@/types";
@@ -138,6 +146,12 @@ const resolveEndpointUrl = (url: string): string => {
 };
 
 const apiCall = async (url: string, method: string = "GET", body?: any, isBlob: boolean = false) => {
+  // During server execution (SSR), browser localStorage is inaccessible.
+  // Never perform unauthenticated protected requests or throw redirects from the server.
+  if (typeof window === "undefined") {
+    return isBlob ? new Blob() : ([] as any);
+  }
+
   const fullUrl = resolveEndpointUrl(url);
 
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
@@ -180,7 +194,10 @@ const apiCall = async (url: string, method: string = "GET", body?: any, isBlob: 
       if (typeof window !== "undefined" && window.location.pathname !== "/auth") {
         window.location.href = "/auth";
       }
-      throw redirect({ to: "/auth" });
+      if (typeof window !== "undefined") {
+        throw redirect({ to: "/auth" });
+      }
+      return null;
     }
   }
 
@@ -256,11 +273,43 @@ export const employeesApi = {
   getAuditLogs: async (id: string | number) => apiCall(`/employees/${id}/audit_logs/`),
   resetCredentials: async (id: string | number, data: any) =>
     apiCall(`/employees/${id}/reset_credentials/`, "POST", data),
+  updateProfileDetails: async (id: string | number, data: any): Promise<any> =>
+    apiCall(`/employees/${id}/update-profile-details/`, "POST", data),
+  requestProfileUnlock: async (id: string | number, reason: string): Promise<any> =>
+    apiCall(`/employees/${id}/request-profile-unlock/`, "POST", { reason }),
+  approveProfileUnlock: async (id: string | number): Promise<any> =>
+    apiCall(`/employees/${id}/approve-profile-unlock/`, "POST", {}),
+  rejectProfileUnlock: async (id: string | number, reason?: string): Promise<any> =>
+    apiCall(`/employees/${id}/reject-profile-unlock/`, "POST", { reason }),
 
-  bulkImport: async (file: File): Promise<any> => {
-    const formData = new FormData();
-    formData.append("file", file);
-    return apiCall("/employees/bulk_import/", "POST", formData);
+  validateImport: async (data: File | FormData | { rows: any[] }): Promise<any> => {
+    if (data instanceof File) {
+      const formData = new FormData();
+      formData.append("file", data);
+      return apiCall("/employees/validate_import/", "POST", formData);
+    }
+    return apiCall("/employees/validate_import/", "POST", data);
+  },
+
+  bulkImport: async (data: File | FormData | { rows: any[] }): Promise<any> => {
+    if (data instanceof File) {
+      const formData = new FormData();
+      formData.append("file", data);
+      return apiCall("/employees/bulk_import/", "POST", formData);
+    }
+    return apiCall("/employees/bulk_import/", "POST", data);
+  },
+
+  downloadTemplate: async () => {
+    const blob = await apiCall("/employees/template/", "GET", null, true);
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "Employee_Master_Data_Template.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   },
   uploadPhoto: async (employeeId: string | number, photoFile: File | Blob): Promise<any> => {
     const formData = new FormData();
@@ -293,9 +342,31 @@ export const employeesApi = {
     apiCall(`/transfers/${id}/`, "PATCH", data),
 
   // Exits
-  getExits: async () => apiCall("/exits/"),
-  createExit: async (data: any) => apiCall("/exits/", "POST", data),
-  updateExit: async (id: string | number, data: any) => apiCall(`/exits/${id}/`, "PATCH", data),
+  getExits: async (): Promise<EmployeeExit[]> => apiCall("/exits/"),
+  createExit: async (data: any): Promise<EmployeeExit> => apiCall("/exits/", "POST", data),
+  updateExit: async (id: string | number, data: any): Promise<EmployeeExit> => apiCall(`/exits/${id}/`, "PATCH", data),
+  updateClearance: async (exitId: string | number, data: { department: string; cleared: boolean; remarks?: string }): Promise<EmployeeExit> =>
+    apiCall(`/exits/${exitId}/clearance/`, "POST", data),
+  getFnFSettlement: async (exitId: string | number): Promise<any> =>
+    apiCall(`/exits/${exitId}/fnf-settlement/`),
+  settleFnF: async (exitId: string | number, data: { waive_shortfall?: boolean; remarks?: string }): Promise<any> =>
+    apiCall(`/exits/${exitId}/fnf-settlement/`, "POST", data),
+
+  // Salary Revisions
+  getSalaryRevisions: async (employeeId: string | number): Promise<CompensationHistory[]> =>
+    apiCall(`/employees/${employeeId}/salary-revisions/`),
+  reviseSalary: async (
+    employeeId: string | number,
+    data: {
+      new_ctc: number;
+      effective_from: string;
+      revision_type?: string;
+      salary_structure_id?: number | string;
+      reason?: string;
+      notes?: string;
+    }
+  ): Promise<any> =>
+    apiCall(`/employees/${employeeId}/revise-salary/`, "POST", data),
 };
 
 export const reportsApi = {
@@ -518,6 +589,10 @@ export const attendanceApi = {
   }): Promise<any> => apiCall("/attendance/roster/bulk_assign/", "POST", data),
   getEmployeeReport: async (employeeId: number, year: number, month: number): Promise<any> =>
     apiCall(`/attendance/employee_report/?employee_id=${employeeId}&year=${year}&month=${month}`),
+  getPeriodVerification: async (period: string, entityId: string | number): Promise<any> =>
+    apiCall(`/attendance/period-verification/?period=${encodeURIComponent(period)}&entity=${entityId}`),
+  verifyPeriod: async (data: { period: string; entity: string | number; remarks: string }): Promise<any> =>
+    apiCall("/attendance/period-verification/", "POST", data),
 };
 
 export const departmentsApi = {
@@ -570,7 +645,8 @@ export const payrollApi = {
   createRun: async (data: any): Promise<any> => apiCall("/payroll/runs/", "POST", data),
   executeRun: async (id: number, payload?: any): Promise<any> =>
     apiCall(`/payroll/runs/${id}/execute/`, "POST", payload || {}),
-  approveRun: async (id: number): Promise<any> => apiCall(`/payroll/runs/${id}/approve/`, "POST"),
+  approveRun: async (id: number, comment?: string): Promise<any> =>
+    apiCall(`/payroll/runs/${id}/approve/`, "POST", { comment }),
   rejectRun: async (id: number, comment: string): Promise<any> =>
     apiCall(`/payroll/runs/${id}/reject/`, "POST", { comment }),
   deleteRun: async (id: number): Promise<any> => apiCall(`/payroll/runs/${id}/`, "DELETE"),
@@ -586,6 +662,15 @@ export const payrollApi = {
   updateStructure: async (id: number, data: any) =>
     apiCall(`/payroll/structures/${id}/`, "PATCH", data),
   deleteStructure: async (id: number) => apiCall(`/payroll/structures/${id}/`, "DELETE"),
+  calculateBreakup: async (
+    structureId?: string | number | null,
+    payload?: { ctc: number; tax_regime?: string; tds_applicable?: boolean; worker_type?: string }
+  ): Promise<CTCBreakupResponse> => {
+    const url = structureId
+      ? `/payroll/structures/${structureId}/calculate-breakup/`
+      : `/payroll/structures/calculate-breakup/`;
+    return apiCall(url, "POST", payload || {});
+  },
   getComponents: async (structureId?: number) => {
     const qs = structureId ? `?structure=${structureId}` : "";
     return apiCall(`/payroll/components/${qs}`);
@@ -601,8 +686,9 @@ export const payrollApi = {
   emailSlipWithAttachment: async (id: number, pdfBase64: string) =>
     apiCall(`/payroll/slips/${id}/email/`, "POST", { pdf: pdfBase64 }),
   getComplianceReports: async () => apiCall("/payroll/compliance/"),
-  generateReturn: async (category: string) => {
-    return apiCall(`/payroll/compliance/generate_return/?category=${encodeURIComponent(category)}`, "GET", undefined, true);
+  generateReturn: async (category: string, form?: string) => {
+    const qForm = form ? `&form=${encodeURIComponent(form)}` : "";
+    return apiCall(`/payroll/compliance/generate_return/?category=${encodeURIComponent(category)}${qForm}`, "GET", undefined, true);
   },
   getPreview: async (params: { period: string; entity?: string; include_leaves_encashment?: boolean }) => {
     let qs = `?period=${encodeURIComponent(params.period)}&_t=${Date.now()}`;
@@ -619,6 +705,55 @@ export const loansApi = {
   getAll: async (): Promise<Loan[]> => apiCall("/payroll/loans/"),
   createLoan: async (data: any): Promise<Loan> => apiCall("/payroll/loans/", "POST", data),
   updateLoan: async (id: string | number, data: any): Promise<Loan> => apiCall(`/payroll/loans/${id}/`, "PATCH", data),
+  getStatement: async (loanId: string | number): Promise<LoanStatement> => apiCall(`/payroll/loans/${loanId}/statement/`),
+  skipEmi: async (loanId: string | number, data: { installment_id?: number | string; strategy: string; reason: string }): Promise<any> =>
+    apiCall(`/payroll/loans/${loanId}/skip-emi/`, "POST", data),
+  requestRelief: async (loanId: string | number, data: { installment_id?: number | string; preferred_strategy: string; reason: string }): Promise<any> =>
+    apiCall(`/payroll/loans/${loanId}/request-relief/`, "POST", data),
+  getReliefRequests: async (): Promise<any[]> =>
+    apiCall("/payroll/loans/relief-requests/"),
+  decideRelief: async (loanId: string | number, data: { relief_id?: number | string; decision: "APPROVE" | "REJECT"; strategy?: string; remarks?: string }): Promise<any> =>
+    apiCall(`/payroll/loans/${loanId}/decide-relief/`, "POST", data),
+  getCockpitSummary: async (): Promise<any> => apiCall("/payroll/loans/cockpit-summary/"),
+  exportStatement: async (loanId: string | number): Promise<void> => {
+    const token = localStorage.getItem("token") || "";
+    const res = await fetch(`${API_BASE_URL}/api/payroll/loans/${loanId}/export-statement/`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) throw new Error("Failed to export statement");
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `loan_statement_${loanId}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  },
+};
+
+export const salaryAdvancesApi = {
+  getAll: async (): Promise<SalaryAdvance[]> => apiCall("/payroll/advances/"),
+  getSummary: async (): Promise<any> => apiCall("/payroll/advances/summary/"),
+  create: async (data: any): Promise<SalaryAdvance> => apiCall("/payroll/advances/", "POST", data),
+  update: async (id: string | number, data: any): Promise<SalaryAdvance> =>
+    apiCall(`/payroll/advances/${id}/`, "PATCH", data),
+  approve: async (id: string | number): Promise<SalaryAdvance> =>
+    apiCall(`/payroll/advances/${id}/approve/`, "POST"),
+  disburse: async (
+    id: string | number,
+    data: {
+      disbursement_date?: string;
+      disbursement_mode?: string;
+      disbursement_ref?: string;
+      start_period?: string;
+    }
+  ): Promise<SalaryAdvance> => apiCall(`/payroll/advances/${id}/disburse/`, "POST", data),
+  reject: async (id: string | number): Promise<SalaryAdvance> =>
+    apiCall(`/payroll/advances/${id}/reject/`, "POST"),
 };
 
 export const reimbursementsApi = {

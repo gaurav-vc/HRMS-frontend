@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Check, X, Plus, CalendarIcon, AlertCircle, Info } from "lucide-react";
 import { format, differenceInDays, parseISO, isWeekend } from "date-fns";
@@ -29,26 +29,32 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { leavesApi, employeesApi, holidaysApi } from "@/api";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/leave")({
+  ssr: false,
   loader: async () => {
-    const [leavesRaw, typesRaw, balancesRaw, employeesRaw, holidaysRaw, configRaw] = await Promise.all([
-      leavesApi.getAll("my_leaves"),
-      leavesApi.getTypes(),
-      leavesApi.getLeaveBalances(),
-      employeesApi.getAll(),
-      holidaysApi.getAll(),
-      leavesApi.getConfig().catch(() => ({ is_saturday_working: false }))
-    ]);
-    const leaves = Array.isArray(leavesRaw) ? leavesRaw : (leavesRaw as any)?.results || [];
-    const types = Array.isArray(typesRaw) ? typesRaw : (typesRaw as any)?.results || [];
-    const balances = Array.isArray(balancesRaw) ? balancesRaw : (balancesRaw as any)?.results || [];
-    const employees = Array.isArray(employeesRaw)
-      ? employeesRaw
-      : (employeesRaw as any)?.results || [];
-    const holidays = Array.isArray(holidaysRaw) ? holidaysRaw : (holidaysRaw as any)?.results || [];
-    const config = configRaw || { is_saturday_working: false };
-    return { leaves, types, balances, employees, holidays, config };
+    try {
+      const [leavesRaw, typesRaw, balancesRaw, employeesRaw, holidaysRaw, configRaw] = await Promise.all([
+        leavesApi.getAll("my_leaves").catch(() => []),
+        leavesApi.getTypes().catch(() => []),
+        leavesApi.getLeaveBalances().catch(() => []),
+        employeesApi.getAll().catch(() => []),
+        holidaysApi.getAll().catch(() => []),
+        leavesApi.getConfig().catch(() => ({ is_saturday_working: false }))
+      ]);
+      const leaves = Array.isArray(leavesRaw) ? leavesRaw : (leavesRaw as any)?.results || [];
+      const types = Array.isArray(typesRaw) ? typesRaw : (typesRaw as any)?.results || [];
+      const balances = Array.isArray(balancesRaw) ? balancesRaw : (balancesRaw as any)?.results || [];
+      const employees = Array.isArray(employeesRaw)
+        ? employeesRaw
+        : (employeesRaw as any)?.results || [];
+      const holidays = Array.isArray(holidaysRaw) ? holidaysRaw : (holidaysRaw as any)?.results || [];
+      const config = configRaw || { is_saturday_working: false };
+      return { leaves, types, balances, employees, holidays, config };
+    } catch {
+      return { leaves: [], types: [], balances: [], employees: [], holidays: [], config: { is_saturday_working: false } };
+    }
   },
   component: LeavePage,
 });
@@ -56,19 +62,36 @@ export const Route = createFileRoute("/leave")({
 function LeavePage() {
   const { leaves, types, balances, employees, holidays, config } = Route.useLoaderData();
   const router = useRouter();
+  const { user } = useAuth();
+  
+  const currentEmp = employees.find(
+    (e: any) =>
+      String(e.id) === String(user?.employee_pk) ||
+      String(e.code) === String(user?.employee_id) ||
+      String(e.employeeId) === String(user?.employee_id) ||
+      (user?.email && e.email?.toLowerCase() === user.email.toLowerCase())
+  ) || (employees.length === 1 ? employees[0] : null);
+
+  const defaultEmpId = currentEmp ? String(currentEmp.id) : (user?.employee_pk ? String(user.employee_pk) : "");
   
   const isSatWorking = config.isSaturdayWorking === true || config.is_saturday_working === true || config.isSaturdayWorking === "true" || config.is_saturday_working === "true" || config.isSaturdayWorking === "True" || config.is_saturday_working === "True";
   
   const [createOpen, setCreateOpen] = useState(false);
   const [balancesOpen, setBalancesOpen] = useState(false);
   const [form, setForm] = useState({
-    employee: "",
+    employee: defaultEmpId,
     leave_type: "",
     start_date: undefined as Date | undefined,
     end_date: undefined as Date | undefined,
     total_days: "",
     reason: "",
   });
+
+  useEffect(() => {
+    if (defaultEmpId && !form.employee) {
+      setForm((prev) => ({ ...prev, employee: defaultEmpId }));
+    }
+  }, [defaultEmpId]);
 
   const calculateDays = (start?: Date, end?: Date) => {
     if (!start || !end || start > end) return "";
@@ -120,7 +143,7 @@ function LeavePage() {
       toast.success("Leave requested successfully");
       setCreateOpen(false);
       setForm({
-        employee: "",
+        employee: defaultEmpId,
         leave_type: "",
         start_date: undefined,
         end_date: undefined,
@@ -226,21 +249,32 @@ function LeavePage() {
           <div className="space-y-3">
             <div>
               <Label>Employee</Label>
-              <Select
-                value={form.employee}
-                onValueChange={(v) => setForm({ ...form, employee: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select employee" />
-                </SelectTrigger>
-                <SelectContent>
-                  {employees.map((e: any) => (
-                    <SelectItem key={e.id} value={String(e.id)}>
-                      {e.firstName} {e.lastName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {currentEmp && (user?.role === "employee" || employees.length === 1) ? (
+                <div className="h-9 px-3 py-1.5 rounded-md bg-muted/60 border text-xs flex items-center justify-between">
+                  <span className="font-semibold text-foreground">
+                    {currentEmp.firstName} {currentEmp.lastName}
+                  </span>
+                  <Badge variant="outline" className="text-[10px] font-mono">
+                    {currentEmp.code || currentEmp.employeeId || `ID: ${currentEmp.id}`}
+                  </Badge>
+                </div>
+              ) : (
+                <Select
+                  value={form.employee}
+                  onValueChange={(v) => setForm({ ...form, employee: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employees.map((e: any) => (
+                      <SelectItem key={e.id} value={String(e.id)}>
+                        {e.firstName} {e.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div>
               <Label>Leave Type</Label>
@@ -249,16 +283,21 @@ function LeavePage() {
                 onValueChange={(v) => setForm({ ...form, leave_type: v })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
+                  <SelectValue placeholder="Select leave type" />
                 </SelectTrigger>
                 <SelectContent>
                   {types.map((t: any) => (
                     <SelectItem key={t.id} value={String(t.id)}>
-                      {t.name}
+                      {t.name} {t.code ? `(${t.code})` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {types.find((t: any) => String(t.id) === form.leave_type)?.code === "LOP" && (
+                <p className="text-[11px] text-amber-600 mt-1">
+                  Note: Loss of Pay (LOP) is unpaid leave and will be deducted from your monthly salary based on your per-day CTC.
+                </p>
+              )}
             </div>
             {holidays.length > 0 && (
               <div className="bg-blue-50 border border-blue-100 p-3 rounded-md flex gap-2 items-start text-sm text-blue-800">

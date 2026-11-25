@@ -243,9 +243,11 @@ function Shell() {
     if (!init) return;
 
     const isKioskRoute = pathname === "/attendance/kiosk";
+    const hasToken = typeof localStorage !== "undefined" && Boolean(localStorage.getItem("access_token"));
 
-    if (!user && pathname !== "/auth" && !isKioskRoute) {
-      router.navigate({ to: "/auth", replace: true });
+    // If user has token, do NOT redirect to /auth while authenticating/verifying
+    if (!user && !hasToken && pathname !== "/auth" && !isKioskRoute) {
+      router.navigate({ to: "/auth", replace: true, search: { redirect: pathname } });
       return;
     }
 
@@ -276,7 +278,21 @@ function Shell() {
     }
   }, [init, user, pathname, router]);
 
-  if (!init) return null; // Wait for hydration!
+  const hasToken = typeof localStorage !== "undefined" && Boolean(localStorage.getItem("access_token"));
+
+  if (!init || (!user && hasToken)) {
+    if (pathname === "/attendance/kiosk") return <Outlet />;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <span className="text-xs text-muted-foreground font-medium animate-pulse tracking-wide">
+            Loading session...
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   if (pathname === "/auth" || pathname === "/attendance/kiosk") return <Outlet />;
 

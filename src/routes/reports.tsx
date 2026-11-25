@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { api, employeesApi, attendanceApi, payrollApi, reportsApi } from "@/api";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/reports")({ component: ReportsPage });
 
@@ -68,6 +69,14 @@ function downloadCSV(filename: string, rows: object[]) {
 
 function ReportsPage() {
   const [downloading, setDownloading] = useState<string | null>(null);
+  const { user } = useAuth();
+  const isCeo = Boolean(
+    user?.can_view_confidential ||
+    user?.is_ceo ||
+    user?.is_superuser ||
+    user?.role === "super_admin" ||
+    user?.employee_id === "CEO001"
+  );
 
   const handleExport = async (reportName: string) => {
     try {
@@ -111,11 +120,11 @@ function ReportsPage() {
         data = slips.map((s: any) => ({
           "Employee Name": `${s.firstName} ${s.lastName}`,
           "Employee ID": s.code,
-          "Gross Pay": s.gross,
-          "Net Pay": s.net,
-          "PF Deduction": s.pf,
-          "PT Deduction": s.pt,
-          TDS: s.tds,
+          "Gross Pay": (isCeo || s.code === user?.employee_id || s.email === user?.email) ? s.gross : "xxxx",
+          "Net Pay": (isCeo || s.code === user?.employee_id || s.email === user?.email) ? s.net : "xxxx",
+          "PF Deduction": (isCeo || s.code === user?.employee_id || s.email === user?.email) ? s.pf : "xxxx",
+          "PT Deduction": (isCeo || s.code === user?.employee_id || s.email === user?.email) ? s.pt : "xxxx",
+          TDS: (isCeo || s.code === user?.employee_id || s.email === user?.email) ? s.tds : "xxxx",
         }));
       } else {
         // Map UI report names to API types

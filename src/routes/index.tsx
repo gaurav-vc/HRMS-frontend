@@ -39,7 +39,9 @@ import {
 import { api } from "@/api";
 
 export const Route = createFileRoute("/")({
+  ssr: false,
   loader: async () => {
+    if (typeof window === "undefined") return null;
     const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
     if (!token) {
       throw redirect({ to: "/auth" });
@@ -227,6 +229,13 @@ function ExecutiveDashboard({
   onRefresh?: () => void;
 }) {
   const { user } = useAuth();
+  const canViewConfidential = Boolean(
+    user?.can_view_confidential ||
+    user?.is_ceo ||
+    user?.is_superuser ||
+    user?.role === "super_admin" ||
+    user?.employee_id === "CEO001"
+  );
   const loaderData = Route.useLoaderData() as any;
   const data = propsData || loaderData;
   if (!data) return <div>Loading...</div>;
@@ -284,7 +293,7 @@ function ExecutiveDashboard({
             </h2>
             <p className="opacity-80 text-sm mt-1">
               {stat.totalHeadcount || 0} employees across {stat.entitiesCount || 1} entities.
-              Estimated net pay: {fmtINR(stat.lastRunNet || 0)}.
+              Estimated net pay: {canViewConfidential ? fmtINR(stat.lastRunNet || 0) : "xxxx"}.
             </p>
           </div>
           <Link to="/payroll/run">
@@ -316,7 +325,7 @@ function ExecutiveDashboard({
         <Link to="/payroll/run" className="block hover:opacity-80 transition-opacity">
           <StatCard
             label={`${displayMonth} Net Payroll`}
-            value={fmtINR(stat.lastRunNet || 0)}
+            value={canViewConfidential ? fmtINR(stat.lastRunNet || 0) : "xxxx"}
             icon={Wallet}
             tone="info"
           />
@@ -560,6 +569,14 @@ function PayrollDashboard({
   isRefreshing?: boolean;
   onRefresh?: () => void;
 }) {
+  const { user } = useAuth();
+  const canViewConfidential = Boolean(
+    user?.can_view_confidential ||
+    user?.is_ceo ||
+    user?.is_superuser ||
+    user?.role === "super_admin" ||
+    user?.employee_id === "CEO001"
+  );
   const loaderData = Route.useLoaderData() as any;
   const data = propsData || loaderData;
   if (!data) return <div>Loading...</div>;
@@ -619,7 +636,7 @@ function PayrollDashboard({
           {stat.recentRuns?.map((r: any) => (
             <li key={r.id} className="py-3 flex items-center justify-between">
               <span>
-                {r.period} — {fmtINR(r.net)}
+                {r.period} — {canViewConfidential ? fmtINR(r.net) : "xxxx"}
               </span>
               <Badge
                 className={

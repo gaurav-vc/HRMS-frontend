@@ -21,6 +21,7 @@ import {
 import { EmployeePhotoModal } from "@/components/employee-photo-modal";
 import { EmployeeExportModal } from "@/components/employee-export-modal";
 import { ResetPasswordDialog } from "@/components/reset-password-dialog";
+import { EmployeeDataUploadModal } from "@/components/employee-data-upload-modal";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -135,10 +136,19 @@ function EmployeesPage() {
   const [exportRows, setExportRows] = useState<any[]>([]);
   const [resetPassEmp, setResetPassEmp] = useState<any | null>(null);
   const [resetPassOpen, setResetPassOpen] = useState(false);
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const matchRoute = useMatchRoute();
 
   const searchParams = Route.useSearch();
+  const { user } = useAuth();
+  const isCeo = Boolean(
+    user?.can_view_confidential ||
+    user?.is_ceo ||
+    user?.is_superuser ||
+    user?.role === "super_admin" ||
+    user?.employee_id === "CEO001"
+  );
   const { canView, canCreate, canUpdate, canDelete } = usePermissions("Employees");
 
   useEffect(() => {
@@ -228,7 +238,16 @@ function EmployeesPage() {
       if (!cleanData.designation) cleanData.designation = null;
       if (!cleanData.salaryStructure || cleanData.salaryStructure === " ")
         cleanData.salaryStructure = null;
-        
+
+      // Non-CEO callers MUST NEVER send or overwrite employee compensation fields
+      if (!isCeo) {
+        delete cleanData.ctc;
+        delete cleanData.taxSavingDeductions;
+        delete cleanData.tax_saving_deductions;
+        delete cleanData.salaryStructure;
+        delete cleanData.salary_structure;
+      }
+
       // Strip 'photo' if it's a string URL because DRF expects a File object
       if (typeof cleanData.photo === 'string') {
         delete cleanData.photo;
@@ -312,12 +331,12 @@ function EmployeesPage() {
         description="Complete employee directory across all entities"
         actions={
           <div className="flex gap-2 pointer-events-auto">
-            <Button onClick={downloadSampleTemplate} variant="outline" className="bg-white">
+            <Button onClick={() => employeesApi.downloadTemplate()} variant="outline" className="bg-white">
               <Download className="h-4 w-4 mr-1" />
               Download Template
             </Button>
             {canCreate && (
-              <Button onClick={() => fileInputRef.current?.click()} variant="outline">
+              <Button onClick={() => setBulkUploadOpen(true)} variant="outline">
                 <UserPlus className="h-4 w-4 mr-1" />
                 Bulk Import
               </Button>
@@ -712,6 +731,16 @@ function EmployeesPage() {
         employee={resetPassEmp}
         onSuccess={() => router.invalidate()}
       />
+      <EmployeeDataUploadModal
+        open={bulkUploadOpen}
+        onOpenChange={setBulkUploadOpen}
+        onSuccess={() => router.invalidate()}
+        entities={entities}
+        departments={departments}
+        designations={designations}
+        branches={branches}
+        sites={sites}
+      />
     </div>
   );
 }
@@ -760,8 +789,27 @@ function EmployeeDialog({
     gradeCategory: "Unassigned",
     taxRegime: "New",
     taxSavingDeductions: 0,
+    workerType: "Salaried",
+    tdsApplicable: false,
+    tdsSection: "194J_10",
+    tdsRate: 10,
+    tdsLowerDeductionCert: "",
   };
-  const [form, setForm] = useState<any>(employee ?? (defaultForm as any));
+
+  const normalizeEmp = (emp: any) => {
+    if (!emp) return defaultForm;
+    return {
+      ...emp,
+      workerType: emp.workerType || emp.worker_type || "Salaried",
+      tdsApplicable: emp.tdsApplicable ?? emp.tds_applicable ?? false,
+      tdsSection: emp.tdsSection || emp.tds_section || "194J_10",
+      tdsRate: emp.tdsRate ?? emp.tds_rate ?? 10,
+      tdsLowerDeductionCert: emp.tdsLowerDeductionCert || emp.tds_lower_deduction_cert || "",
+      pfApplicable: emp.pfApplicable ?? emp.pf_applicable ?? false,
+    };
+  };
+
+  const [form, setForm] = useState<any>(normalizeEmp(employee));
   const [tab, setTab] = useState("personal");
   const [showEstimator, setShowEstimator] = useState(false);
   const [pendingDocs, setPendingDocs] = useState<{ file: File; type: string }[]>([]);
@@ -769,7 +817,13 @@ function EmployeeDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { user } = useAuth();
-  const canAddCTC = Boolean(user?.is_superuser) || user?.permissions?.can_add_ctc === true;
+  const canAddCTC = Boolean(
+    user?.can_view_confidential ||
+    user?.is_ceo ||
+    user?.is_superuser ||
+    user?.role === "super_admin" ||
+    user?.employee_id === "CEO001"
+  );
 
   const searchParams = Route.useSearch();
 
@@ -782,7 +836,7 @@ function EmployeeDialog({
 
   useEffect(() => {
     if (open) {
-      setForm(employee ?? (defaultForm as any));
+      setForm(normalizeEmp(employee));
       setPendingDocs([]);
       if (searchParams.tab === "compensation" && canAddCTC) {
         setTab("compensation");
@@ -798,7 +852,7 @@ function EmployeeDialog({
         open={open}
         onOpenChange={(b) => {
           onOpenChange(b);
-          if (b && employee) setForm(employee);
+          if (b && employee) setForm(normalizeEmp(employee));
         }}
       >
         <DialogContent
@@ -1027,16 +1081,16 @@ function EmployeeDialog({
                                 .filter((s: Site) => {
                                   const eId = form.entity && form.entity !== " " && form.entity !== "null" ? String(form.entity) : null;
                                   if (!eId) return true;
-                                  
+
                                   const entitiesList = Array.isArray(entities) ? entities : ((entities as any)?.results || []);
                                   const branchesList = Array.isArray(branches) ? branches : ((branches as any)?.results || []);
-                                  
+
                                   const selectedEntityObj = entitiesList.find((ent: any) => String(ent.id) === String(eId));
                                   if (selectedEntityObj && s?.organization && String(s.organization) === String(selectedEntityObj.organization)) return true;
-                                  
+
                                   const siteBranch = branchesList.find((b: Branch) => String(b.id) === String(s.branch));
                                   if (siteBranch && String(siteBranch.entity) === String(eId)) return true;
-                                  
+
                                   return false;
                                 })
                                 .map((s: Site, idx: number) => (
@@ -1198,10 +1252,10 @@ function EmployeeDialog({
                       {form.status === "Active"
                         ? "Active: User can log in to web/mobile & punch attendance."
                         : form.status === "Inactive"
-                        ? "Inactive: Account is deactivated. Login is blocked & excluded from kiosk."
-                        : form.status === "On Leave"
-                        ? "On Leave: Active account on scheduled leave."
-                        : "Draft: Unsaved onboarding draft."}
+                          ? "Inactive: Account is deactivated. Login is blocked & excluded from kiosk."
+                          : form.status === "On Leave"
+                            ? "On Leave: Active account on scheduled leave."
+                            : "Draft: Unsaved onboarding draft."}
                     </p>
                   </Field>
                   <Field label="Group Category">
@@ -1222,7 +1276,7 @@ function EmployeeDialog({
               </div>
             )}
 
-            {tab === "compensation" && (
+            {canAddCTC && tab === "compensation" && (
               <div className="space-y-4 pt-2">
                 <div className="grid grid-cols-2 gap-4">
                   <Field label="CTC (Annual)">
@@ -1285,6 +1339,30 @@ function EmployeeDialog({
                       </SelectContent>
                     </Select>
                   </Field>
+                  <Field label="Worker Classification">
+                    <Select
+                      value={form.workerType || "Salaried"}
+                      onValueChange={(v) => {
+                        const defaultSec = v === "Professional" ? "194J_10" : (v === "Contractor" ? "194C_1" : "192");
+                        const defaultRate = v === "Professional" ? 10 : (v === "Contractor" ? 1 : 0);
+                        setForm({
+                          ...form,
+                          workerType: v,
+                          tdsSection: defaultSec,
+                          tdsRate: defaultRate,
+                        });
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Classification" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Salaried">Salaried Staff (Sec 192)</SelectItem>
+                        <SelectItem value="Professional">Professional / Consultant (Sec 194J)</SelectItem>
+                        <SelectItem value="Contractor">Contractor / Vendor (Sec 194C)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
                   <Field label="Tax Regime">
                     <Select
                       value={form.taxRegime || "New"}
@@ -1309,7 +1387,7 @@ function EmployeeDialog({
                     </Field>
                   )}
                   <div className="col-span-2 grid grid-cols-2 gap-4 border-t pt-4 mt-2">
-                    <div className="col-span-2 flex gap-8 mb-2">
+                    <div className="col-span-2 flex flex-wrap gap-6 mb-2">
                       <Field label="PF Applicable">
                         <div className="flex items-center h-10">
                           <Checkbox
@@ -1324,6 +1402,23 @@ function EmployeeDialog({
                             className="ml-2 text-sm font-medium leading-none"
                           >
                             Deduct Provident Fund
+                          </label>
+                        </div>
+                      </Field>
+                      <Field label="TDS Applicable">
+                        <div className="flex items-center h-10">
+                          <Checkbox
+                            id="tdsApplicable"
+                            checked={form.tdsApplicable || false}
+                            onCheckedChange={(c: boolean) =>
+                              setForm({ ...form, tdsApplicable: c === true })
+                            }
+                          />
+                          <label
+                            htmlFor="tdsApplicable"
+                            className="ml-2 text-sm font-medium leading-none"
+                          >
+                            Deduct TDS (Income Tax / Sec 194)
                           </label>
                         </div>
                       </Field>
@@ -1345,11 +1440,78 @@ function EmployeeDialog({
                             htmlFor="bonusApplicable"
                             className="ml-2 text-sm font-medium leading-none"
                           >
-                            Employee receives variable bonus
+                            Variable Bonus
                           </label>
                         </div>
                       </Field>
                     </div>
+
+                    {form.tdsApplicable && (
+                      <div className="col-span-2 grid grid-cols-2 gap-4 bg-muted/20 p-4 rounded-xl border border-dashed mb-2">
+                        <div className="col-span-2 flex justify-between items-center">
+                          <span className="text-xs font-semibold text-primary uppercase tracking-wider">
+                            TDS Compliance Configuration {form.workerType === "Professional" ? "(Section 194J)" : form.workerType === "Contractor" ? "(Section 194C)" : "(Section 192)"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {form.workerType === "Professional" ? "Exempt from PF / ESIC / PT" : "Standard Payroll"}
+                          </span>
+                        </div>
+                        <Field label="TDS Section">
+                          <Select
+                            value={form.tdsSection || (form.workerType === "Contractor" ? "194C_1" : "194J_10")}
+                            onValueChange={(v) => {
+                              let r = 10;
+                              if (v === "194J_10") r = 10;
+                              else if (v === "194J_2") r = 2;
+                              else if (v === "194C_1") r = 1;
+                              else if (v === "194C_2") r = 2;
+                              setForm({ ...form, tdsSection: v, tdsRate: r });
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select Section" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="194J_10">194J - Professional Services (10%)</SelectItem>
+                              <SelectItem value="194J_2">194J - Technical Services (2%)</SelectItem>
+                              <SelectItem value="194C_1">194C - Individual Contractor (1%)</SelectItem>
+                              <SelectItem value="194C_2">194C - Corporate Contractor (2%)</SelectItem>
+                              <SelectItem value="192">192 - Salaried Tax Slabs</SelectItem>
+                              <SelectItem value="CUSTOM">Custom Deduction Rate (%)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </Field>
+
+                        <Field label="TDS Deduction Rate (%)">
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                            value={form.tdsRate ?? 10}
+                            disabled={form.tdsSection !== "CUSTOM" && form.tdsSection !== "192"}
+                            onChange={(e) => setForm({ ...form, tdsRate: +e.target.value })}
+                          />
+                        </Field>
+
+                        <div className="col-span-2">
+                          <Field label="Lower Deduction Certificate No. (Sec 197)">
+                            <Input
+                              type="text"
+                              placeholder="Optional Certificate No. u/s 197"
+                              value={form.tdsLowerDeductionCert || ""}
+                              onChange={(e) => setForm({ ...form, tdsLowerDeductionCert: e.target.value })}
+                            />
+                          </Field>
+                        </div>
+
+                        {(!form.pan || form.pan.trim().length < 10) && (
+                          <div className="col-span-2 text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 p-2.5 rounded-lg border border-amber-500/20">
+                            <strong>Section 206AA Statutory Warning:</strong> PAN is not provided. A mandatory 20% penalty TDS rate will automatically be applied during payroll runs.
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {form.bonusApplicable && (
                       <Field label="Bonus Type">
                         <Select
@@ -1555,7 +1717,7 @@ function EmployeeDialog({
               Cancel
             </Button>
             {employee?.status === "Draft" && (
-              <Button 
+              <Button
                 variant="default"
                 className="bg-green-600 hover:bg-green-700 text-white"
                 onClick={() => onSave({ ...form, status: 'Active' }, pendingDocs)}
@@ -1619,12 +1781,12 @@ function SalaryEstimatorModal({
     const oldTaxable = Math.max(
       0,
       gross -
-        standardDeductionOld -
-        employeePF -
-        professionalTax -
-        deduction80C -
-        deduction80D -
-        hraExemption,
+      standardDeductionOld -
+      employeePF -
+      professionalTax -
+      deduction80C -
+      deduction80D -
+      hraExemption,
     );
     let oldTax = 0;
     if (oldTaxable > 250000) {

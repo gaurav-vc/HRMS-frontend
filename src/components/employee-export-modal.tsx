@@ -50,7 +50,7 @@ export const AVAILABLE_FIELDS: ExportField[] = [
   { id: "ifsc", label: "IFSC Code", category: "Compliance & Bank", accessor: (e) => e.ifsc || "" },
 
   // Payroll
-  { id: "ctc", label: "Annual CTC (₹)", category: "Payroll", accessor: (e) => e.ctc ?? "" },
+  { id: "ctc", label: "Annual CTC (₹)", category: "Payroll", accessor: (e) => (e.is_salary_confidential || e.ctc_masked === "xxxx") ? "xxxx" : (e.ctc ?? "") },
   { id: "tax_regime", label: "Tax Regime", category: "Payroll", accessor: (e) => e.taxRegime || e.tax_regime || "New" },
 ];
 

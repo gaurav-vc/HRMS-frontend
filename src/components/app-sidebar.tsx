@@ -190,6 +190,29 @@ export const canAccessRoute = (it: Item, user: any) => {
   }
 
   // 2. Special workflow permission checks
+  if (it.title === "Import CTC" || it.title === "Form 16 Management") {
+    const isCeo = Boolean(
+      user?.can_view_confidential ||
+      user?.is_ceo ||
+      user?.is_superuser ||
+      user?.role === "super_admin" ||
+      user?.employee_id === "CEO001"
+    );
+    if (!isCeo) return false;
+  }
+
+  if (it.title === "Inbox") {
+    if (isAdminOrSuper || user?.role === "executive") return true;
+    if (Boolean(user?.is_manager || user?.has_reportees)) return true;
+    if (user?.permissions) {
+      const inboxPerm = user.permissions["Inbox"];
+      const leavePerm = user.permissions["Leave Requests"];
+      if (inboxPerm && coerceBooleanPermission(inboxPerm.view)) return true;
+      if (leavePerm && coerceBooleanPermission(leavePerm.approve)) return true;
+    }
+    return false;
+  }
+
   if (it.title === "Run Payroll") {
     if (isAdminOrSuper) return true;
     return (
@@ -211,24 +234,29 @@ export const canAccessRoute = (it: Item, user: any) => {
     }
   }
   
-  // 4. Default fallback for normal employees only if permissions dictionary is not set
-  if (user?.role === "employee" && (!user?.permissions || Object.keys(user.permissions).length === 0)) {
-    const defaultEmployeeModules = [
-      "Dashboard",
-      "Announcements",
-      "My Calendar",
-      "Attendance",
-      "QR Check-in",
-      "Face Verification",
-      "GPS Capture",
-      "Regularization",
-      "Leave Requests",
-      "Inbox",
-      "Salary Slips",
-      "My Form 16",
-      "Separation Request"
-    ];
-    if (defaultEmployeeModules.includes(it.title)) {
+  // 4. Default self-service modules available to employees
+  const selfServiceModules = [
+    "Dashboard",
+    "Announcements",
+    "My Calendar",
+    "Attendance",
+    "QR Check-in",
+    "Face Verification",
+    "GPS Capture",
+    "Regularization",
+    "Leave Requests",
+    "Holiday Planner",
+    "Calendar",
+    "Salary Structure",
+    "Salary Slips",
+    "My Form 16",
+    "Loans & Advances",
+    "Reimbursements",
+    "Separation Request",
+  ];
+
+  if (user?.role === "employee" || (!isAdminOrSuper && user?.role !== "executive")) {
+    if (selfServiceModules.includes(it.title)) {
       return true;
     }
   }
